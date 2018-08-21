@@ -1,7 +1,7 @@
 from gym.envs.registration import register
 import gym_micropolis.envs.tile_map
-import gym_micropolis.envs.micropolis_control
-import gym_micropolis.envs.micropolis_env
+import gym_micropolis.envs.control
+import gym_micropolis.envs.env
 
 register(
     id='MicropolisEnv-v0',

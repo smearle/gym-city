@@ -205,7 +205,7 @@ for i in trange(150000):
     epoch_counter  +=1
 
     
-# Time to drink some coffee and smoke some kush!
+# Time to drink some coffee (or smoke something)!
 
 
 import pandas as pd

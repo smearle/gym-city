@@ -3,7 +3,7 @@
 from gym import core, spaces
 from gym.utils import seeding
 import numpy as np
-from gym_micropolis.envs.micropolis_control import MicropolisControl 
+from gym_micropolis.envs.control import MicropolisControl 
 from gym_micropolis.envs.tile_map import TileMap 
 
 

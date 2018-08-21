@@ -4,7 +4,7 @@ import gym.spaces
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
     def __init__(self, micro):
-        self.zoneCenters = np.full((micro.MAP_X, micro.MAP_Y), None)
+        self.zoneCenters = np.full((1 + micro.MAP_X + 6, 1 + micro.MAP_Y + 6), None)
         self.MAP_X = micro.MAP_X
         self.MAP_Y = micro.MAP_Y
 
@@ -25,13 +25,10 @@ class TileMap(object):
             elif z_size and z_size > 1:
                 self.zoneSquares[z] = self.makeZoneSquare(self.zoneSize[z], self.zoneInts[z])
 
-        self.micro = micro
-
-    def setEmpty(self):
-        self.zoneMap = np.zeros((self.num_zones + 1,self.micro.MAP_X, self.micro.MAP_Y), dtype=int)
+        self.zoneMap = np.zeros((self.num_zones + 1,micro.MAP_X, micro.MAP_Y), dtype=int)
         self.zoneMap[-1,:,:] = self.zoneInts['Clear']
         self.zoneMap[self.zoneInts['Clear'],:,:] = 1
-        self.zoneCenters  = np.full((self.micro.MAP_X, self.micro.MAP_Y), None)
+        self.micro = micro
 
     def makeZoneSquare(self, width, zone_int):
         zone_square = np.zeros((self.num_zones + 1, width, width), dtype=int)
