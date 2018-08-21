@@ -80,7 +80,8 @@ class MicropolisEnv(core.Env):
 
     def step(self, a):
         self.micro.takeAction(self.intsToActions[a])
-        curr_pop = self.micro.getPopulation()
+        curr_pop = self.micro.getResPop() + self.micro.getComPop() + \
+                self.micro.getIndPop()
         pop_diff = curr_pop - self.last_pop
         if pop_diff > 0: reward = 1
         elif pop_diff < 0: reward = -1

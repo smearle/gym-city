@@ -19,8 +19,8 @@ import numpy as np
 # matplotlib inline
 
 #number of parallel agents and batch sequence length (measures in actions, since game time is independent)
-N_AGENTS = 1
-SEQ_LENGTH = 3
+N_AGENTS = 3 
+SEQ_LENGTH = 5
 
 import gym
 #game maker consider https://gym.openai.com/envs
@@ -99,7 +99,7 @@ from agentnet.agent import Agent
 #all together
 agent = Agent(observation_layers=observation_layer,
                policy_estimators=(qvalues_layer, qvalues_old),
-              #agent_states={dense:dense0},
+             #agent_states={conv_rec:in_conv_rec},
               action_layers=action_layer)
 
 #Since it's a single lasagne network, one can get it's weights, output, etc

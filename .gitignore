@@ -2,3 +2,5 @@
 *build
 *dist
 *MicropolisEnv_v0.egg-info
+
+__pycache__

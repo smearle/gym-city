@@ -3,13 +3,12 @@
 import pexpect
 import numpy as np
 import random
-import gym.spaces
 
 from .tile_map import TileMap
 
 class MicropolisControl():
     
-    def __init__(self):
+    def __init__(self, MAP_X=10, MAP_Y=10):
         self.bash = pexpect.spawn('/bin/bash')
         self.bash.send('micropolis -g -t\n')
         self.expectSim()
@@ -29,8 +28,8 @@ class MicropolisControl():
         self.v = '.head0.col2.editor1.centerframe.view'
         self.t ='.head0.col1.w3.notice3.top.text'
         # default terrain size is 120 by 100 (x by y)
-        self.MAP_X = 10
-        self.MAP_Y = 10
+        self.MAP_X = MAP_X
+        self.MAP_Y = MAP_Y
         # shifts build area to centre of 120 by 100 tile map
         self.MAP_XS = 59 - self.MAP_X // 2
         self.MAP_YS = 49 - self.MAP_Y //2
@@ -97,6 +96,25 @@ class MicropolisControl():
 
     def getYear(self):
         return 2000
+
+    def getResPop(self):
+        self.bash.send('sim ResPop\n')
+        self.expectSim()
+        result = self.getBuildSuccess()
+        return result
+
+    def getComPop(self):
+        self.bash.send('sim ComPop\n')
+        self.expectSim()
+        result = self.getBuildSuccess()
+        return result
+
+    def getIndPop(self):
+        self.bash.send('sim IndPop\n')
+        self.expectSim()
+        result = self.getBuildSuccess()
+        return result
+
 
     def getBuildSuccess(self):
         result = int(self.bash.before.split(b'\r\n')[-2])
