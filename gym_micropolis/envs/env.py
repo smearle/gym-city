@@ -26,6 +26,7 @@ class MicropolisEnv(core.Env):
         self.state = None
         self.intsToActions = {}
         self.mapIntsToActions()
+        self.last_pop = 0
 
 
     def mapIntsToActions(self):
@@ -79,11 +80,16 @@ class MicropolisEnv(core.Env):
 
     def step(self, a):
         self.micro.takeAction(self.intsToActions[a])
-        reward = self.micro.getPopulation()
+        curr_pop = self.micro.getPopulation()
+        pop_diff = curr_pop - self.last_pop
+        if pop_diff > 0: reward = 1
+        elif pop_diff < 0: reward = -1
+        else: reward = 0
+        self.last_pop = curr_pop
         terminal = False
         if self.num_step % 10 == 0 and self.micro.getFunds() < self.minFunds:
                 terminal = True
-        terminal = self.num_step == 25
+      # terminal = self.num_step == 25
         self.num_step += 1
         return (self.micro.map.getMapState(), reward, terminal, {})
 

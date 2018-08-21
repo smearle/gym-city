@@ -29,8 +29,8 @@ class MicropolisControl():
         self.v = '.head0.col2.editor1.centerframe.view'
         self.t ='.head0.col1.w3.notice3.top.text'
         # default terrain size is 120 by 100 (x by y)
-        self.MAP_X = 6
-        self.MAP_Y = 6
+        self.MAP_X = 10
+        self.MAP_Y = 10
         # shifts build area to centre of 120 by 100 tile map
         self.MAP_XS = 59 - self.MAP_X // 2
         self.MAP_YS = 49 - self.MAP_Y //2

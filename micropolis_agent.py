@@ -19,8 +19,8 @@ import numpy as np
 # matplotlib inline
 
 #number of parallel agents and batch sequence length (measures in actions, since game time is independent)
-N_AGENTS = 5
-SEQ_LENGTH = 5
+N_AGENTS = 1
+SEQ_LENGTH = 3
 
 import gym
 #game maker consider https://gym.openai.com/envs
@@ -78,14 +78,16 @@ recur_single = reshape(recur, (([0], num_zones + 3,) + (MAP_X, MAP_Y,)))
 conv4 = Conv2DLayer(recur_single, num_tools, 3, stride=1, nonlinearity=elu, pad='same')
 print(get_output_shape(conv4))
 
-dense = DenseLayer(conv4, n_actions)
-print(get_output_shape(dense))
+# intended a coordinate-invariant dense layer - each filter is the size of the
+# map
+conv_mapwide = Conv2DLayer(conv4, num_tools, MAP_X + 1, stride=1, nonlinearity=elu, pad="same")
+print(get_output_shape(conv_mapwide))
 
-qvalues_layer = reshape(dense, ([0], -1))
+qvalues_layer = reshape(conv_mapwide, ([0],-1))
+print(get_output_shape(qvalues_layer))
 
 #baseline for all qvalues
 #qvalues_layer = DenseLayer(dense,n_actions,nonlinearity=None,name='qval')
-print(get_output_shape(qvalues_layer))
 #sample actions proportionally to policy_layer
 from agentnet.resolver import EpsilonGreedyResolver
 action_layer = EpsilonGreedyResolver(qvalues_layer)
@@ -192,7 +194,7 @@ for i in trange(150000):
     ##record current learning progress and show learning curves
     if epoch_counter%100 ==0:
         action_layer.epsilon.set_value(0)
-        reward = 0.95*reward + 0.05*np.mean(pool.evaluate(record_video=False, use_monitor=False, t_max = 400))
+        reward = 0.95*reward + 0.05*np.mean(pool.evaluate(record_video=False, use_monitor=False, t_max = 20))
         action_layer.epsilon.set_value(np.float32(current_epsilon))
         
         rewards[epoch_counter] = reward
