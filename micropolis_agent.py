@@ -1,4 +1,4 @@
-# Notbook from https://github.com/yandexdataschool/AgentNet/blob/master/examples/Playing%20Atari%20with%20Deep%20Reinforcement%20Learning%20%28OpenAI%20Gym%29.ipynb 
+# Notebook from https://github.com/yandexdataschool/AgentNet/blob/master/examples/Playing%20Atari%20with%20Deep%20Reinforcement%20Learning%20%28OpenAI%20Gym%29.ipynb 
 
 #setup theano/lasagne. Prefer GPU
 # env THEANO_FLAGS=device=gpu0,floatX=float32

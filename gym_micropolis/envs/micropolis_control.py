@@ -22,7 +22,7 @@ class MicropolisControl():
         self.expectSim()
         self.bash.send('sim Sound 0\n')
         self.expectSim()
-        self.bash.send('sim Delay {}\n'.format(5000))
+        self.bash.send('sim Delay {}\n'.format(1))
         self.expectSim()
         # editor window
         self.e = '.head0.col2.editor1'
