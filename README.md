@@ -19,3 +19,6 @@ To run the script `micropolis_agent.py`, which trains a micropolis bots using de
 ```
 python3 micropolis_agent.py
 ```
+The script is is an (unsuccessfully) adapted version of the Atari notebook in the AgentNet examples folder. I have yet to successfully train the agent to maintain a stable population on even a small swath of land with a limited set of tools, and am eager to experiment with different architectures or training procedures.
+
+Please do not hesitate to contact me with any questions or ideas. Thank you!
