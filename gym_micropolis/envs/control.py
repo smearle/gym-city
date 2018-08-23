@@ -7,10 +7,9 @@ import random
 from .tile_map import TileMap
 
 class MicropolisControl():
-    
+
     def __init__(self, MAP_X=10, MAP_Y=10):
-        self.bash = pexpect.spawn('/bin/bash')
-        self.bash.send('micropolis -g -t\n')
+        self.bash = pexpect.spawn('micropolis -g -t\n')
         self.expectSim()
         self.bash.send('sim ClearMap\n')
         self.expectSim()
@@ -35,20 +34,20 @@ class MicropolisControl():
         self.MAP_YS = 49 - self.MAP_Y //2
 ## Might be useful for separate camerafollow object
 #       self.terrain_res = (1920, 1600)
-#       self.tscale = (self.terrain_res[0] / self.MAP_X, 
+#       self.tscale = (self.terrain_res[0] / self.MAP_X,
 #               self.terrain_res[1] / self.MAP_Y)
 #       self.view_mid = (349, 438)
 
-        self.zonetools =['res','com','ind'] 
-        self.tools = ['Residential', 'Commercial', 'Industrial', 
+        self.zonetools =['res','com','ind']
+        self.tools = ['Residential', 'Commercial', 'Industrial',
                 #'Stadium',
-                # 'Seaport', 
-                #'Airport', 
-                #'PoliceDept', 'FireDept', 
-                'Road', 'Park', 
-                #'Rail', 
-                'Clear', 'Wire', 
-                #'CoalPowerPlant', 
+                # 'Seaport',
+                #'Airport',
+                #'PoliceDept', 'FireDept',
+                'Road', 'Park',
+                #'Rail',
+                'Clear', 'Wire',
+                #'CoalPowerPlant',
                 'NuclearPowerPlant']
         self.num_tools = len(self.tools)
         self.map = TileMap(self)
@@ -60,7 +59,7 @@ class MicropolisControl():
         self.oneHotTool = {}
 
 
- 
+
         identity = np.identity(len(self.zonetools))
         i = 0
         for t in self.zonetools:
@@ -68,7 +67,7 @@ class MicropolisControl():
             self.oneHotTool[i] = t
             i += 1
 
-    
+
     def enableAutoBudget(self):
         self.bash.send('sim AutoBudget 1\n')
         self.expectSim()
@@ -76,17 +75,17 @@ class MicropolisControl():
     def takeAction(self, a):
         self.resume()
         tool = self.tools[a[0]]
-        x = a[1] 
+        x = a[1]
         y = a[2]
         self.doTool(x, y, tool)
- 
+
     def close(self):
         self.bash.send('sim ReallyQuit\n')
         self.expectSim()
 
     def expectSim(self):
         self.bash.expect('sim:')
-        
+
     def getPopulation(self):
         self.bash.send('sim TotalPop\n')
         self.expectSim()
@@ -156,7 +155,7 @@ class MicropolisControl():
         self.expectSim()
         result = self.getBuildSuccess()
         return result
- 
+
 
 
     def doBulldoze(self, x, y):
@@ -203,16 +202,16 @@ class MicropolisControl():
                 # random zones
                 elif ((i + 2 - (i + 4) // w) % 3) ==0 and \
                      ((j + 2 - (j + 1) // h) % 3) ==0:
-     
+
                     tool_i = random.randint(0, 3-1)
                     self.doTool(i, j, ['Residential', 'Commercial', 'Industrial'][tool_i])
-                    
+
 def test():
 
     micro = MicropolisControl()
     micro.setFunds(9999999)
 #   pprint(micro.queryMap())
-    micro.layGrid(7, 10)    
+    micro.layGrid(7, 10)
     for u in range(5):
         micro.bulldoze(random.randint(0,micro.MAP_X), random.randint(0,micro.MAP_Y))
         print(micro.map.zoneCenters)
