@@ -1,28 +1,31 @@
-#!/Users/sme/
-
 from gym import core, spaces
 from gym.utils import seeding
 import numpy as np
-from gym_micropolis.envs.control import MicropolisControl 
-from gym_micropolis.envs.tile_map import TileMap 
-
+from tilemap import TileMap 
+from corecontrol import MicropolisControl 
+import gtk
 
 
 class MicropolisEnv(core.Env):
 
     def __init__(self):
-        self.micro = MicropolisControl()
-        self.MAP_X = self.micro.MAP_X
+        self.SHOW_GUI=False
+
+    def setMapSize(self, MAP_X=6, MAP_Y=6):
+        self.MAP_X = MAP_X
+        self.MAP_Y = MAP_Y
+        self.micro = MicropolisControl(MAP_X, MAP_Y)
+        self.micro.SHOW_GUI=self.SHOW_GUI
         self.num_step = 0
         self.minFunds = 1000
         self.initFunds = 1000000000
-        self.MAP_Y = self.micro.MAP_Y
         self.num_tools = self.micro.num_tools
         self.num_zones = self.micro.num_zones
-        self.action_space = spaces.Discrete(self.MAP_X * self.MAP_Y * self.num_tools)
+        self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
         low_obs = np.zeros((self.num_zones, self.MAP_X, self.MAP_Y))
         high_obs = np.full((self.num_zones, self.MAP_X, self.MAP_Y), fill_value=1)
-        self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = int)
+        # TODO: can/should we use Tuples of MultiBinaries instead, for greater efficiency?
+        self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = bool)
         self.state = None
         self.intsToActions = {}
         self.mapIntsToActions()
@@ -37,35 +40,6 @@ class MicropolisEnv(core.Env):
                     self.intsToActions[i] = [z, x, y]
                     i += 1
 
-
-     #   self.intsToActions
-     #   # we assume a square board
-     #   tiles = self.MAP_X * self.MAP_X * self.num_tools
-     #   i = 0
-     #   w = 1
-     #   y = self.MAP_X // 2
-     #   x = self.MAP_X // 2
-     #   while w < self.MAP_X:
-     #       s = (w % 2) * 2 - 1 
-     #       for k in range(w):
-     #           for z in range(self.num_tools):
-     #               self.intsToActions[i] = [x, y, z]
-     #               i += 1
-     #           x += s * 1
-     #       for k in range(w):
-     #           for z in range(self.num_tools):
-     #               self.intsToActions[i] = [x, y, z]
-     #               i += 1
-     #           y += s * 1
-     #       w += 1
-     #   s = (w % 2) * 2 - 1 
-     #   for k in range(w ):
-     #       for z in range(self.num_tools):
-     #           self.intsToActions[i] = [x, y, z]
-     #           i += 1
-     #       x += s * 1
-
-
     def close(self):
         self.micro.close()
 
@@ -76,25 +50,38 @@ class MicropolisEnv(core.Env):
         self.num_step = 0
         self.micro.setFunds(self.initFunds)
         self.state = self.micro.map.getMapState()
+        self.last_pop=0
         return self.state
 
     def step(self, a):
         self.micro.takeAction(self.intsToActions[a])
-        curr_pop = self.micro.getResPop() + self.micro.getComPop() + \
+        curr_pop = self.micro.getResPop() / 8 + self.micro.getComPop() + \
                 self.micro.getIndPop()
-        pop_diff = curr_pop - self.last_pop
-        if pop_diff > 0: reward = 1
-        elif pop_diff < 0: reward = -1
-        else: reward = 0
-        self.last_pop = curr_pop
+        reward = curr_pop
+     #   pop_diff = curr_pop - self.last_pop
+     #   # Reward function
+     #   if pop_diff > 0: 
+     #       reward = 1
+     #   elif pop_diff < 0: 
+     #       reward = -1
+     #   else: 
+     #       reward = 0
+     # # print(curr_pop, reward)
+     #   self.last_pop = curr_pop
         terminal = False
         if self.num_step % 10 == 0 and self.micro.getFunds() < self.minFunds:
                 terminal = True
-      # terminal = self.num_step == 25
+        terminal = self.num_step == 10000
         self.num_step += 1
         return (self.micro.map.getMapState(), reward, terminal, {})
+    
+    def render(self, mode='human'):
+        gtk.mainiteration()
 
     def test(self):
         env = MicropolisEnv()
         for i in range(5000):
             env.step(env.action_space.sample())
+
+
+
