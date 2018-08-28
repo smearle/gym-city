@@ -1,15 +1,23 @@
+#!/usr/bin/env python3
+
+
 from __future__ import division
 import argparse
-
-from PIL import Image
+import os
+import sys
+DIR = '/home/sme/gym-micropolis'
+os.chdir(DIR)
+sys.path.insert(0, DIR)
 import numpy as np
 import gym
 import gym_micropolis
+import gtk
 
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Reshape
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Activation, Flatten, Convolution2D, ConvLSTM2D, Permute, Reshape
+
 from keras.optimizers import Adam
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from time import time
 import keras.backend as K
 
@@ -19,20 +27,26 @@ from rl.memory import SequentialMemory
 from rl.core import Processor
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
+RUNDIR = DIR + '/runs'
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', choices=['train', 'test'], default='train')
 parser.add_argument('--env-name', type=str, default='MicropolisEnv-v0')
 parser.add_argument('--weights', type=str, default=None)
+#parser.add_argument('--loadmodel', type=str, default=None)
+parser.add_argument('--name', type=str, default=None)
+
 args = parser.parse_args()
 
 # Get the environment and extract the number of actions.
 env = gym.make(args.env_name)
+MAP_X, MAP_Y = 10, 10
+env.setMapSize(MAP_X, MAP_Y)
 np.random.seed(123)
 # env.seed(123)
 nb_actions = env.action_space.n
 num_zones = env.num_zones
 num_tools = env.num_tools
-MAP_X, MAP_Y = env.MAP_X, env.MAP_Y
 
 
 INPUT_SHAPE = (MAP_X, MAP_Y)
@@ -56,7 +70,8 @@ class MicropolisProcessor(Processor):
         return processed_batch
 
     def process_reward(self, reward):
-        return np.clip(reward, -1., 1.)
+     #  return np.clip(reward, -1., 1.)
+        return reward
 
 
 
@@ -65,25 +80,27 @@ input_shape = (num_zones, MAP_X, MAP_Y)
 model = Sequential()
 model.add(Reshape((input_shape), input_shape=(WINDOW_LENGTH,) + input_shape))
 if K.image_dim_ordering() == 'tf':
+    print('tensorflow ordering')
     # (width, height, channels)
     model.add(Permute((2, 3, 1), input_shape=input_shape))
+    permute_shape = (MAP_X, MAP_Y, num_zones)
 elif K.image_dim_ordering() == 'th':
     # (channels, width, height)
-    model.add(Permute((1, 2, 3), input_shape=input_shape))
+    model.add(Permute((0, 1, 2), input_shape=input_shape))
+    permute_shape = (num_zones, MAP_X, MAP_Y)
 else:
     raise RuntimeError('Unknown image_dim_ordering.')
-model.add(Convolution2D(32, (8, 8), strides=(1, 1), padding='same'))
+
+model.add(Reshape((1,) + permute_shape))
+model.add(ConvLSTM2D(16, (3, 3), strides=(1, 1), padding='same'))
+model.add(Activation('tanh'))
+model.add(Convolution2D(32, (9, 9), strides=(1, 1), padding='same'))
 model.add(Activation('relu'))
-model.add(Convolution2D(64, (4, 4), strides=(1, 1), padding='same'))
+model.add(Convolution2D(64, (5, 5), strides=(1, 1), padding='same'))
 model.add(Activation('relu'))
 model.add(Convolution2D(64, (3, 3), strides=(1, 1), padding='same'))
 model.add(Activation('relu'))
-#model.add(Flatten())
-#model.add(Dense(512))
-#model.add(Activation('relu'))
-#model.add(Dense(nb_actions))
-#model.add(Activation('linear'))
-model.add(Convolution2D(num_tools, (MAP_X, MAP_Y), strides=(1,1), padding='same'))
+model.add(Convolution2D(num_tools, (11, 11), strides=(1,1), padding='same'))
 model.add(Flatten())
 model.add(Activation('linear'))
 print(model.summary())
@@ -114,23 +131,42 @@ dqn.compile(Adam(lr=.00025), metrics=['mae'])
 
 if args.mode == 'train':
     # Okay, now it's time to learn something! We capture the interrupt exception so that training
-    # can be prematurely aborted. Notice that you can the built-in Keras callbacks!
-    weights_filename = 'dqn_{}_weights.h5f'.format(args.env_name)
-    checkpoint_weights_filename = 'dqn_' + args.env_name + '_weights_{step}.h5f'
-    log_filename = 'dqn_{}_log.json'.format(args.env_name)
+    # can be prematurely aborted. Notice that you can use the built-in Keras callbacks!
+    os.chdir(DIR)
+    os.chdir('runs')
+    if not args.name:
+        name = '{}_{}'.format(args.env_name, time())
+    else: 
+        name = args.name
+    rundir= name
+    os.mkdir(rundir)
+    os.chdir(rundir)
+    weights_filename = '{}_weights.h5f'.format(name)
+    checkpoint_weights_filename = weights_filename + '_{step}.h5f'
+  # model_filename = 'dqn_micropolis_model.hdf5'
+    log_filename = 'dqn_micropolis_log.json'
     callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250000)]
-    callbacks += [FileLogger(log_filename, interval=100)]
-    callbacks += [TensorBoard(log_dir="/home/sme/gym-micropolis/dqn_micropolis_logs/{}".format(time()))]
-    dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=100)
+  # callbacks += [ModelCheckpoint(model_filename)]
+    callbacks += [FileLogger(log_filename, interval=250000)]
+    callbacks += [TensorBoard(log_dir='{}/{}'.format(rundir, name))]
+    
+#    if args.loadmodel:
+#        dqn.model.load(args.loadmodel)
+
+    dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000)
 
     # After training is done, we save the final weights one more time.
     dqn.save_weights(weights_filename, overwrite=True)
+  # dqn.save_model(model_filename)
 
     # Finally, evaluate our algorithm for 10 episodes.
     dqn.test(env, nb_episodes=10, visualize=False)
+    gtk.main()
+
 elif args.mode == 'test':
     weights_filename = 'dqn_{}_weights.h5f'.format(args.env_name)
     if args.weights:
         weights_filename = args.weights
     dqn.load_weights(weights_filename)
-    dqn.test(env, nb_episodes=10, visualize=True)
+    dqn.test(env, nb_episodes=10, visualize=True, nb_max_start_steps=0)
+  # gtk.main()
