@@ -37,7 +37,7 @@ class TileMap(object):
             elif z_size and z_size > 1:
                 self.zoneSquares[z] = self.makeZoneSquare(self.zoneSize[z], self.zoneInts[z])
         # first dimension is one-hot zone encoding followed by zone int
-        self.zoneMap = np.zeros((self.num_zones + 1,micro.MAP_X, micro.MAP_Y), dtype=int)
+        self.zoneMap = np.zeros((self.num_zones + 1,micro.MAP_X, micro.MAP_Y), dtype=np.int8)
         self.zoneMap[-1,:,:] = self.zoneInts['Clear']
         self.zoneMap[self.zoneInts['Clear'],:,:] = 1
         self.micro = micro

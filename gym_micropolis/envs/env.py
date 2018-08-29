@@ -4,6 +4,7 @@ import numpy as np
 from tilemap import TileMap 
 from corecontrol import MicropolisControl 
 import gtk
+from time import sleep
 
 
 class MicropolisEnv(core.Env):
@@ -15,6 +16,7 @@ class MicropolisEnv(core.Env):
         self.MAP_X = MAP_X
         self.MAP_Y = MAP_Y
         self.micro = MicropolisControl(MAP_X, MAP_Y)
+        self.win1 = self.micro.win1
         self.micro.SHOW_GUI=self.SHOW_GUI
         self.num_step = 0
         self.minFunds = 1000
@@ -54,6 +56,7 @@ class MicropolisEnv(core.Env):
         return self.state
 
     def step(self, a):
+
         self.micro.takeAction(self.intsToActions[a])
         curr_pop = self.micro.getResPop() / 8 + self.micro.getComPop() + \
                 self.micro.getIndPop()
@@ -71,7 +74,7 @@ class MicropolisEnv(core.Env):
         terminal = False
         if self.num_step % 10 == 0 and self.micro.getFunds() < self.minFunds:
                 terminal = True
-        terminal = self.num_step == 10000
+        terminal = self.num_step == 1000
         self.num_step += 1
         return (self.micro.map.getMapState(), reward, terminal, {})
     

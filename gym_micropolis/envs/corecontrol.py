@@ -4,20 +4,27 @@ import random
 import gtk
 import tilemap
 
-## depends on the location of the MicropolisCore folder
-MICROPOLIS_CORE_DIR = '/home/sme/micropolis/MicropolisCore'
-sys.path.append(MICROPOLIS_CORE_DIR + '/src')
-os.chdir(MICROPOLIS_CORE_DIR + '/src')
+## assumes you've downloaded the micropolis-4bots repo into the same directory as this (the gym-micropolis) repo.
+FILE_DIR = os.path.dirname(os.path.realpath(__file__))
+GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir, os.pardir))
+MICROPOLISCORE_DIR = GIT_DIR + '/micropolis-4bots/MicropolisCore/src'
+sys.path.append(MICROPOLISCORE_DIR)
+
+CURR_DIR = os.getcwd()
+# we need to do this so the micropolisgenericengine can access images/micropolisEngine/dataColorMap.png
+os.chdir(MICROPOLISCORE_DIR)   
 
 from pyMicropolis.gtkFrontend import main
-
 from tilemap import TileMap
+
+# os.chdir(CURR_DIR)
 
 class MicropolisControl():
 
     def __init__(self, MAP_W=6, MAP_H=6):
         self.SHOW_GUI=False
         engine, win1 = main.train()
+        os.chdir(CURR_DIR)
         self.engine = engine
       # print(dir(self.engine))
         self.MAP_X = MAP_W
@@ -63,6 +70,7 @@ class MicropolisControl():
         engine.setPasses(500)
         #engine.simSpeed =99
         engine.clearMap()
+        self.win1=win1
 
     def layGrid(self, w, h):
 

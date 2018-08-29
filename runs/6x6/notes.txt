@@ -1,0 +1,16 @@
+model.add(Convolution2D(32, (8, 8), strides=(1, 1), padding='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(64, (4, 4), strides=(1, 1), padding='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(64, (3, 3), strides=(1, 1), padding='same'))
+model.add(Activation('relu'))
+model.add(Flatten())
+model.add(Dense(512))
+model.add(Activation('relu'))
+model.add(Dense(nb_actions))
+model.add(Activation('linear'))
+model.add(Convolution2D(num_tools, (10, 10), strides=(1,1), padding='same'))
+model.add(Flatten())
+model.add(Activation('linear'))
+
+starts with industrial zones and road, finds parks, and settles with com and res around 1.5M

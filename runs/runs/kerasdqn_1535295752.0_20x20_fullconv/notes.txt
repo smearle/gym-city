@@ -1,0 +1,12 @@
+model.add(Convolution2D(32, (8, 8), strides=(1, 1), padding='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(64, (4, 4), strides=(1, 1), padding='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(64, (3, 3), strides=(1, 1), padding='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(num_tools, (MAP_X, MAP_Y), strides=(1,1), padding='same'))
+model.add(Flatten())
+model.add(Activation('linear'))
+
+
+The last convolution is the size of the map. On the initial 20x20-mapsize runs, it was changed to a 10x10 filter (where it had previously been either (MAP_X, MAP_Y), or (10, 10) - though that would seem redundant - on the 6x6 runs). 

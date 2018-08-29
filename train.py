@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 DIR = '/home/sme/gym-micropolis'
-os.chdir(DIR)
+# os.chdir(DIR)
 sys.path.insert(0, DIR)
 import numpy as np
 import gym
@@ -17,7 +17,7 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Flatten, Convolution2D, ConvLSTM2D, Permute, Reshape
 
 from keras.optimizers import Adam
-from keras.callbacks import TensorBoard, ModelCheckpoint
+from keras.callbacks import Callback, TensorBoard, ModelCheckpoint
 from time import time
 import keras.backend as K
 
@@ -34,13 +34,13 @@ parser.add_argument('--mode', choices=['train', 'test'], default='train')
 parser.add_argument('--env-name', type=str, default='MicropolisEnv-v0')
 parser.add_argument('--weights', type=str, default=None)
 #parser.add_argument('--loadmodel', type=str, default=None)
-parser.add_argument('--name', type=str, default=None)
+parser.add_argument('--run-id', type=str, default=None)
 
 args = parser.parse_args()
-
+print('ARG LIST: {}'.format(args))
 # Get the environment and extract the number of actions.
 env = gym.make(args.env_name)
-MAP_X, MAP_Y = 10, 10
+MAP_X, MAP_Y = 12, 12
 env.setMapSize(MAP_X, MAP_Y)
 np.random.seed(123)
 # env.seed(123)
@@ -91,15 +91,18 @@ elif K.image_dim_ordering() == 'th':
 else:
     raise RuntimeError('Unknown image_dim_ordering.')
 
+# simulate power/traffic flows
 model.add(Reshape((1,) + permute_shape))
 model.add(ConvLSTM2D(16, (3, 3), strides=(1, 1), padding='same'))
 model.add(Activation('tanh'))
+# evaluate individual tiles
 model.add(Convolution2D(32, (9, 9), strides=(1, 1), padding='same'))
 model.add(Activation('relu'))
 model.add(Convolution2D(64, (5, 5), strides=(1, 1), padding='same'))
 model.add(Activation('relu'))
 model.add(Convolution2D(64, (3, 3), strides=(1, 1), padding='same'))
 model.add(Activation('relu'))
+# choose actions
 model.add(Convolution2D(num_tools, (11, 11), strides=(1,1), padding='same'))
 model.add(Flatten())
 model.add(Activation('linear'))
@@ -115,7 +118,7 @@ processor = MicropolisProcessor()
 # the agent initially explores the environment (high eps) and then gradually sticks to what it knows
 # (low eps). We also set a dedicated eps value that is used during testing. Note that we set it to 0.05
 # so that the agent still performs some random actions. This ensures that the agent cannot get stuck.
-policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,
+policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=.5, value_min=.1, value_test=.05,
                               nb_steps=1000000)
 
 # The trade-off between exploration and exploitation is difficult and an on-going research topic.
@@ -134,24 +137,32 @@ if args.mode == 'train':
     # can be prematurely aborted. Notice that you can use the built-in Keras callbacks!
     os.chdir(DIR)
     os.chdir('runs')
-    if not args.name:
+    if not args.run_id:
         name = '{}_{}'.format(args.env_name, time())
     else: 
-        name = args.name
-    rundir= name
-    os.mkdir(rundir)
-    os.chdir(rundir)
-    weights_filename = '{}_weights.h5f'.format(name)
+        run_id = args.run_id
+    os.mkdir(run_id)
+    weights_filename = '{}/weights.h5f'.format(run_id)
     checkpoint_weights_filename = weights_filename + '_{step}.h5f'
-  # model_filename = 'dqn_micropolis_model.hdf5'
-    log_filename = 'dqn_micropolis_log.json'
+ #  model_filename = 'dqn_micropolis_model.hdf5'
+    log_filename = '{}/log.json'.format(run_id)
     callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250000)]
   # callbacks += [ModelCheckpoint(model_filename)]
     callbacks += [FileLogger(log_filename, interval=250000)]
-    callbacks += [TensorBoard(log_dir='{}/{}'.format(rundir, name))]
-    
-#    if args.loadmodel:
-#        dqn.model.load(args.loadmodel)
+    callbacks += [TensorBoard(log_dir=run_id)]
+#   class TestCallback(Callback):
+#       def on_epoch_end(self, epoch, logs=None):
+#           test_env = gym.make(args.env_name)
+#           test_env.setMapSize(MAP_X,MAP_Y)
+#           dqn.test(test_env, nb_episodes=1, visualize=True, nb_max_start_steps=100)
+#           test_env.win1.destroy()
+#           test_env.close()
+#           del(test_env)
+#   callbacks += [TestCallback()]
+#   if args.loadmodel:
+#       dqn.model.load(args.loadmodel)
+    if args.weights:
+        dqn.load_weights(args.weights)
 
     dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000)
 
@@ -160,13 +171,12 @@ if args.mode == 'train':
   # dqn.save_model(model_filename)
 
     # Finally, evaluate our algorithm for 10 episodes.
-    dqn.test(env, nb_episodes=10, visualize=False)
-    gtk.main()
+    dqn.test(env, nb_episodes=10, visualize=True)
+ #  gtk.main()
 
 elif args.mode == 'test':
     weights_filename = 'dqn_{}_weights.h5f'.format(args.env_name)
     if args.weights:
         weights_filename = args.weights
     dqn.load_weights(weights_filename)
-    dqn.test(env, nb_episodes=10, visualize=True, nb_max_start_steps=0)
-  # gtk.main()
+    dqn.test(env, nb_episodes=10, visualize=True, nb_max_start_steps=100)
