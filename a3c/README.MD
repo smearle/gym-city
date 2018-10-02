@@ -1,3 +1,6 @@
+This is a modification of https://github.com/dgriff777/rl_a3c_pytorch for use withe micropolis gym environment.
+
+See the original readme below
 
 [23]: https://github.com/dgriff777/a3c_continuous
 
