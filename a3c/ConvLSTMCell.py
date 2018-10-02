@@ -1,4 +1,4 @@
-# https://github.com/Atcold/pytorch-CortexNet/blob/master/model/ConvLSTMCell.py
+# This is a slight modification of https://github.com/Atcold/pytorch-CortexNet/blob/master/model/ConvLSTMCell.py
 
 import torch
 from torch import nn
