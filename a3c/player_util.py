@@ -43,7 +43,7 @@ class Agent(object):
         log_prob = F.log_softmax(logit, dim=1)
         entropy = -(log_prob * prob).sum(1)
         self.entropies.append(entropy)
-      # action = prob.max(0)[1]
+      # action = prob.max(1)[1].data
         action = (self.certainty * prob).multinomial(1).data
  
         if values.size()[1] == 1:
@@ -51,16 +51,16 @@ class Agent(object):
         else:
             value = values[0][action]
 
-        if self.gpu_id >= 0:
-            with torch.cuda.device(self.gpu_id):
-                a_t = Variable(torch.zeros(self.env.env.env.num_tools, 
-                      self.env.env.env.MAP_X, self.env.env.env.MAP_Y).cuda())
-        else:
+      # if self.gpu_id >= 0:
+      #     with torch.cuda.device(self.gpu_id):
+      #         a_t = Variable(torch.zeros(self.env.env.env.num_tools, 
+      #               self.env.env.env.MAP_X, self.env.env.env.MAP_Y).cuda())
+      # else:
 
-            a_t = Variable(torch.zeros(self.env.env.env.num_tools, 
-                  self.env.env.env.MAP_X, self.env.env.env.MAP_Y))
-        a_pos = self.env.env.env.intsToActions[action.item()]
-        a_t[a_pos[0], a_pos[1], a_pos[2]] = 1
+      #     a_t = Variable(torch.zeros(self.env.env.env.num_tools, 
+      #           self.env.env.env.MAP_X, self.env.env.env.MAP_Y))
+      # a_pos = self.env.env.env.intsToActions[action.item()]
+      # a_t[a_pos[0], a_pos[1], a_pos[2]] = 1
         oh_action = torch.Tensor(1, self.env.env.env.action_space.n)
         oh_action.zero_()
         if self.gpu_id >= 0:
@@ -90,8 +90,7 @@ class Agent(object):
         return self
 
     def action_test(self):
-       #self.env.render()
-       #self.env.render()
+
 
         with torch.no_grad():
             num_lstm_layers = len(self.lstm_sizes)
@@ -139,7 +138,7 @@ class Agent(object):
                                        self.env.env.env.MAP_Y), 2)))
                                     .replace('\n ', '').replace('][',']\n[')
                                     .replace('[[','[').replace(']]',']')
-                                   + '{}'.format(self.reward))
+                                    + 'reward: {}'.format(self.reward))
         return self
 
     def clear_actions(self):

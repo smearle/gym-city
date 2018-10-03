@@ -16,7 +16,7 @@ import time
 parser = argparse.ArgumentParser(description='A3C_EVAL')
 parser.add_argument(
     '--env',
-    default='Pong-v0',
+    default='MicropolisEnv-v0',
     metavar='ENV',
     help='environment to train on (default: Pong-v0)')
 parser.add_argument(
@@ -122,7 +122,7 @@ if 'micropolis' in args.env.lower():
     modelInit = getattr(model, args.design_head)
     player.model = modelInit(player.env.observation_space.shape[0],
                                      player.env.action_space, player.env.env.env.MAP_X)
-    player.lstm_size = player.model.getMemorySizes()
+    player.lstm_sizes = player.model.getMemorySizes()
 else:
     player.model = A3Clstm(player.env.observation_space.shape[0],
                        player.env.action_space)
@@ -153,6 +153,7 @@ for i_episode in range(args.num_episodes):
     while True:
         if args.render:
             if i_episode % args.render_freq == 0:
+                player.env.render()
                 player.env.render()
 
 

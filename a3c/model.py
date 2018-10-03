@@ -231,30 +231,34 @@ class A3Cmicropolis20x20convAlinC(torch.nn.Module):
 
         from ConvLSTMCell import ConvLSTMCell
 
-        self.conv_0 = nn.Conv2d(14, 16, 3, 1, 1)
-        self.conv_1 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_2 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_3 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_4 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_5 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_6 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_7 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_8 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_9 = nn.Conv2d(16, 16, 3, 1, 1)    
-        self.conv_10 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_11 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_12 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_13 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_14 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_15 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_16 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_17 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_18 = nn.Conv2d(16, 16, 3, 1, 1)
-        self.conv_19 = nn.Conv2d(16, 16, 3, 1, 1)
+        self.conv_0 = nn.Conv2d(14, 64, 3, 1, 1)
+        self.conv_1 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_2 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_3 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_4 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_5 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_6 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_7 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_8 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_9 = nn.Conv2d(64, 64, 3, 1, 1)    
 
-        self.critic_conv_0 = nn.Conv2d(16, 32, 10, 5, 0)
+
+
+        self.conv_10 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_11 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_12 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_13 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_14 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_15 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_16 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_17 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_18 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.conv_19 = nn.Conv2d(64, 64, 3, 1, 1)
+
+        self.critic_conv_0 = nn.Conv2d(64, 32, 10, 5, 0)
+        self.critic_deconv_0 = nn.ConvTranspose2d(32, 64, 10, 5, 0)
         
-        self.actor_conv = nn.Conv2d(16, 8, 3, stride=1, padding=1)
+        self.actor_conv = nn.Conv2d(64, 8, 3, stride=1, padding=1)
         self.critic_linear = nn.Linear(288, 1)
 
 
@@ -839,99 +843,20 @@ class A3Cmicropolis10x10linAC(torch.nn.Module):
         self.conv_lstm3 = ConvLSTMCell(16, 16)
         self.conv_lstm4 = ConvLSTMCell(16, 16)
         self.conv_lstm5 = ConvLSTMCell(16, 16)
-      # self.conv_lstm6 = ConvLSTMCell(16, 16)
-      # self.conv_lstm7 = ConvLSTMCell(16, 16)
-      # self.conv_lstm8 = ConvLSTMCell(16, 16)
-      # self.conv_lstm9 = ConvLSTMCell(16, 16)
-      # self.conv_lstm10 = ConvLSTMCell(16, 16)
 
-        self.conv_out = nn.Conv2d(16, 8, 3, stride=1, padding=1)                  
-        self.linear_out_0 = nn.Linear(800, 512)
-       #self.deconv1 = nn.ConvTranspose2d(128, 128, 
-       #                                  2, stride=1, padding=0) # 3*3*128 = 1152
-       #self.deconv2 = nn.ConvTranspose2d(128, 32,
-       #                                  3, stride=2, padding=0) # 7*7*32 = 1568
-       #self.deconv3 = nn.ConvTranspose2d(32, 8,
-       #                                  8, stride=2, padding=0) # 20*20*8 = 3200
+        self.conv_out = nn.Conv2d(16, 8, 3, stride=1, padding=0)                  
+        self.linear_0 = nn.Linear(512, 512)
+        self.linear_1 = nn.Linear(512, 512)
 
-        self.linear_out_1 = nn.Linear(512, 800)
+        self.deconv_0 = nn.ConvTranspose2d(8, 8, 3, stride=1, padding=0)
 
         self.critic_linear = nn.Linear(800, 1)
-        self.actor_linear = nn.Linear(800, 800)
-
-       #self.critic_conv = nn.Conv2d(16, 1, map_width, padding=0)
-      # self.critic_linear = nn.Linear(800, 1)
-    #self.actor_conv = nn.Conv2d(16, 8, 21, stride=1, padding=10)
-       #self.actor_linear = nn.Linear(1600, 800)
+        self.actor_conv = nn.Conv2d(8, 8, 11, stride=1, padding=5)
 
         ###########################################################
 
-        self.conv_lstm1.weight = self.conv_lstm1.Gates.weight
-        self.conv_lstm1.bias = self.conv_lstm1.Gates.bias
-        self.conv_lstm1._grad = self.conv_lstm1.Gates.weight._grad        
-        self.conv_lstm2.weight = self.conv_lstm2.Gates.weight
-        self.conv_lstm2.bias = self.conv_lstm2.Gates.bias
-        self.conv_lstm2._grad = self.conv_lstm2.Gates.weight._grad
-        self.conv_lstm3.weight = self.conv_lstm3.Gates.weight
-        self.conv_lstm3.bias = self.conv_lstm3.Gates.bias
-        self.conv_lstm3._grad = self.conv_lstm3.Gates.weight._grad
-        self.conv_lstm4.weight = self.conv_lstm4.Gates.weight
-        self.conv_lstm4.bias = self.conv_lstm4.Gates.bias
-        self.conv_lstm4._grad = self.conv_lstm4.Gates.weight._grad
-        self.conv_lstm5.weight = self.conv_lstm5.Gates.weight
-        self.conv_lstm5.bias = self.conv_lstm5.Gates.bias
-        self.conv_lstm5._grad = self.conv_lstm5.Gates.weight._grad
-       #self.conv_lstm6.weight = self.conv_lstm1.Gates.weight
-       #self.conv_lstm6.bias = self.conv_lstm1.Gates.bias
-       #self.conv_lstm6._grad = self.conv_lstm1.Gates.weight._grad        
-       #self.conv_lstm7.weight = self.conv_lstm2.Gates.weight
-       #self.conv_lstm7.bias = self.conv_lstm2.Gates.bias
-       #self.conv_lstm7._grad = self.conv_lstm2.Gates.weight._grad
-       #self.conv_lstm8.weight = self.conv_lstm3.Gates.weight
-       #self.conv_lstm8.bias = self.conv_lstm3.Gates.bias
-       #self.conv_lstm8._grad = self.conv_lstm3.Gates.weight._grad
-       #self.conv_lstm9.weight = self.conv_lstm4.Gates.weight
-       #self.conv_lstm9.bias = self.conv_lstm4.Gates.bias
-       #self.conv_lstm9._grad = self.conv_lstm4.Gates.weight._grad
-       #self.conv_lstm10.weight = self.conv_lstm5.Gates.weight
-       #self.conv_lstm10.bias = self.conv_lstm5.Gates.bias
-       #self.conv_lstm10._grad = self.conv_lstm5.Gates.weight._grad
-       #self.actor_conv.weight = self.actor_conv.Gates.weight
-       #self.actor_conv.bias = self.actor_conv.Gates.bias
-       #self.actor_conv._grad = self.actor_conv.Gates.weight._grad
-       #self.critic_conv.weight = self.actor_conv.Gates.weight
-       #self.critic_conv.bias = self.actor_conv.Gates.bias
-       #self.critic_conv._grad = self.actor_conv.Gates.weight._grad
-
-
         self.apply(weights_init)
         relu_gain = nn.init.calculate_gain('relu')
-        self.conv_in.weight.data.mul_(relu_gain)
-        self.conv_lstm1.weight.data.mul_(relu_gain)
-        self.conv_lstm2.weight.data.mul_(relu_gain)
-        self.conv_lstm3.weight.data.mul_(relu_gain)
-        self.conv_lstm4.weight.data.mul_(relu_gain)
-        self.conv_lstm5.weight.data.mul_(relu_gain)
-       #self.conv_lstm6.weight.data.mul_(relu_gain)
-       #self.conv_lstm7.weight.data.mul_(relu_gain)
-       #self.conv_lstm8.weight.data.mul_(relu_gain)
-       #self.conv_lstm9.weight.data.mul_(relu_gain)
-       #self.conv_lstm10.weight.data.mul_(relu_gain)
-       #self.conv_out.weight.data.mul_(relu_gain)
-       #self.actor_conv.weight.data.mul_(relu_gain)
-       #self.critic_conv.weight.data.mul_(relu_gain)
-
-
-       #self.actor_linear.weight.data = norm_col_init(
-       #    self.actor_linear.weight.data, 0.01)
-       #self.actor_linear.bias.data.fill_(0)
-       #self.critic_linear.weight.data = norm_col_init(
-       #    self.critic_linear.weight.data, 1.0)
-       #self.critic_linear.bias.data.fill_(0)
-
-       #self.lin_lstm.bias_ih.data.fill_(0)
-       #self.lin_lstm.bias_hh.data.fill_(0)
-
         self.train()
 
     def getMemorySizes(self):
@@ -951,26 +876,17 @@ class A3Cmicropolis10x10linAC(torch.nn.Module):
             hx2, cx2 = self.conv_lstm3(hx1, (hx[0], cx[0]))
             hx3, cx3 = self.conv_lstm4(hx2, (hx[3], cx[3]))
             hx4, cx4 = self.conv_lstm5(hx3, (hx[4], cx[4]))
-           #hx5, cx5 = self.conv_lstm6(hx4, (hx[5], cx[5]))
-           #hx6, cx6 = self.conv_lstm7(hx5, (hx[6], cx[6]))
-           #hx7, cx7 = self.conv_lstm8(hx6, (hx[7], cx[7]))
-           #hx8, cx8 = self.conv_lstm9(hx7, (hx[8], cx[8]))
-           #hx9, cx9 = self.conv_lstm10(hx8, (hx[9], cx[9]))
             x = hx4
-            x = torch.tanh(self.conv_out(x))
+            x = torch.relu(self.conv_out(x))
             x = x.view(x.size(0), -1)
-            x = torch.tanh(self.linear_out_0(x))
-            x = torch.tanh(self.linear_out_1(x))
-           #action = self.actor_linear(x)
-           #x = hx4
+            x = torch.tanh(self.linear_0(x))
+            x = torch.tanh(self.linear_1(x))
+            x = x.view(x.size(0), 8, 8, 8)
+            x = torch.relu(self.deconv_0(x))
+            action = self.actor_conv(x)
+            action = action.view(action.size(0), -1)
+            x = x.view(x.size(0), -1)
             value = self.critic_linear(x)
-            action = self.actor_linear(x)
-           #hx10, cx10 = self.actor_conv(x, (hx[10], cx[10]))
-           #action = hx10
-           #action = action.view(action.size(0), -1)
-           #hx11, cx11 = self.critic_conv(x, (hx[11], cx[11]))
-           #value = hx11
-           #value = value.view(value.size(0), -1)
             return value, action, ([
                                  hx0,
                                  hx1, 
