@@ -1,9 +1,0 @@
-*~
-.DS_Store
-logs/*
-trained_models/*
-__pycache__
-*.pyc
-a3c_noreward
-curiosity
-demo
