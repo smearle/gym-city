@@ -9,6 +9,8 @@ cd micropolis-4bots/MicropolisCore/src
 make
 sudo make install
 ```
+![14x14linAC population reward](https://github.com/smearle/gym-micropolis/blob/master/a3c/demo/14x14linAC.gif) ![10x10linAC population reward](https://github.com/smearle/gym-micropolis/blob/master/a3c/demo/10x10linAC.gif)
+
 # Usage
 
 From this directory, we might run:
