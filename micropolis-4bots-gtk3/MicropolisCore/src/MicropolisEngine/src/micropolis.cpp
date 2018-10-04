@@ -94,7 +94,6 @@ Micropolis::Micropolis() :
         comRateMap(0)
 {
     init();
-    printf("FUCKMENANCEFUCKMENANCEFUCKMENANCE");
 }
 
 
