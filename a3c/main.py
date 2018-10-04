@@ -144,6 +144,10 @@ parser.add_argument(
     default=0.1,
     metavar='LR',
     help='lambda : balance between A3C & icm')
+parser.add_argument(
+    '--map-width',
+    type=int,
+    default=14)
 
 # Based on
 # https://github.com/pytorch/examples/tree/master/mnist_hogwild

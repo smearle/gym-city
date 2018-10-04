@@ -20,6 +20,7 @@ def micropolis_env(env_id, env_conf, args):
     print(sys.path)
     import gym_micropolis
     env = gym.make(env_id)
+    env.setMapSize(args.map_width)
 #  else:
 #       env._max_episode_steps = args.max_episode_length
     env = EpisodicLifeEnv(env)

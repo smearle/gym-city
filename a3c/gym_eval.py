@@ -82,6 +82,10 @@ parser.add_argument(
         default='A3Cmicropolis',
         metavar='DH',
         help='network architecture to load from model.py')
+parser.add_argument(
+        '--map-width',
+        type=int,
+        default=14)
 
 args = parser.parse_args()
 

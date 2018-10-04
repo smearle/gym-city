@@ -844,24 +844,30 @@ class A3Cmicropolis10x10linAC(torch.nn.Module):
         self.conv_lstm4 = ConvLSTMCell(16, 16)
         self.conv_lstm5 = ConvLSTMCell(16, 16)
 
-        self.conv_out = nn.Conv2d(16, 8, 3, stride=1, padding=0)                  
+        self.conv_0 = nn.Conv2d(16, 8, 3, stride=1, padding=0)                
         self.linear_0 = nn.Linear(512, 512)
-        self.linear_1 = nn.Linear(512, 512)
 
-        self.deconv_0 = nn.ConvTranspose2d(8, 8, 3, stride=1, padding=0)
+        self.deconv_0 = nn.ConvTranspose2d(128, 8, 5, stride=5, padding=0)
+        self.conv_lstm6 = ConvLSTMCell(8, 8)
 
-        self.critic_linear = nn.Linear(800, 1)
-        self.actor_conv = nn.Conv2d(8, 8, 11, stride=1, padding=5)
-
-        ###########################################################
-
+        self.critic_linear = nn.Linear(512, 1)
         self.apply(weights_init)
         relu_gain = nn.init.calculate_gain('relu')
+        self.conv_in.weight.data.mul_(relu_gain)
+        self.conv_0.weight.data.mul_(relu_gain)
         self.train()
+
+       #self.actor_conv.weight.data = norm_col_init(
+       #    self.actor_conv.weight.data, 0.01)
+       #self.actor_c.bias.data.fill_(0)
+        self.critic_linear.weight.data = norm_col_init(
+            self.critic_linear.weight.data, 1.0)
+        self.critic_linear.bias.data.fill_(0)
 
     def getMemorySizes(self):
         return [(1, 16, 10, 10) 
-                for i in range(5)] # + [(1, 8, 10, 10) for i in range(2)]
+                for i in range(5)] + \
+                [(1, 8, 10, 10)]# + [(1, 8, 10, 10) for i in range(2)]
 
 
     def forward(self, inputs):
@@ -877,21 +883,21 @@ class A3Cmicropolis10x10linAC(torch.nn.Module):
             hx3, cx3 = self.conv_lstm4(hx2, (hx[3], cx[3]))
             hx4, cx4 = self.conv_lstm5(hx3, (hx[4], cx[4]))
             x = hx4
-            x = torch.relu(self.conv_out(x))
+            x = F.relu(self.conv_0(x))
             x = x.view(x.size(0), -1)
             x = torch.tanh(self.linear_0(x))
-            x = torch.tanh(self.linear_1(x))
-            x = x.view(x.size(0), 8, 8, 8)
-            x = torch.relu(self.deconv_0(x))
-            action = self.actor_conv(x)
-            action = action.view(action.size(0), -1)
-            x = x.view(x.size(0), -1)
             value = self.critic_linear(x)
+            x = x.view(x.size(0), 128, 2, 2)
+            action = self.deconv_0(x)
+            hx5, cx5 = self.conv_lstm6(action, (hx[5], cx[5]))
+            action = hx5
+            action = action.view(action.size(0), -1)
             return value, action, ([
                                  hx0,
                                  hx1, 
                                  hx2, hx3, hx4,
-                                #hx5, hx6, hx7, hx8, hx9,
+                                 hx5, 
+                                #hx6, hx7, hx8, hx9,
                                 #hx10, hx11
 
                                 ], 
@@ -899,7 +905,7 @@ class A3Cmicropolis10x10linAC(torch.nn.Module):
                                  cx0, 
                                  cx1, 
                                  cx2, cx3, cx4,
-                                #cx5, cx6, cx7, cx8, cx9,
+                                 cx5 #, cx6, cx7, cx8, cx9,
                                 #cx10, cx11
                                 ])
 
@@ -927,9 +933,9 @@ class A3Cmicropolis14x14linAC(torch.nn.Module):
       # self.conv_lstm9 = ConvLSTMCell(16, 16)
       # self.conv_lstm10 = ConvLSTMCell(16, 16)
 
-        self.conv_out = nn.Conv2d(16, 8, 3, stride=1, padding=1)                        
-        self.conv_1 = nn.Conv2d(8, 8, 3, 1, 0)
-        self.linear_out_0 = nn.Linear(1152, 512)
+       #self.conv_out = nn.Conv2d(16, 8, 3, stride=1, padding=1)                        
+       #self.conv_1 = nn.Conv2d(8, 8, 3, 1, 0)
+        self.linear_out_0 = nn.Linear(3136, 1568)
        #self.deconv1 = nn.ConvTranspose2d(128, 128, 
        #                                  2, stride=1, padding=0) # 3*3*128 = 1152
        #self.deconv2 = nn.ConvTranspose2d(128, 32,
@@ -937,11 +943,11 @@ class A3Cmicropolis14x14linAC(torch.nn.Module):
        #self.deconv3 = nn.ConvTranspose2d(32, 8,
        #                                  8, stride=2, padding=0) # 20*20*8 = 3200
 
-        self.linear_out_1 = nn.Linear(512, 800)
+      # self.linear_out_1 = nn.Linear(1152, 1152)
 
 
-        self.critic_linear = nn.Linear(800, 1)
-        self.actor_linear = nn.Linear(800, 1568)
+        self.critic_linear = nn.Linear(1568, 1)
+        self.actor_linear = nn.Linear(1568, 1568)
 
        #self.critic_conv = nn.Conv2d(16, 1, map_width, padding=0)
       # self.critic_linear = nn.Linear(800, 1)
@@ -1041,11 +1047,11 @@ class A3Cmicropolis14x14linAC(torch.nn.Module):
            #hx8, cx8 = self.conv_lstm9(hx7, (hx[8], cx[8]))
            #hx9, cx9 = self.conv_lstm10(hx8, (hx[9], cx[9]))
             x = hx4
-            x = torch.tanh(self.conv_out(x))
-            x = torch.tanh(self.conv_1(x))
+           #x = torch.tanh(self.conv_out(x))
+           #x = torch.tanh(self.conv_1(x))
             x = x.view(x.size(0), -1)
             x = torch.tanh(self.linear_out_0(x))
-            x = torch.tanh(self.linear_out_1(x))
+           #x = torch.tanh(self.linear_out_1(x))
            #action = self.actor_linear(x)
            #x = hx4
             value = self.critic_linear(x)
