@@ -35,13 +35,13 @@ To use micropolis as a gym environment, install [gym](https://github.com/openai/
 ## A3C
 
 To use [dgriff777](https://github.com/dgriff777/rl_a3c_pytorch)'s pytorch implementation of A3C with gpu support (contained in 'a3c' with slight modifications), from the a3c directory we might run:
-'''
+```
 python3 main.py --env MicropolisEnv-v0 --map-width 14 --design-head A3Cmicropolis14x14linAC --gpu-id 0 --workers 12 --log-dir logs/14x14_ --save-model-dir logs/14x14_
-'''
+```
 with --gpu-id=-1 to run on cpu-only. This will use the version of MicropolisCore contained in micropolis-4bots-gtk3, which allows the game engine to run in python3, but will creash when trying to render the gui, since it has not been properly rewritten using gtk3. So to evalueate our model, we would run
-'''
+```
 python2 gym-eval --env MicropolisEnv-v0 --design-head A3Cmiropolis14x14linAC --render R --load-model-dir logs/14x14_
-'''
+```
 ## DQN
 
 To run the script `learn.py`, which trains a micropolis bots using deep-q learning, install [keras-rl](https://github.com/keras-rl/keras-rl), then run:
