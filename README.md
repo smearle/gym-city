@@ -1,7 +1,6 @@
 # gym-micropolis
 An interface with micropolis for city-building agents, packaged as an OpenAI gym environment.
 
-# Progress
 
 The gifs below show excerpts of the work of a a3c-trained models consisting of 5 convolutional lstms followed by fully-connected layers. At each step, the agents are rewarded by the change in total population from the last step.
 
