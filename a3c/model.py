@@ -909,6 +909,47 @@ class A3Cmicropolis10x10linAC(torch.nn.Module):
                                 #cx10, cx11
                                 ])
 
+class A3Cmicropolis14x14_1lin_linAC(torch.nn.Module):
+
+    def __init__(self, num_inputs, action_space, 
+             map_width=14, num_obs_channels=14, num_tools=8):
+
+        super(A3Cmicropolis14x14_1lin_linAC, self).__init__()
+
+        
+        self.linear_0 = nn.Linear(2744, 1568)
+
+        self.critic_linear = nn.Linear(1568, 1)
+        self.actor_linear = nn.Linear(1568, 1568)
+
+        ###########################################################
+
+        self.apply(weights_init)
+
+       #self.actor_linear.weight.data = norm_col_init(
+       #    self.actor_linear.weight.data, 0.01)
+       #self.actor_linear.bias.data.fill_(0)
+       #self.critic_linear.weight.data = norm_col_init(
+       #    self.critic_linear.weight.data, 1.0)
+       #self.critic_linear.bias.data.fill_(0)
+
+        self.train()
+
+    def getMemorySizes(self):
+        return []
+
+    def forward(self, inputs):
+            
+            inputs, (hx, cx) = inputs
+            x = inputs
+            x = x.view(x.size(0), -1)
+            x = torch.tanh(self.linear_0(x))
+            value = self.critic_linear(x)
+            action = self.actor_linear(x)
+
+            return value, action, ([],[])
+
+
 class A3Cmicropolis14x14linAC(torch.nn.Module):
 
     def __init__(self, num_inputs, action_space, 
@@ -943,7 +984,7 @@ class A3Cmicropolis14x14linAC(torch.nn.Module):
        #self.deconv3 = nn.ConvTranspose2d(32, 8,
        #                                  8, stride=2, padding=0) # 20*20*8 = 3200
 
-      # self.linear_out_1 = nn.Linear(1152, 1152)
+       #self.linear_out_1 = nn.Linear(1568, 1568)
 
 
         self.critic_linear = nn.Linear(1568, 1)
@@ -1011,7 +1052,6 @@ class A3Cmicropolis14x14linAC(torch.nn.Module):
        #self.actor_conv.weight.data.mul_(relu_gain)
        #self.critic_conv.weight.data.mul_(relu_gain)
 
-
        #self.actor_linear.weight.data = norm_col_init(
        #    self.actor_linear.weight.data, 0.01)
        #self.actor_linear.bias.data.fill_(0)
@@ -1036,9 +1076,9 @@ class A3Cmicropolis14x14linAC(torch.nn.Module):
             
             x = inputs
             x = F.relu(self.conv_in(x))
-            hx0, cx0 = self.conv_lstm1(x, (hx[2], cx[2]))
+            hx0, cx0 = self.conv_lstm1(x, (hx[0], cx[0]))
             hx1, cx1 = self.conv_lstm2(hx0, (hx[1], cx[1]))
-            hx2, cx2 = self.conv_lstm3(hx1, (hx[0], cx[0]))
+            hx2, cx2 = self.conv_lstm3(hx1, (hx[2], cx[2]))
             hx3, cx3 = self.conv_lstm4(hx2, (hx[3], cx[3]))
             hx4, cx4 = self.conv_lstm5(hx3, (hx[4], cx[4]))
            #hx5, cx5 = self.conv_lstm6(hx4, (hx[5], cx[5]))

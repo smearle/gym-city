@@ -59,10 +59,16 @@ class TileMap(object):
         self.zoneMap = np.zeros((self.num_zones + 1,self.MAP_X, self.MAP_Y), dtype=np.uint8)
         if walker:
             self.walkerZoneMap = np.zeros((self.num_zones, 2 * MAP_X, 2 * MAP_Y))
+        self.static_builds = None
         self.setEmpty()
         self.micro = micro
 
+    def initStaticBuilds(self):
+        self.static_builds = np.zeros((1, self.MAP_X, self.MAP_Y))
+
     def setEmpty(self):
+        if self.static_builds is not None:
+            self.static_builds.fill(0)
         self.zoneCenters.fill(None)
         self.zoneMap.fill(0)
         self.zoneMap[-1,:,:] = self.zoneInts['Clear']
@@ -91,19 +97,25 @@ class TileMap(object):
 #       self.zoneMap[-2, x, y] = 1
         self.walker_pos = [x, y]
 
-    def _addZoneInt(self, zone_int, x, y):
+    def _addZoneInt(self, zone_int, x, y, static_build=False):
         old_zone = self.zoneMap[-1][x][y]
         self.zoneMap[-1][x][y] = zone_int
         self.zoneMap[old_zone][x][y] = 0
         self.zoneMap[zone_int][x][y] = 1
+        if static_build and zone_int != self.zoneInts['Clear'] and zone_int != self.zoneInts['Rubble']:
+            self.static_builds[0][x][y] = 1
 
 
-    def addZone(self, x, y, zone):
-        ''' (x, y) must be a valid tile in the game Assumes the player has enough money to execute action.'''
+    def addZone(self, x, y, zone, static_build=False):
+        ''' (x, y) must be a valid tile in the game. Assumes the player has enough money to execute action.'''
     #   if self.walker:
     #       self.setWalkerPos(x, y)
-        if not zone:
-            return
+        assert zone
+        if static_build: assert self.static_builds is not None
+        # do not build over static builds
+        if self.static_builds is not None:
+            if self.static_builds[0][x][y] == 1:
+                return
         old_zone_int = self.zoneMap[-1][x][y]
         zone_int = self.zoneInts[zone]
       # print(zone_int, old_zone_int)
@@ -111,8 +123,10 @@ class TileMap(object):
         if zone_int == old_zone_int and ((not self.zoneCenters[x][y]) or self.zoneCenters[x][y] == (x,y)):
             self.no_change = True
             return
-        # do not punish ineffectual bulldozing
+        # do not count ineffectual bulldozing as a no_change move
         self.no_change = False
+        if zone_int == self.zoneInts['Road'] or zone_int == self.zoneInts['RoadWire']:
+            self.micro.num_roads += 1
         if zone == 'Clear':
             self.bulldoze(x, y)
             return
@@ -126,7 +140,7 @@ class TileMap(object):
                 zone_int = self.zoneInts['RoadWire']
                 result = self.micro.doSimTool(x, y, zone)
                 if result == 1:
-                    self._addZoneInt(zone_int, x, y)
+                    self._addZoneInt(zone_int, x, y, static_build)
                 else: 
          #          print('unexpected (road-wire) build fail: {} at {} {} with code {}'.format(zone, x, y, result))
                     pass
@@ -149,7 +163,7 @@ class TileMap(object):
                         return
                 if result == 1:
                     self.num_empty -= 1
-                    self._addZoneInt(zone_int, x, y)
+                    self._addZoneInt(zone_int, x, y, static_build)
         else:
             zone_square = self.zoneSquares[zone]
         #   result = self.micro.doSimTool(x, y, zone)
@@ -158,6 +172,9 @@ class TileMap(object):
             if True:
                 for i in range(x0, x1):
                     for j in range(y0, y1):
+                        # stop bulldozeing if we encounter a static build 
+                        if self.static_builds is not None and self.static_builds[0][i][j] == 1:
+                            return
                         old_int = self.zoneMap[-1][i][j]
                         if old_int != clear_int and old_int != rubble_int:
                             self.bulldoze(i, j)
@@ -172,13 +189,19 @@ class TileMap(object):
                 centers =  np.empty((x1 - x0, y1 - y0),dtype=object)
                 centers.fill((x, y))  
                 self.zoneCenters[x0 : x1, y0 : y1] = centers
+                if static_build:
+                    self.static_builds[0, x0 : x1, y0 : y1] = np.full((x1 - x0, y1 - y0), 1)
 
 
 
 
     def bulldoze(self, x, y):
+        if self.static_builds is not None:
+            assert self.static_builds[0][x][y] == 0
         clear_int = self.zoneInts['Clear']
         old_zone_int = self.zoneMap[-1, x, y]
+        if old_zone_int == self.zoneInts['Road'] or old_zone_int == self.zoneInts['RoadWire']:
+            self.micro.num_roads -= 1
         old_zone_size = self.zoneSize[self.zones[old_zone_int]]
         if clear_int == old_zone_int:
             return

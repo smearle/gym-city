@@ -9,7 +9,7 @@ else:
 
 ## assumes you've downloaded the micropolis-4bots repo into the same directory as this (the gym-micropolis) repo.
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
-GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir, os.pardir))
+GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
 if sys.version_info[0] >= 3:
     MICROPOLISCORE_DIR = GIT_DIR + '/micropolis-4bots-gtk3/MicropolisCore/src'
     sys.path.append(MICROPOLISCORE_DIR)
@@ -35,6 +35,7 @@ class MicropolisControl():
         engine, win1 = main.train()
         os.chdir(CURR_DIR)
         self.engine = engine
+        self.engine.setGameLevel(2)
       # print(dir(self.engine))
         self.MAP_X = MAP_W
         self.MAP_Y = MAP_H
@@ -44,6 +45,7 @@ class MicropolisControl():
        # self.MAP_YS = 49 - self.MAP_Y //2
         self.MAP_XS = 1
         self.MAP_YS = 1
+        self.num_roads = 0
         self.engineTools = ['Residential', 'Commercial', 'Industrial', 
                 'FireDept', 
                 'PoliceDept', 
@@ -98,6 +100,8 @@ class MicropolisControl():
         engine.setSpeed(3)
         engine.setPasses(500)
         #engine.simSpeed =99
+        self.total_traffic = 0
+        self.last_total_traffic = 0
         engine.clearMap()
         self.win1=win1
 
@@ -142,6 +146,8 @@ class MicropolisControl():
         return pop_density_map
 
     def getTrafficDensityMap(self):
+        self.last_total_traffic = self.total_traffic
+        self.total_traffic = 0
         traffic_density_map = np.zeros((1, self.MAP_X, self.MAP_Y))
         for i in range (self.MAP_X):
             for j in range(self.MAP_Y):
@@ -149,6 +155,8 @@ class MicropolisControl():
                 jm = j + self.MAP_YS
                 im -= 2
                 jm -= 4
+                xy_density = self.engine.getTrafficDensity(im, jm)
+                self.total_traffic += xy_density
                 traffic_density_map[0][i][j] = self.engine.getTrafficDensity(im, jm)
         return traffic_density_map
 
@@ -171,9 +179,9 @@ class MicropolisControl():
     def doBulldoze(self, x, y):
         return self.doSimTool(x,y,'Clear')
 
-    def doBotTool(self, x, y, tool):
+    def doBotTool(self, x, y, tool, static_build=False):
         '''Takes string for tool'''
-        return self.map.addZone(x + self.PADDING, y + self.PADDING, tool) 
+        return self.map.addZone(x + self.PADDING, y + self.PADDING, tool, static_build) 
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''
@@ -188,8 +196,8 @@ class MicropolisControl():
     def doSimTool(self, x, y, tool):
         x += self.MAP_XS
         y += self.MAP_YS
-    #   gtk.mainiteration()
-    #   print(x, y, tool)
+#       gtk.mainiteration()
+#       print(x, y, tool)
         return self.engine.toolDown(self.engineTools.index(tool), x, y)
 
     def getResPop(self):
@@ -210,12 +218,12 @@ class MicropolisControl():
         y = a[2]
         self.doTool(x, y, tool)
 
-    def takeAction(self, a):
+    def takeAction(self, a, static_build=False):
         '''tool int depends on self.tools indexing'''
         tool = self.tools[a[0]]
         x = a[1]
         y = a[2]
-        self.doBotTool(x, y, tool)
+        self.doBotTool(x, y, tool, static_build)
         self.engine.simTick()
 #       gtk.mainiteration()
  

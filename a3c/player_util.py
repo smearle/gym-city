@@ -44,7 +44,8 @@ class Agent(object):
         entropy = -(log_prob * prob).sum(1)
         self.entropies.append(entropy)
       # action = prob.max(1)[1].data
-        action = (self.certainty * prob).multinomial(1).data
+        action = prob.multinomial(1).data
+      # action = (self.certainty * prob).multinomial(1).data
  
         if values.size()[1] == 1:
             value = values
@@ -133,12 +134,9 @@ class Agent(object):
         self.eps_len += 1
         import numpy as np
         np.set_printoptions(threshold=1600)
-        print('\n{}'.format(np.add(self.env.env.env.micro.map.zoneMap[-1],
-                                   np.full((self.env.env.env.MAP_X, 
-                                       self.env.env.env.MAP_Y), 2)))
-                                    .replace('\n ', '').replace('][',']\n[')
-                                    .replace('[[','[').replace(']]',']')
-                                    + 'reward: {}'.format(self.reward))
+        print('\n{}'.format(np.add(self.env.env.env.micro.map.zoneMap[-1], np.full((self.env.env.env.MAP_X, self.env.env.env.MAP_Y), 2)))
+                                    .replace('\n ', '').replace('][',']\n[').replace('[[','[').replace(']]',']')
+                                    + '\nreward: {}\ntraffic: {}'.format(self.reward, self.env.env.env.micro.total_traffic))
         return self
 
     def clear_actions(self):

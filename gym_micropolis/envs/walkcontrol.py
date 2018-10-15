@@ -11,7 +11,7 @@ import numpy as np
 
 ## assumes you've downloaded the micropolis-4bots repo into the same directory as this (the gym-micropolis) repo.
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
-GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir, os.pardir))
+GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
 MICROPOLISCORE_DIR = GIT_DIR + '/micropolis-4bots/MicropolisCore/src'
 sys.path.append(MICROPOLISCORE_DIR)
 

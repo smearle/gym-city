@@ -65,6 +65,7 @@ def test(args, shared_model, env_conf):
             player.state = player.state.cuda()
     flag = True
     max_score = 0
+    i = 0
     while True:
         
         if flag:
@@ -111,18 +112,28 @@ def test(args, shared_model, env_conf):
                 if gpu_id >= 0:
                     with torch.cuda.device(gpu_id):
                         state_to_save = player.model.state_dict()
-                        torch.save(state_to_save, '{0}{1}.dat'.format(
+                        torch.save(state_to_save, '{0}best_{1}.dat'.format(
                             args.save_model_dir, args.env))
                 else:
                     state_to_save = player.model.state_dict()
-                    torch.save(state_to_save, '{0}{1}.dat'.format(
+                    torch.save(state_to_save, '{0}best_{1}.dat'.format(
                         args.save_model_dir, args.env))
-
+            if i % 10 == 0:
+                if gpu_id >= 0:
+                    with torch.cuda.device(gpu_id):
+                        state_to_save = player.model.state_dict()
+                        torch.save(state_to_save, '{0}latest_{1}.dat'.format(
+                            args.save_model_dir, args.env))
+                else:
+                    state_to_save = player.model.state_dict()
+                    torch.save(state_to_save, '{0}latest_{1}.dat'.format(
+                        args.save_model_dir, args.env))
             reward_sum = 0
             entropy_sum = 0
             player.eps_len = 0
             state = player.env.reset()
             player.eps_len += 2
+            i += 1
             time.sleep(10)
             player.state = torch.from_numpy(state).float()
             if gpu_id >= 0:
