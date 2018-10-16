@@ -19,7 +19,7 @@ make
 sudo make install
 ```
 
-# Usage
+# Use
 
 From this directory, we might run:
 ```
