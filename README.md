@@ -33,7 +33,7 @@ To use micropolis as a gym environment, install [gym](https://github.com/openai/
 
 ## ACKTR
 
-See  [baselines-micropolis](https://github.com/smearle/baselines-micropolis)
+I'm currently looking for a scalable brain architecture using ACKTR. See  [baselines-micropolis](https://github.com/smearle/baselines-micropolis). Note that models cannot be saved due to a pickling problem.
 
 ## A3C
 
