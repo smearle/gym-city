@@ -19,17 +19,21 @@ make
 sudo make install
 ```
 
-# Use
+# Basic Use
 
-From this directory, we might run:
+From this directory, run:
 ```
 from gym_micropolis.envs.corecontrol import MicropolisControl
 m = MicropolisControl(MAP_W=50, MAP_H=50)
 m.layGrid(4, 4)
 ```
-# Training
+# Training w/ RL
 
 To use micropolis as a gym environment, install [gym](https://github.com/openai/gym).
+
+## ACKTR
+
+See  [baselines-micropolis](https://github.com/smearle/baselines-micropolis)
 
 ## A3C
 
