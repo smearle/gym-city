@@ -2,7 +2,7 @@
 An interface with micropolis for city-building agents, packaged as an OpenAI gym environment.
 
 
-The gifs below show excerpts of the work of a a3c-trained models consisting of 5 convolutional lstms followed by fully-connected layers. At each step, the agents are rewarded by the change in total population from the last step.
+The gifs below show excerpts of the work of a a3c-trained models consisting of 5 convolutional lstms followed by fully-connected layers. At each step, the agents are rewarded by the change in total population from the last.
 
 ![14x14linAC population reward](https://github.com/smearle/gym-micropolis/blob/master/a3c/demo/14x14linAC.gif)
 *14x14 map*
