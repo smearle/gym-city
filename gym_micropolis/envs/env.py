@@ -1,15 +1,15 @@
 from gym import core, spaces
 from gym.utils import seeding
 import numpy as np
- 
 import sys
+
 if sys.version_info[0] >= 3:
     from gi.repository import Gtk as gtk
-    from .tilemap import TileMap 
+    from .tilemap import TileMap
     from .corecontrol import MicropolisControl
 else:
     import gtk
-    from tilemap import TileMap 
+    from tilemap import TileMap
     from corecontrol import MicropolisControl
 import time
 from time import sleep
@@ -51,10 +51,11 @@ class MicropolisEnv(core.Env):
         self.num_obs_channels = self.num_zones + self.num_scalars + 3
         if self.static_builds:
             self.num_obs_channels += 1
-        self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
+        ac_low = np.zeros((3))
+        ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
+        self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
         self.last_state = None
         self.metadata = {'runtime.vectorized': True}
- 
         low_obs = np.zeros((self.num_obs_channels, self.MAP_X, self.MAP_Y))
         high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
         # TODO: can/should we use Tuples of MultiBinaries instead, for greater efficiency?
@@ -67,33 +68,33 @@ class MicropolisEnv(core.Env):
         self.last_num_roads = 0
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
 
-    def mapIntsToActionsChunk(self):
-        ''' Unrolls the action vector into spatial chunks (does this matter empirically?).'''
-        w0 = 20
-        w1 = 10
-        i = 0
-        for j0 in range(self.MAP_X // w0):
-            for k0 in range(self.MAP_Y // w0):
-                for j1 in range(w0 // w1):
-                    for k1 in range(w0 // w1):
-                        for z in range(self.num_tools):
-                            for x in range(j0 * w0 + j1*w1, 
-                                    j0 * w0 + (j1+1)*w1):
-                                for y in range(k0 * w0 + k1*w1, 
-                                        k0 * w0 + (k1+1)*w1):
-                                    self.intsToActions[i] = [z, x, y]
-                                    i += 1
-                                
-    def mapIntsToActions(self):
-        ''' Unrolls the action vector in the same order as the pytorch model
-        on its forward pass.'''
-        chunk_width = 1
-        i = 0
-        for z in range(self.num_tools):
-            for x in range(self.MAP_X):
-                for y in range(self.MAP_Y):
-                        self.intsToActions[i] = [z, x, y]
-                        i += 1
+   #def mapIntsToActionsChunk(self):
+   #    ''' Unrolls the action vector into spatial chunks (does this matter empirically?).'''
+   #    w0 = 20
+   #    w1 = 10
+   #    i = 0
+   #    for j0 in range(self.MAP_X // w0):
+   #        for k0 in range(self.MAP_Y // w0):
+   #            for j1 in range(w0 // w1):
+   #                for k1 in range(w0 // w1):
+   #                    for z in range(self.num_tools):
+   #                        for x in range(j0 * w0 + j1*w1,
+   #                                j0 * w0 + (j1+1)*w1):
+   #                            for y in range(k0 * w0 + k1*w1,
+   #                                    k0 * w0 + (k1+1)*w1):
+   #                                self.intsToActions[i] = [z, x, y]
+   #                                i += 1
+
+   #def mapIntsToActions(self):
+   #    ''' Unrolls the action vector in the same order as the pytorch model
+   #    on its forward pass.'''
+   #    chunk_width = 1
+   #    i = 0
+   #    for z in range(self.num_tools):
+   #        for x in range(self.MAP_X):
+   #            for y in range(self.MAP_Y):
+   #                    self.intsToActions[i] = [z, x, y]
+   #                    i += 1
 
 
     def close(self):
@@ -158,16 +159,11 @@ class MicropolisEnv(core.Env):
 
     def step(self, a, static_build=False):
         reward = 0
-        a = self.intsToActions[a]
-      # if self.past_actions[a[0]][a[1]][a[2]]:
-      #     reward = 0
-      # else:
-      #     self.past_actions[a[0]][a[1]][a[2]] = True
+#       a = self.intsToActions[a]
+
         self.micro.takeAction(a, static_build)
         self.curr_pop = self.getPop()
         self.state = self.observation([self.curr_pop])
-       #if self.micro.map.no_change:
-       #    reward -= 1
 #       reward += (self.micro.total_traffic - self.micro.last_total_traffic) / 50
         # anneal road reward
 #       road_diff = self.micro.num_roads - self.last_num_roads
@@ -192,7 +188,7 @@ class MicropolisEnv(core.Env):
         print('{}\npopulation: {}\ntraffic: {}\n{}\n'.format(np.add(self.micro.map.zoneMap[-1], np.full((self.MAP_X, self.MAP_Y), 2)), self.curr_pop, self.micro.total_traffic, self.micro.map.static_builds))
 
 
-    
+
     def render(self, mode='human'):
         # why does this need to happen twice (or else blank window)?
         gtk.main_iteration()
