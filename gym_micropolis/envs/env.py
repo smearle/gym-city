@@ -90,6 +90,7 @@ class MicropolisEnv(core.Env):
         chunk_width = 1
         i = 0
         for z in range(self.num_tools):
+
             for x in range(self.MAP_X):
                 for y in range(self.MAP_Y):
                         self.intsToActions[i] = [z, x, y]
@@ -102,7 +103,7 @@ class MicropolisEnv(core.Env):
     def randomStaticStart(self):
         '''Cannot overwrite itself'''
         half_tiles = self.MAP_X * self.MAP_Y // 2
-        r = np.random.randint(0, 2)
+        r = np.random.randint(1, 5)
         self.micro.setFunds(10000000)
        # self.micr.map.initStaticBuilds
         for i in range(r):
@@ -181,7 +182,7 @@ class MicropolisEnv(core.Env):
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
         terminal = bankrupt or self.num_step >= 100
-        if terminal and self.print_map:
+        if True and self.print_map:
             if static_build:
                 print('STATIC BUILD')
             self.printMap()
