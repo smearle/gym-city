@@ -103,7 +103,7 @@ class MicropolisEnv(core.Env):
     def randomStaticStart(self):
         '''Cannot overwrite itself'''
         half_tiles = self.MAP_X * self.MAP_Y // 2
-        r = np.random.randint(0, 2)
+        r = np.random.randint(1, 5)
         self.micro.setFunds(10000000)
        # self.micr.map.initStaticBuilds
         for i in range(r):
