@@ -2350,7 +2350,7 @@ class PieMenu(gtk.Window):
 
         if (hasattr(event, 'is_hint') and
             event.is_hint):
-            x, y, state = event.window.get_pointer()
+            _, x, y, state = event.window.get_pointer()
         else:
             x = event.x
             y = event.y
@@ -2449,7 +2449,7 @@ class PieMenuTarget(gtk.Button):
         if not pie:
             return False
 
-        winX, winY, state = event.window.get_pointer()
+        _, winX, winY, state = event.window.get_pointer()
        
         #print "WIN", winX, winY
 

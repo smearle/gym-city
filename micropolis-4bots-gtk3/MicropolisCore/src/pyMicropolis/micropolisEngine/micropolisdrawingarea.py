@@ -687,10 +687,10 @@ class NavigationMicropolisDrawingArea(MicropolisDrawingArea):
         event):
 
         if not event:
-            x, y, state = self.window.get_pointer()
+            _, x, y, state = self.window.get_pointer()
         elif (hasattr(event, 'is_hint') and
               event.is_hint):
-            x, y, state = event.window.get_pointer()
+            _, x, y, state = event.window.get_pointer()
         else:
             x = event.x
             y = event.y

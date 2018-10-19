@@ -127,9 +127,10 @@ class TileDrawingArea(gtk.DrawingArea):
 
         # Compute path to tiles.png file relative to this module
         if tilesFileName is None:
-          # path = os.path.join(os.path.basename(__file__),
-                         #       '../images/tileEngine/tiles.png')
-            tilesFileName = os.path.abspath('/home/sme/micropolis-4bots/MicropolisCore/src/images/tileEngine/tiles.png')
+            tilesFileName = os.path.join(
+                                os.path.join(os.path.basename(__file__), os.pardir),
+                                'images/tileEngine/tiles.png')
+            tilesFileName = os.path.abspath(tilesFileName)
 
         self.tengine = tengine
         self.tilesFileName = tilesFileName
@@ -657,19 +658,19 @@ class TileDrawingArea(gtk.DrawingArea):
 
             self.prepareToRenderTiles(ctx)
 
-  #         print(ctx,
-  #             self.tileFunction,
-  #             self.tileMap,
-  #             self.tileSize,
-  #             self.renderCol,
-  #             self.renderRow,
-  #             renderCols,
-  #             renderRows,
-  #             1.0,
-  #             self.generateTile,
-  #             self.tileCache,
-  #             self.tileCacheSurfaces,
-  #             self.tileState)
+            print(ctx,
+                self.tileFunction,
+                self.tileMap,
+                self.tileSize,
+                self.renderCol,
+                self.renderRow,
+                renderCols,
+                renderRows,
+                1.0,
+                self.generateTile,
+                self.tileCache,
+                self.tileCacheSurfaces,
+                self.tileState)
 
             print("renderTilesLazy BEGIN", self.generateTile)
   #         print(self.tengine.renderTilesLazyA)
@@ -967,7 +968,7 @@ class TileDrawingArea(gtk.DrawingArea):
         if (hasattr(event, 'is_hint') and
             event.is_hint):
 
-            x, y, state = event.window.get_pointer()
+            _, x, y, state = event.window.get_pointer()
         else:
             x = event.x
             y = event.y
@@ -985,7 +986,7 @@ class TileDrawingArea(gtk.DrawingArea):
         event):
         if (hasattr(event, 'is_hint') and
             event.is_hint):
-            x, y, state = event.window.get_pointer()
+            _, x, y, state = event.window.get_pointer()
         else:
             x = event.x
             y = event.y
@@ -1182,10 +1183,10 @@ class TileDrawingArea(gtk.DrawingArea):
         event):
 
         if not event:
-            x, y, state = self.window.get_pointer()
+            _, x, y, state = self.window.get_pointer()
         elif (hasattr(event, 'is_hint') and
               event.is_hint):
-            x, y, state = event.window.get_pointer()
+            _, x, y, state = event.window.get_pointer()
         else:
             x = event.x
             y = event.y
@@ -1256,7 +1257,7 @@ class TileDrawingArea(gtk.DrawingArea):
 
             if pie:
 
-                win_x, win_y, state = event.window.get_pointer()
+                _, win_x, win_y, state = event.window.get_pointer()
 
                 #print "POP UP PIE", pie, win_x, win_y, state
                 #print "WIN", win_x, win_y

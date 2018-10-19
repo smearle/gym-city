@@ -149,7 +149,7 @@ class MicropolisView(gtk.DrawingArea):
 
     def draw(self, widget=None, event=None):
 
-        print(dir(self.get_window()))
+#       print(dir(self.get_window()))
         ctxWindow = self.get_window().cairo_create()
 
         winRect = self.get_allocation()

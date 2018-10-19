@@ -51,6 +51,9 @@ class MicropolisEnv(core.Env):
         self.num_obs_channels = self.num_zones + self.num_scalars + 3
         if self.static_builds:
             self.num_obs_channels += 1
+       #ac_low = np.zeros((3))
+       #ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
+       #self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
         self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
         self.last_state = None
         self.metadata = {'runtime.vectorized': True}
@@ -58,7 +61,7 @@ class MicropolisEnv(core.Env):
         low_obs = np.zeros((self.num_obs_channels, self.MAP_X, self.MAP_Y))
         high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
         # TODO: can/should we use Tuples of MultiBinaries instead, for greater efficiency?
-        self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = bool)
+        self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = int)
         self.state = None
         self.intsToActions = {}
         self.mapIntsToActions
@@ -66,6 +69,7 @@ class MicropolisEnv(core.Env):
         self.last_pop = 0
         self.last_num_roads = 0
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
+        self.print_map = print_map
 
     def mapIntsToActionsChunk(self):
         ''' Unrolls the action vector into spatial chunks (does this matter empirically?).'''
@@ -102,7 +106,7 @@ class MicropolisEnv(core.Env):
     def randomStaticStart(self):
         '''Cannot overwrite itself'''
         half_tiles = self.MAP_X * self.MAP_Y // 2
-        r = np.random.randint(1, 5)
+        r = np.random.randint(0, 30)
         self.micro.setFunds(10000000)
        # self.micr.map.initStaticBuilds
         for i in range(r):
@@ -152,7 +156,7 @@ class MicropolisEnv(core.Env):
         return state
 
     def getPop(self):
-        curr_pop = self.micro.getResPop() / 8 + self.micro.getComPop() + \
+        curr_pop = self.micro.getResPop() + self.micro.getComPop() + \
                 self.micro.getIndPop()
         return curr_pop
 
@@ -180,8 +184,8 @@ class MicropolisEnv(core.Env):
         self.last_pop = self.curr_pop
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
-        terminal = bankrupt or self.num_step >= 100
-        if terminal and self.print_map:
+        terminal = bankrupt or self.num_step >= 1000
+        if True and self.print_map:
             if static_build:
                 print('STATIC BUILD')
             self.printMap()

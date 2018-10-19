@@ -196,9 +196,9 @@ class MicropolisControl():
     def doSimTool(self, x, y, tool):
         x += self.MAP_XS
         y += self.MAP_YS
+        tool = self.engineTools.index(tool)
 #       gtk.mainiteration()
-#       print(x, y, tool)
-        return self.engine.toolDown(self.engineTools.index(tool), x, y)
+        return self.engine.toolDown(tool, x, y)
 
     def getResPop(self):
         return self.engine.resPop
@@ -221,8 +221,8 @@ class MicropolisControl():
     def takeAction(self, a, static_build=False):
         '''tool int depends on self.tools indexing'''
         tool = self.tools[a[0]]
-        x = a[1]
-        y = a[2]
+        x = int(a[1])
+        y = int(a[2])
         self.doBotTool(x, y, tool, static_build)
         self.engine.simTick()
 #       gtk.mainiteration()

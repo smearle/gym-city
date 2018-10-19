@@ -8,3 +8,5 @@
 runs
 notes
 dqn_micropolis_logs
+
+*.pyc

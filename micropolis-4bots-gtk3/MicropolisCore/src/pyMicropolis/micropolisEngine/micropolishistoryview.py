@@ -352,7 +352,7 @@ class MicropolisHistoryView(micropolisview.MicropolisView):
             ctx.stroke()
 
             label = historyLegends[i]
-            playout.set_text(label)
+            playout.set_text(label -1)
             labelWidth, labelHeight = playout.get_pixel_size()
 
             xx = boxX + (boxWidth / 2) - (labelWidth / 2)
