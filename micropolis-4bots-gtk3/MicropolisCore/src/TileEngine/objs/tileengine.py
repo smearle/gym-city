@@ -182,9 +182,6 @@ class TileEngine(_object):
     def renderTiles(self, ctx: 'cairo_t *', tilesSurf: 'cairo_surface_t *', tilesWidth: 'int', tilesHeight: 'int', tileFunction: 'PyObject *', tileMap: 'PyObject *', tileSize: 'int', renderCol: 'int', renderRow: 'int', renderCols: 'int', renderRows: 'int', alpha: 'double') -> "void":
         return _tileengine.TileEngine_renderTiles(self, ctx, tilesSurf, tilesWidth, tilesHeight, tileFunction, tileMap, tileSize, renderCol, renderRow, renderCols, renderRows, alpha)
 
-    def renderTilesLazyA(self, xx: 'int') -> "void":
-        return _tileengine.TileEngine_renderTilesLazyA(self, xx)
-
     def renderTilesLazy(self, ctx: 'cairo_t *', tileFunction: 'PyObject *', tileMap: 'PyObject *', tileSize: 'int', renderCol: 'int', renderRow: 'int', renderCols: 'int', renderRows: 'int', alpha: 'double', tileGenerator: 'PyObject *', tileCache: 'PyObject *', tileCacheSurfaces: 'PyObject *', tileState: 'PyObject *') -> "void":
         return _tileengine.TileEngine_renderTilesLazy(self, ctx, tileFunction, tileMap, tileSize, renderCol, renderRow, renderCols, renderRows, alpha, tileGenerator, tileCache, tileCacheSurfaces, tileState)
 

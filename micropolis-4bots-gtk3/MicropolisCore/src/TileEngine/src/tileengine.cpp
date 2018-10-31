@@ -374,14 +374,7 @@ void TileEngine::renderTiles(
     }
 }
 
-void TileEngine::renderTilesLazyA(
-		int xx
-  // cairo_t *ctx
-    )
-{
-    printf("fukmenance in A");
-    return;
-}
+
 void TileEngine::renderTilesLazy(
     cairo_t *ctx,
     PyObject *tileFunction,
@@ -398,7 +391,7 @@ void TileEngine::renderTilesLazy(
     PyObject *tileState)
 {
 
-    printf("fukmenance in B");
+    printf("in B");
     if ((tileFunction != Py_None) &&
 	!PyCallable_Check(tileFunction)) {
 	PyErr_SetString(

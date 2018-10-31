@@ -44,7 +44,7 @@ except NameError:
     pass  # Python < 2.2 doesn't have 'property'.
 
 try:
-    import builtins
+    import builtins as __builtin__
 except ImportError:
     import __builtin__
 
@@ -653,7 +653,7 @@ class Micropolis(_object):
         this = _micropolisengine.new_Micropolis()
         try:
             self.this.append(this)
-        except builtins.Exception:
+        except __builtin__.Exception:
             self.this = this
     __swig_destroy__ = _micropolisengine.delete_Micropolis
     __del__ = lambda self: None

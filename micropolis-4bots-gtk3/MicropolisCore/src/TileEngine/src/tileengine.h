@@ -224,10 +224,6 @@ public:
 	double alpha);
 
 
-    void renderTilesLazyA(
-	int xx	
-	);
-
     void renderTilesLazy(
 	cairo_t *ctx,
 	PyObject *tileFunction,

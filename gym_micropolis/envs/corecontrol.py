@@ -192,6 +192,9 @@ class MicropolisControl():
     def getFunds(self):
         return self.engine.totalFunds
 
+    def render(self):
+        gtk.main_iteration()
+
     def setFunds(self, funds):
         return self.engine.setFunds(funds)
 

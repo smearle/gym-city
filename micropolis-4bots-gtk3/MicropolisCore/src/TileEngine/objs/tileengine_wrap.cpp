@@ -4704,36 +4704,6 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_TileEngine_renderTilesLazyA(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  TileEngine *arg1 = (TileEngine *) 0 ;
-  int arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:TileEngine_renderTilesLazyA",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_TileEngine, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "TileEngine_renderTilesLazyA" "', argument " "1"" of type '" "TileEngine *""'"); 
-  }
-  arg1 = reinterpret_cast< TileEngine * >(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "TileEngine_renderTilesLazyA" "', argument " "2"" of type '" "int""'");
-  } 
-  arg2 = static_cast< int >(val2);
-  (arg1)->renderTilesLazyA(arg2);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
 SWIGINTERN PyObject *_wrap_TileEngine_renderTilesLazy(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   TileEngine *arg1 = (TileEngine *) 0 ;
@@ -5060,7 +5030,6 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"TileEngine_setBuffer", _wrap_TileEngine_setBuffer, METH_VARARGS, NULL},
 	 { (char *)"TileEngine_getValue", _wrap_TileEngine_getValue, METH_VARARGS, NULL},
 	 { (char *)"TileEngine_renderTiles", _wrap_TileEngine_renderTiles, METH_VARARGS, NULL},
-	 { (char *)"TileEngine_renderTilesLazyA", _wrap_TileEngine_renderTilesLazyA, METH_VARARGS, NULL},
 	 { (char *)"TileEngine_renderTilesLazy", _wrap_TileEngine_renderTilesLazy, METH_VARARGS, NULL},
 	 { (char *)"TileEngine_renderPixels", _wrap_TileEngine_renderPixels, METH_VARARGS, NULL},
 	 { (char *)"TileEngine_getTileData", _wrap_TileEngine_getTileData, METH_VARARGS, NULL},
