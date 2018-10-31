@@ -4707,109 +4707,17 @@ fail:
 SWIGINTERN PyObject *_wrap_TileEngine_renderTilesLazy(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   TileEngine *arg1 = (TileEngine *) 0 ;
-  cairo_t *arg2 = (cairo_t *) 0 ;
-  PyObject *arg3 = (PyObject *) 0 ;
-  PyObject *arg4 = (PyObject *) 0 ;
-  int arg5 ;
-  int arg6 ;
-  int arg7 ;
-  int arg8 ;
-  int arg9 ;
-  double arg10 ;
-  PyObject *arg11 = (PyObject *) 0 ;
-  PyObject *arg12 = (PyObject *) 0 ;
-  PyObject *arg13 = (PyObject *) 0 ;
-  PyObject *arg14 = (PyObject *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  int val5 ;
-  int ecode5 = 0 ;
-  int val6 ;
-  int ecode6 = 0 ;
-  int val7 ;
-  int ecode7 = 0 ;
-  int val8 ;
-  int ecode8 = 0 ;
-  int val9 ;
-  int ecode9 = 0 ;
-  double val10 ;
-  int ecode10 = 0 ;
   PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
-  PyObject * obj4 = 0 ;
-  PyObject * obj5 = 0 ;
-  PyObject * obj6 = 0 ;
-  PyObject * obj7 = 0 ;
-  PyObject * obj8 = 0 ;
-  PyObject * obj9 = 0 ;
-  PyObject * obj10 = 0 ;
-  PyObject * obj11 = 0 ;
-  PyObject * obj12 = 0 ;
-  PyObject * obj13 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOOOOO:TileEngine_renderTilesLazy",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10,&obj11,&obj12,&obj13)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"O:TileEngine_renderTilesLazy",&obj0)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_TileEngine, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "TileEngine_renderTilesLazy" "', argument " "1"" of type '" "TileEngine *""'"); 
   }
   arg1 = reinterpret_cast< TileEngine * >(argp1);
-  {
-    // SWIG cairo_t * in typemap from pycairo.i
-    
-    // Check to make sure PyObject "obj1" is a cairo.Context object.
-    if (!PyObject_TypeCheck(
-        obj1,
-        &PycairoContext_Type)) {
-      SWIG_exception_fail(
-        SWIG_TypeError,
-        "expected cairo.Context"); 
-    }
-    
-    // Convert the pycairo cairo.Context wrapper "obj1" to a cairo_t "arg2". 
-    arg2 =
-    PycairoContext_GET(
-      obj1);
-    
-  }
-  arg3 = obj2;
-  arg4 = obj3;
-  ecode5 = SWIG_AsVal_int(obj4, &val5);
-  if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "TileEngine_renderTilesLazy" "', argument " "5"" of type '" "int""'");
-  } 
-  arg5 = static_cast< int >(val5);
-  ecode6 = SWIG_AsVal_int(obj5, &val6);
-  if (!SWIG_IsOK(ecode6)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "TileEngine_renderTilesLazy" "', argument " "6"" of type '" "int""'");
-  } 
-  arg6 = static_cast< int >(val6);
-  ecode7 = SWIG_AsVal_int(obj6, &val7);
-  if (!SWIG_IsOK(ecode7)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "TileEngine_renderTilesLazy" "', argument " "7"" of type '" "int""'");
-  } 
-  arg7 = static_cast< int >(val7);
-  ecode8 = SWIG_AsVal_int(obj7, &val8);
-  if (!SWIG_IsOK(ecode8)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode8), "in method '" "TileEngine_renderTilesLazy" "', argument " "8"" of type '" "int""'");
-  } 
-  arg8 = static_cast< int >(val8);
-  ecode9 = SWIG_AsVal_int(obj8, &val9);
-  if (!SWIG_IsOK(ecode9)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode9), "in method '" "TileEngine_renderTilesLazy" "', argument " "9"" of type '" "int""'");
-  } 
-  arg9 = static_cast< int >(val9);
-  ecode10 = SWIG_AsVal_double(obj9, &val10);
-  if (!SWIG_IsOK(ecode10)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode10), "in method '" "TileEngine_renderTilesLazy" "', argument " "10"" of type '" "double""'");
-  } 
-  arg10 = static_cast< double >(val10);
-  arg11 = obj10;
-  arg12 = obj11;
-  arg13 = obj12;
-  arg14 = obj13;
-  (arg1)->renderTilesLazy(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12,arg13,arg14);
+  (arg1)->renderTilesLazy();
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:

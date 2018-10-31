@@ -224,20 +224,20 @@ public:
 	double alpha);
 
 
-    void renderTilesLazy(
-	cairo_t *ctx,
-	PyObject *tileFunction,
-	PyObject *tileMap,
-	int tileSize,
-	int renderCol,
-	int renderRow,
-	int renderCols,
-	int renderRows,
-	double alpha,
-	PyObject *tileGenerator,
-	PyObject *tileCache,
-	PyObject *tileCacheSurfaces,
-	PyObject *tileState);
+     renderTilesLazy();
+////////cairo_t *ctx,
+////////PyObject *tileFunction,
+////////PyObject *tileMap,
+////////int tileSize,
+////////int renderCol,
+////////int renderRow,
+////////int renderCols,
+////////int renderRows,
+////////double alpha,
+////////PyObject *tileGenerator,
+////////PyObject *tileCache,
+////////PyObject *tileCacheSurfaces,
+////////PyObject *tileState);
 
 
     void renderPixels(

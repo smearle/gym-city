@@ -196,7 +196,9 @@ class TileDrawingArea(gtk.DrawingArea):
 
         self.tilesLoaded = False
 
+        print('creating engine')
         self.createEngine()
+        print('done creating engine')
    
         self.set_can_focus(True)
 
@@ -475,11 +477,18 @@ class TileDrawingArea(gtk.DrawingArea):
         self):
 
         if not self.tengine:
+            print("creating new tile engine")
 
             tengine = tileengine.TileEngine()
+            print("built swig object")
             self.tengine = tengine
 
+            print("swig tile engine: {}".format(tengine))
+            print("config function: {}".format(self.configTileEngine))
             self.configTileEngine(tengine)
+            print("configured tile engine")
+        else:
+            print("existing tile engine: {}".format(self.tengine))
 
 
     def getPie(self):
@@ -498,10 +507,9 @@ class TileDrawingArea(gtk.DrawingArea):
         pass
 
 
-    def configTileEngine(
-        self,
-        tengine):
+    def configTileEngine(self, tengine):
 
+        print('ASSS')
         tengine.setBuffer(None)
         tengine.width = 1
         tengine.height = 1
@@ -658,37 +666,38 @@ class TileDrawingArea(gtk.DrawingArea):
 
             self.prepareToRenderTiles(ctx)
 
-            print(ctx,
-                self.tileFunction,
-                self.tileMap,
-                self.tileSize,
-                self.renderCol,
-                self.renderRow,
-                renderCols,
-                renderRows,
-                1.0,
-                self.generateTile,
-                self.tileCache,
-                self.tileCacheSurfaces,
-                self.tileState)
+#           print(ctx,
+#               self.tileFunction,
+#               self.tileMap,
+#               self.tileSize,
+#               self.renderCol,
+#               self.renderRow,
+#               renderCols,
+#               renderRows,
+#               1.0,
+#               self.generateTile,
+#               self.tileCache,
+#               self.tileCacheSurfaces,
+#               self.tileState)
 
             print("renderTilesLazy BEGIN", self.generateTile)
-  #         print(self.tengine.renderTilesLazyA)
+            print(self.tengine.renderTilesLazy)
             print(self.tengine)
-            self.tengine.renderTilesLazy(
-                ctx,                
-                self.tileFunction,
-                self.tileMap,
-                self.tileSize,
-                self.renderCol,
-                self.renderRow,
-                renderCols,
-                renderRows,
-                1.0,
-                self.generateTile,
-                self.tileCache,
-                self.tileCacheSurfaces,
-                self.tileState
+            self.tengine.renderTilesLazy()
+             #  None,                
+             #  None, None, None, None, None, None, None, None, None, None, None, None
+               #self.tileFunction,
+               #self.tileMap,
+               #self.tileSize,
+               #self.renderCol,
+               #self.renderRow,
+               #renderCols,
+               #renderRows,
+               #1.0,
+               #self.generateTile,
+               #self.tileCache,
+               #self.tileCacheSurfaces,
+               #self.tileState
           )
             print("renderTilesLazy END")
 

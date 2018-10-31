@@ -230,9 +230,11 @@ class MicropolisDrawingArea(tiledrawingarea.TileDrawingArea):
 
     def configTileEngine(self, tengine):
 
+        print('configuring NoticeArea')
         engine = self.engine
         buffer = engine.getMapBuffer()
         #print "Map buffer", buffer
+        print('tengine setBuffer fn: {}'.format(tengine.setBuffer))
         tengine.setBuffer(buffer)
         tengine.width = micropolisengine.WORLD_W
         tengine.height = micropolisengine.WORLD_H

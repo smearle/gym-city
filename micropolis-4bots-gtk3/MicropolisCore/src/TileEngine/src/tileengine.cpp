@@ -65,7 +65,7 @@
 ////////////////////////////////////////////////////////////////////////
 // Includes
 
-
+#include <iostream>
 #include "stdafx.h"
 
 
@@ -105,9 +105,9 @@ TileEngine::~TileEngine()
 void TileEngine::setBuffer(
    void *buf)
 {
-
-    printf("Compiling with suitable cairo version: ");
-    printf(CAIRO_VERSION_STRING);
+    printf("test int %d\n", 4);
+//  printf("Compiling with suitable cairo version: ");
+//  printf(CAIRO_VERSION_STRING);
     bufData = buf;
 }
 
@@ -261,6 +261,8 @@ void TileEngine::renderTiles(
     double alpha)
 {
 
+    printf("test int %d\n", 6);
+
     if ((tileFunction != Py_None) &&
 	!PyCallable_Check(tileFunction)) {
 	PyErr_SetString(
@@ -375,8 +377,8 @@ void TileEngine::renderTiles(
 }
 
 
-void TileEngine::renderTilesLazy(
-    cairo_t *ctx,
+void TileEngine::renderTilesLazy()
+/*    cairo_t *ctx,
     PyObject *tileFunction,
     PyObject *tileMap,
     int tileSize,
@@ -388,66 +390,72 @@ void TileEngine::renderTilesLazy(
     PyObject *tileGenerator,
     PyObject *tileCache,
     PyObject *tileCacheSurfaces,
-    PyObject *tileState)
+    PyObject *tileState)*/
 {
+    printf("in render tiles cpp");
+    return;
+  //printf("in render tiles cpp");
+  //printf("in render tiles cpp");
+  //printf("in render tiles cpp");
+  //printf("in render tiles cpp");
+  //printf("in render tiles cpp");
+  //printf("test int%d \n", 5);
+  //if ((tileFunction != Py_None) &&
+  //    !PyCallable_Check(tileFunction)) {
+  //    PyErr_SetString(
+  //        PyExc_TypeError,
+  //        "expected tileFunction to be a callable function or None");
+  //    return;
+  //}
 
-    printf("in B");
-    if ((tileFunction != Py_None) &&
-	!PyCallable_Check(tileFunction)) {
-	PyErr_SetString(
-	    PyExc_TypeError,
-	    "expected tileFunction to be a callable function or None");
-	return;
-    }
+  //// The tileMap should be None, or an array of 4 byte integers,
+  //// mapping virtual tiles indices to absolute tile numbers.
 
-    // The tileMap should be None, or an array of 4 byte integers,
-    // mapping virtual tiles indices to absolute tile numbers.
+  //const int *tileMapData = NULL;
+  //unsigned int tileMapCount = 0;
 
-    const int *tileMapData = NULL;
-    unsigned int tileMapCount = 0;
+  //if (tileMap != Py_None) {
 
-    if (tileMap != Py_None) {
+  //  if (!PySequence_Check(tileMap)) {
+  //        PyErr_SetString(
+  //    	PyExc_TypeError,
+  //    	"expected tileMap to be an array "
+  //    	"of 4 byte integers or None");
+  //        return;
+  //    }
 
-      if (!PySequence_Check(tileMap)) {
-	    PyErr_SetString(
-		PyExc_TypeError,
-		"expected tileMap to be an array "
-		"of 4 byte integers or None");
-	    return;
-	}
+  //    tileMapCount = (unsigned int)PySequence_Size(tileMap);
+  //    Py_ssize_t tileMapLength = 0;
+  //    if (PyObject_AsReadBuffer(
+  //        tileMap,
+  //        (const void **)&tileMapData,
+  //        &tileMapLength) != 0) {
+  //        PyErr_SetString(
+  //    	PyExc_TypeError,
+  //    	"expected tileMap with read buffer");
+  //        return;
+  //    }
 
-	tileMapCount = (unsigned int)PySequence_Size(tileMap);
-	Py_ssize_t tileMapLength = 0;
-	if (PyObject_AsReadBuffer(
-	    tileMap,
-	    (const void **)&tileMapData,
-	    &tileMapLength) != 0) {
-	    PyErr_SetString(
-		PyExc_TypeError,
-		"expected tileMap with read buffer");
-	    return;
-	}
+  //    int tileMapDataCount = 
+  //        (int)tileMapLength / sizeof(unsigned int);
 
-	int tileMapDataCount = 
-	    (int)tileMapLength / sizeof(unsigned int);
+  //    if (tileMapDataCount != (int)tileMapCount) {
+  //        PyErr_SetString(
+  //    	PyExc_TypeError,
+  //    	"expected tileMap read buffer of 4 byte integers");
+  //        return;
+  //    }
+  //}
 
-	if (tileMapDataCount != (int)tileMapCount) {
-	    PyErr_SetString(
-		PyExc_TypeError,
-		"expected tileMap read buffer of 4 byte integers");
-	    return;
-	}
-    }
-
-    // The tileGenerator should be a function that takes one integer
-    // tile parameter, and returns a tuple of three integers: a
-    // surface index, a tileX and a tileY position.
-    if (!PyCallable_Check(tileGenerator)) {
-	PyErr_SetString(
-	    PyExc_TypeError,
-	    "expected tileGenerator callable object");
-	return;
-    }
+   /// The tileGenerator should be a function that takes one integer
+   /// tile parameter, and returns a tuple of three integers: a
+   /// surface index, a tileX and a tileY position.
+   /if (!PyCallable_Check(tileGenerator)) {
+   /    PyErr_SetString(
+   /        PyExc_TypeError,
+   /        "expected tileGenerator callable object");
+   /    return;
+   /}
 
     // The tileCache should be an array of integers, 4 integers per
     // tile.  The first is a "cached" flag, the second is a surface
@@ -862,11 +870,11 @@ PyObject *TileEngine::getTileData(
 		int r = tileIndex / cols;
 		int tileCacheOffset = 
 		    (col + c) + ((row + r) * width);
-//		printf("tileIndex %d tileCacheOffset %d tileViewCacheCount %d c %d r %d cols %d rows %d ",
-//		    tileIndex,
-//		    tileCacheOffset,
-//		    tileViewCacheCount,
-//		    c, r, cols, rows);
+  		printf("tileIndex %d tileCacheOffset %d tileViewCacheCount %d c %d r %d cols %d rows %d ",
+  		    tileIndex,
+  		    tileCacheOffset,
+  		    tileViewCacheCount,
+  		    c, r, cols, rows);
 		int tile = 
 		    getValue(
 			col + c, 
