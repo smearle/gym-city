@@ -9,4 +9,6 @@ runs
 notes
 dqn_micropolis_logs
 
+curiosity
+a3c_noreward
 *.pyc

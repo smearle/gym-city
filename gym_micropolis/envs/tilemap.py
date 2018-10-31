@@ -19,24 +19,24 @@ class TileMap(object):
         self.zoneSize = {'Residential': 3, 
                 'Commercial' : 3, 
                 'Industrial' : 3, 
-               #'Seaport' : 4, 
-               #'Stadium' : 4, 
-               #'PoliceDept' : 3, 
-               #'FireDept' : 3, 
-               #'Airport' : 6, 
+                'Seaport' : 4, 
+                'Stadium' : 4, 
+                'PoliceDept' : 3, 
+                'FireDept' : 3, 
+                'Airport' : 6, 
                 'NuclearPowerPlant' : 4, 
-               #'CoalPowerPlant' : 4, 
+                'CoalPowerPlant' : 4, 
                 'Road' : 1, 
-               #'Rail' : 1, 
+                'Rail' : 1, 
                 'Park' : 1, 
                 'Wire' : 1, 
                 'RoadWire': 1, 
                 'Clear': None, 
-                'Rubble': None 
-               #'Net': 1, 
-               #'Water': 1, 
-               #'Land': 1, 
-               #'Forest': 1
+                'Rubble': None ,
+                'Net': 1, 
+                'Water': 1, 
+                'Land': 1, 
+                'Forest': 1
                }
                 
         self.zones = [z for z in self.zoneSize.keys()]

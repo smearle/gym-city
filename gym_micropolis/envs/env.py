@@ -1,6 +1,7 @@
 from gym import core, spaces
 from gym.utils import seeding
 import numpy as np
+import math
  
 import sys
 if sys.version_info[0] >= 3:
@@ -16,26 +17,34 @@ from time import sleep
 
 class MicropolisEnv(core.Env):
 
-    def __init__(self, MAP_X=14, MAP_Y=14, PADDING=0):
+    def __init__(self, MAP_X=20, MAP_Y=20, PADDING=0):
         self.SHOW_GUI=False
         self.start_time = time.time()
         self.print_map = False
+        self.num_episode = 0
+        self.max_step = 500
+        self.max_static = 0
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
 
     def seed(self, seed=None):
         self.np_random, seed1 = seeding.np_random(seed)
         # Derive a random seed. This gets passed as a uint, but gets
         # checked as an int elsewhere, so we need to keep it below
-        # 2**31. * 2
-        seed2 = seeding.hash_seed(seed1 + 1)
-        # Empirically, we need to seed before loading the ROM (ignoring this for now in our case).
-      # return [seed1, seed2]
+        # 2**31.
+        seed2 = seeding.hash_seed(seed1 + 1) % 2**31
+        np.random.seed(seed)
+        return [seed1, seed2]
 
-    def setMapSize(self, size, print_map=False, PADDING=0, static_builds=True):
-        self.MAP_X = size
-        self.MAP_Y = size
+    def setMapSize(self, size, print_map=False, PADDING=0, static_builds=True, parallel_gui=False):
+        if type(size) == int:
+            self.MAP_X = size
+            self.MAP_Y = size
+        else:
+            self.MAP_X = size[0]
+            self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
-        self.micro = MicropolisControl(self.MAP_X, self.MAP_Y, PADDING)
+        print(parallel_gui)
+        self.micro = MicropolisControl(self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui)
         self.static_builds = True
         if self.static_builds:
             self.micro.map.initStaticBuilds()
@@ -105,18 +114,18 @@ class MicropolisEnv(core.Env):
 
     def randomStaticStart(self):
         '''Cannot overwrite itself'''
-        half_tiles = self.MAP_X * self.MAP_Y // 2
-        r = np.random.randint(0, 30)
+        max_static = 5
+        lst_epi = 500
+        max_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * max_static)   
+        num_static = max(0, max_static)
         self.micro.setFunds(10000000)
-       # self.micr.map.initStaticBuilds
-        for i in range(r):
-            if self.micro.map.num_empty <= half_tiles:
-                break
-            else:
-                self.step(self.action_space.sample(), static_build=True)
+        if num_static > 0:
+            num_static = self.np_random.randint(0, max_static + 1)
+        for i in range(num_static):
+            self.step(self.action_space.sample(), static_build=True)
 
     def randomStart(self):
-        r = np.random.randint(0, 100)
+        r = self.np_random.randint(0, 100)
         self.micro.setFunds(10000000)
         for i in range(r):
             self.step(self.action_space.sample())
@@ -127,9 +136,9 @@ class MicropolisEnv(core.Env):
 
 
     def reset(self):
+#   self.micro.engine.generateMap()
         self.micro.clearMap()
         self.num_step = 0
-       #self.randomStart()
         self.randomStaticStart()
         self.micro.engine.simTick()
         self.micro.setFunds(self.initFunds)
@@ -140,6 +149,7 @@ class MicropolisEnv(core.Env):
         self.micro.num_roads = 0
         self.last_num_roads = 0
        #self.past_actions.fill(False)
+        self.num_episode += 1
         return self.state
 
     def observation(self, scalars):
@@ -156,11 +166,12 @@ class MicropolisEnv(core.Env):
         return state
 
     def getPop(self):
-        curr_pop = self.micro.getResPop() + self.micro.getComPop() + \
+        curr_pop = self.micro.getResPop() / 4 + self.micro.getComPop() + \
                 self.micro.getIndPop()
         return curr_pop
 
     def step(self, a, static_build=False):
+
         reward = 0
         a = self.intsToActions[a]
       # if self.past_actions[a[0]][a[1]][a[2]]:
@@ -172,7 +183,7 @@ class MicropolisEnv(core.Env):
         self.state = self.observation([self.curr_pop])
        #if self.micro.map.no_change:
        #    reward -= 1
-#       reward += (self.micro.total_traffic - self.micro.last_total_traffic) / 50
+#       reward += (self.micro.total_traffic - self.micro.last_total_traffic)
         # anneal road reward
 #       road_diff = self.micro.num_roads - self.last_num_roads
 #       road_diff = road_diff * (max(0, 70 - self.micro.num_roads) / 70) * 0.2
@@ -184,7 +195,7 @@ class MicropolisEnv(core.Env):
         self.last_pop = self.curr_pop
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
-        terminal = bankrupt or self.num_step >= 1000
+        terminal = bankrupt or self.num_step >= self.max_step
         if True and self.print_map:
             if static_build:
                 print('STATIC BUILD')
@@ -193,7 +204,10 @@ class MicropolisEnv(core.Env):
         return (self.state, reward, terminal, {})
 
     def printMap(self):
-        print('{}\npopulation: {}\ntraffic: {}\n{}\n'.format(np.add(self.micro.map.zoneMap[-1], np.full((self.MAP_X, self.MAP_Y), 2)), self.curr_pop, self.micro.total_traffic, self.micro.map.static_builds))
+            np.set_printoptions(threshold=np.inf)
+            zone_map = self.micro.map.zoneMap[-1]
+            zone_map = np.array_repr(zone_map).replace(',  ','  ').replace('],\n', ']\n').replace(',\n', ',').replace(', ', ' ').replace('        ',' ').replace('         ','  ')
+            print('{}\npopulation: {}, traffic: {}, episode: {}, step: {} \n{}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.micro.map.static_builds))
 
 
     

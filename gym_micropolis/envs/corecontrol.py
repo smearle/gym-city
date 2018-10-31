@@ -30,13 +30,31 @@ from pyMicropolis.gtkFrontend import main
 
 class MicropolisControl():
 
-    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13):
+    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False):
+        self.parallel_gui = parallel_gui
+        self.pgui = None
+        if parallel_gui:
+            import pexpect
+            self.pgui = pexpect.spawn('/bin/bash')
+            self.pgui.expect('sme')
+            self.pgui.sendline('cd gym-micropolis')
+            self.pgui.expect('sme')
+            self.pgui.sendline('pwd')
+            self.pgui.expect('sme')
+            self.pgui.sendline('python2')
+            self.pgui.expect('>>>')
+            self.pgui.sendline('from gym_micropolis.envs.gui import MicropolisGUI')
+            self.pgui.expect('>>>')
+            self.pgui.sendline('m = MicropolisGUI({}, {})'.format(MAP_W, MAP_H))
+            self.pgui.expect('>>>')
+            self.pgui.sendline('m.render()')
+            self.pgui.expect('>>>')
+
         self.SHOW_GUI=False
         engine, win1 = main.train()
         os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
-      # print(dir(self.engine))
         self.MAP_X = MAP_W
         self.MAP_Y = MAP_H
         self.PADDING = PADDING
@@ -67,28 +85,27 @@ class MicropolisControl():
                 'Forest',
                 ]
         self.tools = ['Residential', 'Commercial', 'Industrial', 
-             #  'FireDept', 
-             #  'PoliceDept', 
+                'FireDept', 
+                'PoliceDept', 
              # 'Query',
                'Wire',
                'Clear',
-             # 'Rail',
+               'Rail',
                'Road',
-             #  'Stadium',
+                'Stadium',
                 'Park', 
-             #   'Seaport',
-             #  'CoalPowerPlant', 
+                 'Seaport',
+                'CoalPowerPlant', 
                 'NuclearPowerPlant',
-           #    'Airport',
-             #  'Net',
-           #    'Water',
-           #    'Land',
-             #  'Forest',
+                'Airport',
+                'Net',
+                'Water',
+                'Land',
+                'Forest',
                 ]
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)
-
         self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING)
         self.zones = self.map.zones
         self.num_zones = self.map.num_zones
@@ -102,7 +119,7 @@ class MicropolisControl():
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0
-        engine.clearMap()
+#       engine.clearMap()
         self.win1=win1
 
     def layGrid(self, w, h):
@@ -133,6 +150,9 @@ class MicropolisControl():
     def clearMap(self):
         self.engine.clearMap()
         self.map.setEmpty()
+        if self.parallel_gui:
+            self.pgui.sendline('m.clearMap()')
+            self.pgui.expect('>>>')
 
     def getPopDensityMap(self):
         pop_density_map = np.zeros((1, self.MAP_X, self.MAP_Y))
@@ -191,13 +211,18 @@ class MicropolisControl():
     def toolDown(self, x, y, tool):
         '''Takes int for tool, depending on engine's index'''
         self.map.addZone(x, y, self.engineTools[tool])
-        
+
         # called by map module
     def doSimTool(self, x, y, tool):
         x += self.MAP_XS
         y += self.MAP_YS
         tool = self.engineTools.index(tool)
-#       gtk.mainiteration()
+        return self.doSimToolInt(x, y, tool)
+
+    def doSimToolInt(self, x, y, tool):
+        if self.parallel_gui:
+            self.pgui.sendline('m.doSimToolInt({}, {}, {})'.format(x, y, tool))
+            self.pgui.expect('>>>')
         return self.engine.toolDown(tool, x, y)
 
     def getResPop(self):
