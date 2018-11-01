@@ -660,33 +660,20 @@ class TileDrawingArea(gtk.DrawingArea):
 
         ctx = cairo.Context(buffer)
 
-        print('drewdating')
+        print('cairo context initialized')
         if ((renderCols > 0) and
             (renderRows > 0)):
 
             self.prepareToRenderTiles(ctx)
 
-#           print(ctx,
-#               self.tileFunction,
-#               self.tileMap,
-#               self.tileSize,
-#               self.renderCol,
-#               self.renderRow,
-#               renderCols,
-#               renderRows,
-#               1.0,
-#               self.generateTile,
-#               self.tileCache,
-#               self.tileCacheSurfaces,
-#               self.tileState)
-
-            print("renderTilesLazy BEGIN", dir(ctx))
             if True:
-                print('didot')
+                print("renderTilesLazy BEGIN")
                 return
             else:
+                # TODO: here's the segfault, c++ can't 
                 self.tengine.renderTilesLazy(
                         ctx
+                       #ctx
                        #self.tileFunction
                        #self.tileMap,
                        #self.tileSize,

@@ -378,7 +378,7 @@ void TileEngine::renderTiles(
 
 
 void TileEngine::renderTilesLazy(cairo_t *ctx)
-{}
+
 /*    cairo_t *ctx,
     PyObject *tileFunction,
     PyObject *tileMap,
@@ -391,7 +391,7 @@ void TileEngine::renderTilesLazy(cairo_t *ctx)
     PyObject *tileGenerator,
     PyObject *tileCache,
     PyObject *tileCacheSurfaces,
-    PyObject *tileState)
+    PyObject *tileState)*/
 {
     printf("in render tiles cpp");
     return;
@@ -408,7 +408,7 @@ void TileEngine::renderTilesLazy(cairo_t *ctx)
             "expected tileFunction to be a callable function or None");
         return;
     }
-  
+  /*
     // The tileMap should be None, or an array of 4 byte integers,
     // mapping virtual tiles indices to absolute tile numbers.
 
