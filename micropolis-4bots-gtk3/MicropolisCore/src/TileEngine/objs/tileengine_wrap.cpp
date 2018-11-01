@@ -4707,17 +4707,37 @@ fail:
 SWIGINTERN PyObject *_wrap_TileEngine_renderTilesLazy(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   TileEngine *arg1 = (TileEngine *) 0 ;
+  cairo_t *arg2 = (cairo_t *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"O:TileEngine_renderTilesLazy",&obj0)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OO:TileEngine_renderTilesLazy",&obj0,&obj1)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_TileEngine, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "TileEngine_renderTilesLazy" "', argument " "1"" of type '" "TileEngine *""'"); 
   }
   arg1 = reinterpret_cast< TileEngine * >(argp1);
-  (arg1)->renderTilesLazy();
+  {
+    // SWIG cairo_t * in typemap from pycairo.i
+    
+    // Check to make sure PyObject "obj1" is a cairo.Context object.
+    if (!PyObject_TypeCheck(
+        obj1,
+        &PycairoContext_Type)) {
+      SWIG_exception_fail(
+        SWIG_TypeError,
+        "expected cairo.Context"); 
+    }
+    
+    // Convert the pycairo cairo.Context wrapper "obj1" to a cairo_t "arg2". 
+    arg2 =
+    PycairoContext_GET(
+      obj1);
+    
+  }
+  (arg1)->renderTilesLazy(arg2);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:

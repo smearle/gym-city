@@ -680,28 +680,28 @@ class TileDrawingArea(gtk.DrawingArea):
 #               self.tileCacheSurfaces,
 #               self.tileState)
 
-            print("renderTilesLazy BEGIN", self.generateTile)
-            print(self.tengine.renderTilesLazy)
-            print(self.tengine)
-            self.tengine.renderTilesLazy()
-             #  None,                
-             #  None, None, None, None, None, None, None, None, None, None, None, None
-               #self.tileFunction,
-               #self.tileMap,
-               #self.tileSize,
-               #self.renderCol,
-               #self.renderRow,
-               #renderCols,
-               #renderRows,
-               #1.0,
-               #self.generateTile,
-               #self.tileCache,
-               #self.tileCacheSurfaces,
-               #self.tileState
-          )
-            print("renderTilesLazy END")
+            print("renderTilesLazy BEGIN", dir(ctx))
+            if True:
+                print('didot')
+                return
+            else:
+                self.tengine.renderTilesLazy(
+                        ctx
+                       #self.tileFunction
+                       #self.tileMap,
+                       #self.tileSize,
+                       #self.renderCol,
+                       #self.renderRow,
+                       #renderCols,
+                       #renderRows,
+                       #1.0,
+                       #self.generateTile,
+                       #self.tileCache,
+                       #self.tileCacheSurfaces,
+                       #self.tileState
+                 )
+        print("renderTilesLazy END")
 
-        print('drewNEXting')
         ctxWindowBuffer.save()
 
         ctxWindowBuffer.set_source_surface(

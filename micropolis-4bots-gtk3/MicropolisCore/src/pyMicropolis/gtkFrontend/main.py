@@ -6,6 +6,8 @@
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('PangoCairo', '1.0')
+gi.require_foreign('cairo')
+gi.require_version('cairo', '1.0')
 from gi.repository import Gtk as gtk
 import pyMicropolis.micropolisEngine
 from pyMicropolis.micropolisEngine import micropolisengine, micropolisgtkengine, micropoliswindow, micropolisrobot

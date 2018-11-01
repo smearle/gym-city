@@ -114,13 +114,13 @@ class MicropolisEnv(core.Env):
 
     def randomStaticStart(self):
         '''Cannot overwrite itself'''
-        max_static = 5
+        num_static = 50
         lst_epi = 500
-        max_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * max_static)   
-        num_static = max(0, max_static)
+#       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)   
+#       num_static = max(0, max_static)
         self.micro.setFunds(10000000)
         if num_static > 0:
-            num_static = self.np_random.randint(0, max_static + 1)
+            num_static = self.np_random.randint(0, num_static + 1)
         for i in range(num_static):
             self.step(self.action_space.sample(), static_build=True)
 
@@ -139,7 +139,7 @@ class MicropolisEnv(core.Env):
 #   self.micro.engine.generateMap()
         self.micro.clearMap()
         self.num_step = 0
-        self.randomStaticStart()
+#       self.randomStaticStart()
         self.micro.engine.simTick()
         self.micro.setFunds(self.initFunds)
         curr_funds = self.micro.getFunds()
