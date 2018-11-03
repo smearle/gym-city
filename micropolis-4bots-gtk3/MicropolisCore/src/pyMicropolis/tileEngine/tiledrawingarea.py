@@ -330,12 +330,12 @@ class TileDrawingArea(gtk.DrawingArea):
         if self.scale == scale:
             return
 
-        if not self.window:
+        if not self.get_window():
             return
 
         self.scale = scale
 
-        ctxWindow = self.window.cairo_create()
+        ctxWindow = self.get_window.cairo_create()
         self.loadGraphics(ctxWindow, True)
 
         self.updateView()
@@ -660,34 +660,28 @@ class TileDrawingArea(gtk.DrawingArea):
 
         ctx = cairo.Context(buffer)
 
-        print('cairo context initialized')
         if ((renderCols > 0) and
             (renderRows > 0)):
 
             self.prepareToRenderTiles(ctx)
 
-            if True:
-                print("renderTilesLazy BEGIN")
-                return
-            else:
-                # TODO: here's the segfault, c++ can't 
-                self.tengine.renderTilesLazy(
-                        ctx
-                       #ctx
-                       #self.tileFunction
-                       #self.tileMap,
-                       #self.tileSize,
-                       #self.renderCol,
-                       #self.renderRow,
-                       #renderCols,
-                       #renderRows,
-                       #1.0,
-                       #self.generateTile,
-                       #self.tileCache,
-                       #self.tileCacheSurfaces,
-                       #self.tileState
-                 )
-        print("renderTilesLazy END")
+#           print("renderTilesLazy BEGIN")
+            self.tengine.renderTilesLazy(
+                    ctx,
+                    self.tileFunction,
+                    self.tileMap,
+                    self.tileSize,
+                    self.renderCol,
+                    self.renderRow,
+                    renderCols,
+                    renderRows,
+                    1.0,
+                    self.generateTile,
+                    self.tileCache,
+                    self.tileCacheSurfaces,
+                    self.tileState
+             )
+#       print("renderTilesLazy END")
 
         ctxWindowBuffer.save()
 
@@ -782,7 +776,7 @@ class TileDrawingArea(gtk.DrawingArea):
         self,
         tile):
 
-        #print "======== GENERATETILE", tile
+        #print("======== GENERATETILE", tile)
 
         # Get the various tile measurements.
         sourceTileSize = self.sourceTileSize
@@ -802,13 +796,13 @@ class TileDrawingArea(gtk.DrawingArea):
         # surfaces to not get too big.
 
         tileColsPerSurface = max(1, int(math.floor(maxSurfaceSize / tileSize)))
-        #print "tileColsPerSurface", tileColsPerSurface
+        #print("tileColsPerSurface", tileColsPerSurface)
 
         tilesPerSurface = tileColsPerSurface * tileColsPerSurface
         #print "tilesPerSurface", tilesPerSurface
 
         surfaceSize = tileColsPerSurface * tileSize
-        #print "surfaceSize", surfaceSize
+        #print("surfaceSize", surfaceSize)
 
         cacheTile = self.tileCacheCount
         self.tileCacheCount += 1
@@ -819,13 +813,13 @@ class TileDrawingArea(gtk.DrawingArea):
         ctxWindow = None
         nativeTarget = None
         while len(tileCacheSurfaces) <= surfaceIndex:
-            #print "MAKING TILESSURFACE", len(tileCacheSurfaces), tilesPerSurface, surfaceSize
+            #print("MAKING TILESSURFACE", len(tileCacheSurfaces), tilesPerSurface, surfaceSize)
             if nativeTarget == None:
-                ctxWindow = self.window.cairo_create()
+                ctxWindow = self.get_window().cairo_create()
                 nativeTarget = ctxWindow.get_target()
             tilesSurface = nativeTarget.create_similar(cairo.CONTENT_COLOR, surfaceSize, surfaceSize)
             tileCacheSurfaces.append(tilesSurface)
-            #print "DONE"
+            #print("DONE")
 
         tilesSurface = tileCacheSurfaces[surfaceIndex]
         tileOnSurface = cacheTile % tilesPerSurface
@@ -873,13 +867,13 @@ class TileDrawingArea(gtk.DrawingArea):
             x,
             y)
 
-        #print "X", x, "Y", y, "FUDGE", fudge, "SCALE", scale, "TILESIZE", tileSize
+        #print("X", x, "Y", y, "FUDGE", fudge, "SCALE", scale, "TILESIZE", tileSize)
 
         # Make it a pixel bigger to eliminate the fuzzy black edges.
         #zoomScale = float(tileSize) / float(sourceTileSize)
         zoomScale = float(tileSize) / float(sourceTileSize - 1.0)
 
-        #print "ZOOMSCALE", zoomScale, "TILESIZE", tileSize, "SOURCETILESIZE", sourceTileSize
+        #print("ZOOMSCALE", zoomScale, "TILESIZE", tileSize, "SOURCETILESIZE", sourceTileSize)
 
         tilesCtx.scale(
             zoomScale,
@@ -927,7 +921,7 @@ class TileDrawingArea(gtk.DrawingArea):
         #print "GENERATETILE", tile, "surfaceIndex", surfaceIndex, "tileX", tileX, "tileY", tileY
 
         result = (surfaceIndex, tileX, tileY)
-        #print "GENERATETILE", tile, "RESULT", result
+        #print("GENERATETILE", tile, "RESULT", result)
         return result
 
 

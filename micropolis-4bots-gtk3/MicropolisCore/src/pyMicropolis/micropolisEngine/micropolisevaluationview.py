@@ -89,6 +89,7 @@
 
 
 from gi.repository import Gtk as gtk
+from gi.repository import PangoCairo
 import cairo
 from gi.repository import Pango as pango
 from . import micropolisengine
@@ -271,7 +272,7 @@ Worst Problems?</b>
                 colWidth = width
 
             ctx.move_to(x, y)
-            ctx.show_layout(playout)
+            PangoCairo.show_layout(ctx, playout)
 
             y += height + vgap
 

@@ -73,6 +73,7 @@ from gi.repository import Gtk as gtk
 from gi.repository import Gdk as gdk
 import cairo
 from gi.repository import Pango as pango
+from gi.repository import PangoCairo as pangocairo
 
 
 ########################################################################
@@ -149,7 +150,6 @@ class MicropolisView(gtk.DrawingArea):
 
     def draw(self, widget=None, event=None):
 
-#       print(dir(self.get_window()))
         ctxWindow = self.get_window().cairo_create()
 
         winRect = self.get_allocation()
@@ -204,11 +204,11 @@ class MicropolisView(gtk.DrawingArea):
             (-1,  1), ( 1,  1),
         ):
             ctx.move_to(x + dx, y +  dy)
-            ctx.show_layout(playout)
+            pangocairo.show_layout(ctx, playout)
 
         ctx.set_source_rgb(0.0, 0.0, 0.0)
         ctx.move_to(x, y)
-        ctx.show_layout(playout)
+        pangocairo.show_layout(ctx, playout)
 
 
     def pinMarkupXY(
@@ -249,7 +249,7 @@ class MicropolisView(gtk.DrawingArea):
             x, y, state = self.window.get_pointer()
         elif (hasattr(event, 'is_hint') and
               event.is_hint):
-            x, y, state = event.window.get_pointer()
+            _, x, y, state = event.window.get_pointer()
         else:
             x = event.x
             y = event.y

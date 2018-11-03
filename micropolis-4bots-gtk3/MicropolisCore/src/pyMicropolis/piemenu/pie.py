@@ -561,7 +561,7 @@ class PieItem:
                 x + self.labelX,
                 y + self.labelY)
 
-            context.show_layout(playout)
+            PangoCairo.show_layout(context, playout)
 
         hilited = self.index == self.pie.curItem
         if hilited:
@@ -1559,7 +1559,7 @@ class PieMenu:
         self.d.grab_remove()
 
         print("POINTER_UNGRAB")
-        gtk.gdk.pointer_ungrab()
+        gtk.gdk.pointer_ungrab(gdk.CURRENT_TIME)
 
         self.hide()
        
@@ -1943,7 +1943,7 @@ class PieMenu:
                 x + headerPadding,
                 y + headerPadding)
 
-            context.show_layout(playout)
+            PangoCairo.show_layout(context, playout)
 
 
     def drawFooter(self, context, pcontext, playout):
@@ -1993,7 +1993,7 @@ class PieMenu:
                 x + footerPadding,
                 y + footerPadding)
 
-            context.show_layout(playout)
+            PangoCairo.show_layout(context, playout)
 
 
     def drawOverlay(self, context, pcontext, playout):

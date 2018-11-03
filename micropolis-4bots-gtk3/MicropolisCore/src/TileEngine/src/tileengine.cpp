@@ -105,9 +105,6 @@ TileEngine::~TileEngine()
 void TileEngine::setBuffer(
    void *buf)
 {
-    printf("test int %d\n", 4);
-//  printf("Compiling with suitable cairo version: ");
-//  printf(CAIRO_VERSION_STRING);
     bufData = buf;
 }
 
@@ -261,8 +258,6 @@ void TileEngine::renderTiles(
     double alpha)
 {
 
-    printf("test int %d\n", 6);
-
     if ((tileFunction != Py_None) &&
 	!PyCallable_Check(tileFunction)) {
 	PyErr_SetString(
@@ -377,9 +372,8 @@ void TileEngine::renderTiles(
 }
 
 
-void TileEngine::renderTilesLazy(cairo_t *ctx)
-
-/*    cairo_t *ctx,
+void TileEngine::renderTilesLazy(
+    PyObject *pyctx,
     PyObject *tileFunction,
     PyObject *tileMap,
     int tileSize,
@@ -391,16 +385,9 @@ void TileEngine::renderTilesLazy(cairo_t *ctx)
     PyObject *tileGenerator,
     PyObject *tileCache,
     PyObject *tileCacheSurfaces,
-    PyObject *tileState)*/
+    PyObject *tileState)
 {
-    printf("in render tiles cpp");
-    return;
-    printf("in render tiles cpp");
-    printf("in render tiles cpp");
-    printf("in render tiles cpp");
-    printf("in render tiles cpp");
-    printf("in render tiles cpp");
-    printf("test int%d \n", 5); /
+    cairo_t *ctx = PycairoContext_GET(pyctx);
     if ((tileFunction != Py_None) &&
         !PyCallable_Check(tileFunction)) {
         PyErr_SetString(
@@ -408,7 +395,7 @@ void TileEngine::renderTilesLazy(cairo_t *ctx)
             "expected tileFunction to be a callable function or None");
         return;
     }
-  /*
+    
     // The tileMap should be None, or an array of 4 byte integers,
     // mapping virtual tiles indices to absolute tile numbers.
 
@@ -597,15 +584,17 @@ void TileEngine::renderTilesLazy(cairo_t *ctx)
 		return;
 	    }
 
-	    if (!PyObject_TypeCheck(
-		  tiles,
-		  &PycairoSurface_Type)) {
-		PyErr_SetString(
-		    PyExc_TypeError,
-		    "expected cairo_surface_t objects "
-		    "in tileCacheSurfaces");
-		return;
-	    }
+	    // TODO: this typecheck throws segfault
+
+////////    if (!PyObject_TypeCheck(
+////////	  tiles,
+////////	  &PycairoSurface_Type)) {
+////////	PyErr_SetString(
+////////	    PyExc_TypeError,
+////////	    "expected cairo_surface_t objects "
+////////	    "in tileCacheSurfaces");
+////////	return;
+////////    }
 
 	    // Get the cairo_surface_t from the Python object.
 	    cairo_surface_t *tilesSurf = PycairoSurface_GET(tiles);
@@ -645,7 +634,7 @@ void TileEngine::renderTilesLazy(cairo_t *ctx)
 	}
     }
 }
-*/
+  
 
 void TileEngine::renderPixels(
     cairo_surface_t *destSurf,
@@ -871,11 +860,11 @@ PyObject *TileEngine::getTileData(
 		int r = tileIndex / cols;
 		int tileCacheOffset = 
 		    (col + c) + ((row + r) * width);
-  		printf("tileIndex %d tileCacheOffset %d tileViewCacheCount %d c %d r %d cols %d rows %d ",
-  		    tileIndex,
-  		    tileCacheOffset,
-  		    tileViewCacheCount,
-  		    c, r, cols, rows);
+//		printf("tileIndex %d tileCacheOffset %d tileViewCacheCount %d c %d r %d cols %d rows %d ",
+//		    tileIndex,
+//		    tileCacheOffset,
+//		    tileViewCacheCount,
+//		    c, r, cols, rows);
 		int tile = 
 		    getValue(
 			col + c, 
