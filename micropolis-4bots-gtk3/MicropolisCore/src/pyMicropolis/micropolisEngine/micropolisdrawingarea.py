@@ -340,7 +340,7 @@ class MicropolisDrawingArea(tiledrawingarea.TileDrawingArea):
             if not sprite:
                 break
             self.drawSprite(ctx, sprite)
-            sprite = sprite.__next__
+            sprite = sprite.next
 
 
     def drawSprite(self, ctx, sprite):

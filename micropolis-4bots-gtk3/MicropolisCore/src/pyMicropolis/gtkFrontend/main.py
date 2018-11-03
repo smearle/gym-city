@@ -3,14 +3,12 @@
 
 @todo Implement run()
 """
-import gi
-gi.require_version('Gtk', '3.0')
-gi.require_version('PangoCairo', '1.0')
-gi.require_foreign('cairo')
-gi.require_version('cairo', '1.0')
-from gi.repository import Gtk as gtk
+
 import pyMicropolis.micropolisEngine
 from pyMicropolis.micropolisEngine import micropolisengine, micropolisgtkengine, micropoliswindow, micropolisrobot
+from gi.repository import Gtk as gtk
+import gi
+gi.require_version('PangoCairo', '1.0')
 import random
 import math
 
@@ -65,38 +63,14 @@ def run(builderBot=None):
 
 
 # for bots. Return the engine for training simulation
-def train():
+def train(bot=None):
 
     engine = micropolisgtkengine.CreateGTKEngine()
+    engine.bot = bot
 
     engine.cityTax = 10
     engine.setPasses(200)
     setTile = engine.setTile
-
-    if False:
-        for i in range(0, 4):
-            engine.addRobot(
-                micropolisrobot.MicropolisRobot_PacBot(
-                    x=(8 * 16) + 3 + (16 * 2 * i),
-                    y=(7 * 16) + 3,
-                    direction=0))
-
-    if False:
-        for i in range(0, 20):
-            engine.addRobot(
-                micropolisrobot.MicropolisRobot_PacBot(
-                    x=random.randint(0, (micropolisengine.WORLD_W * 16) - 1),
-                    y=random.randint(0, (micropolisengine.WORLD_H * 16) - 1),
-                    direction = random.randint(0, 3) * math.pi / 2))
-
-    if False:
-        for y in range(0, micropolisengine.WORLD_H):
-            for x in range(0, micropolisengine.WORLD_W):
-                setTile(x, y, micropolisengine.RUBBLE | micropolisengine.BLBNBIT)
-
-        for y in range(10, 15):
-            for x in range(10, 15):
-                setTile(x, y, micropolisengine.FIRE | micropolisengine.ANIMBIT)
 
     x = 0
     y = 0

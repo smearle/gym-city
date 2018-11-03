@@ -98,8 +98,10 @@ class MicropolisTool(tiletool.TileTool):
         x, y = view.getEventXY(event)
         x = int(x)
         y = int(y)
-        #print "DOWN", x, y, "index", self.toolIndex, view.engine.toolDown
-        view.engine.toolDown(self.toolIndex, x, y)
+        print("DOWN", x, y, "index", self.toolIndex, view.engine.toolDown)
+        if view.engine.toolDown(self.toolIndex, x, y) == 1:
+            print("bot is registering successful player build")
+            view.engine.bot.playerToolDown(self.toolIndex, x, y)
         self.lastX = x
         self.lastY = y
 

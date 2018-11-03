@@ -35,7 +35,7 @@ class MicropolisEnv(core.Env):
         np.random.seed(seed)
         return [seed1, seed2]
 
-    def setMapSize(self, size, print_map=False, PADDING=0, static_builds=True, parallel_gui=False):
+    def setMapSize(self, size, print_map=False, PADDING=0, static_builds=True, parallel_gui=False, render_gui=False):
         if type(size) == int:
             self.MAP_X = size
             self.MAP_Y = size
@@ -79,6 +79,7 @@ class MicropolisEnv(core.Env):
         self.last_num_roads = 0
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
         self.print_map = print_map
+        self.render_gui = render_gui
 
     def mapIntsToActionsChunk(self):
         ''' Unrolls the action vector into spatial chunks (does this matter empirically?).'''
@@ -201,6 +202,11 @@ class MicropolisEnv(core.Env):
                 print('STATIC BUILD')
             self.printMap()
         self.num_step += 1
+        if self.render_gui:
+            pass
+           #self.micro.render()
+           #self.micro.render()
+           #time.sleep(1)
         return (self.state, reward, terminal, {})
 
     def printMap(self):
@@ -213,8 +219,7 @@ class MicropolisEnv(core.Env):
     
     def render(self, mode='human'):
         # why does this need to happen twice (or else blank window)?
-        gtk.main_iteration()
-        gtk.main_iteration()
+        self.micro.render()
 
     def test(self):
         env = MicropolisEnv()

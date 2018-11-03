@@ -35,6 +35,7 @@ http://www.PieMenu.com
 
 from gi.repository import Gtk as gtk
 from gi.repository import Gdk as gdk
+from gi.repository import PangoCairo
 import cairo
 from gi.repository import Pango as pango
 import math
@@ -565,7 +566,7 @@ class PieItem:
                 x + self.labelX,
                 y + self.labelY)
 
-            context.show_layout(playout)
+            PangoCairo.show_layout(context, playout)
 
         hilited = self.index == self.pie.curItem
         if hilited:
@@ -826,7 +827,7 @@ class PieMenu(gtk.Window):
 
         self.connect("show", self.handleShow)
 
-        d.connect("event", self.handleExpose)
+        d.connect("draw", self.handleExpose)
         d.connect("size-allocate", self.handleSizeAllocate)
         d.connect("motion-notify-event", self.handleMotionNotifyEvent)
         d.connect("button-press-event", self.handleButtonPressEvent)
@@ -1634,11 +1635,16 @@ class PieMenu(gtk.Window):
 
         self.validate(context, pcontext, playout)
 
+        print("Rectangle coords: {}, {}, {}, {}".format(event.path_extents()[0],
+            event.path_extents()[1],
+            event.path_extents()[2],
+            event.path_extents()[3]))
+
         context.rectangle(
-            event.area.x,
-            event.area.y,
-            event.area.width,
-            event.area.height)
+            0,
+            0,
+            100,
+            100)
         context.clip()
 
         self.drawBackground(context, pcontext, playout)
@@ -1983,7 +1989,7 @@ class PieMenu(gtk.Window):
                 x + headerPadding,
                 y + headerPadding)
 
-            context.show_layout(playout)
+            PangoCairo.show_layout(context, playout)
 
 
     def drawFooter(self, context, pcontext, playout):
@@ -2033,7 +2039,7 @@ class PieMenu(gtk.Window):
                 x + footerPadding,
                 y + footerPadding)
 
-            context.show_layout(playout)
+            PangoCairo.show_layout(context, playout)
 
 
     def drawOverlay(self, context, pcontext, playout):

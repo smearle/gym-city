@@ -51,7 +51,7 @@ class MicropolisControl():
             self.pgui.expect('>>>')
 
         self.SHOW_GUI=False
-        engine, win1 = main.train()
+        engine, win1 = main.train(bot=self)
         os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
@@ -84,6 +84,7 @@ class MicropolisControl():
                 'Land',
                 'Forest',
                 ]
+        # Names correspond to those of resultant zones
         self.tools = ['Residential', 'Commercial', 'Industrial', 
                 'FireDept', 
                 'PoliceDept', 
@@ -210,6 +211,9 @@ class MicropolisControl():
         '''Takes string for tool'''
         return self.map.addZone(x, y, tool) 
 
+    def playerToolDown(self, tool_int, x, y):
+        zone_int = self.map.zoneInts[self.engineTools[tool_int]]
+        self.map.addZoneSquare(zone_int, x, y, static_build=True)
 
     def toolDown(self, x, y, tool):
         '''Takes int for tool, depending on engine's index'''

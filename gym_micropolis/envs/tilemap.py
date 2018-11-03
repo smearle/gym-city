@@ -31,7 +31,7 @@ class TileMap(object):
                 'Park' : 1, 
                 'Wire' : 1, 
                 'RoadWire': 1, 
-                'Clear': None, 
+                'Clear': 1, 
                 'Rubble': None ,
                 'Net': 1, 
                 'Water': 1, 
@@ -53,7 +53,7 @@ class TileMap(object):
                 for s in square_sizes:
                     z0 = 'Rubble_' + str(s)
                     self.zoneSquares[z0] = self.makeZoneSquare(s, self.zoneInts[z])
-            elif z_size and z_size > 1:
+            else:
                 self.zoneSquares[z] = self.makeZoneSquare(self.zoneSize[z], self.zoneInts[z])
         # first dimension is one-hot zone encoding followed by zone int
         self.zoneMap = np.zeros((self.num_zones + 1,self.MAP_X, self.MAP_Y), dtype=np.uint8)
@@ -105,6 +105,22 @@ class TileMap(object):
         if static_build and zone_int != self.zoneInts['Clear'] and zone_int != self.zoneInts['Rubble']:
             self.static_builds[0][x][y] = 1
 
+    def addZoneSquare(self, zone_int, x, y, static_build=False):
+        ''' used only by bots for now '''
+        zone = self.zones[zone_int]
+        zone_square = self.zoneSquares[zone]
+        zone_size = self.zoneSize[zone]
+        x0, y0 = max(x - 1, 0), max(y - 1, 0) 
+        x1, y1 = min(x + zone_size - 1, self.MAP_X), min(y + zone_size - 1, self.MAP_Y) 
+        self.num_empty -= (x1 - x0) * (y1 - y0)
+        self.zoneMap[-1, x0 : x1, y0 : y1] = zone_square[-1, : x1 - x0, : y1 - y0]
+        self.zoneMap[:self.num_zones, x0 : x1, y0 : y1] = zone_square[:self.num_zones, : x1 - x0, : y1 - y0]
+        centers =  np.empty((x1 - x0, y1 - y0),dtype=object)
+        centers.fill((x, y))  
+        self.zoneCenters[x0 : x1, y0 : y1] = centers
+        if static_build:
+            self.static_builds[0, x0 : x1, y0 : y1] = np.full((x1 - x0, y1 - y0), 1)
+        
 
     def addZone(self, x, y, zone, static_build=False):
         ''' (x, y) must be a valid tile in the game. Assumes the player has enough money to execute action.'''
@@ -172,7 +188,7 @@ class TileMap(object):
             if True:
                 for i in range(x0, x1):
                     for j in range(y0, y1):
-                        # stop bulldozeing if we encounter a static build 
+                        # stop bulldozing if we encounter a static build 
                         if self.static_builds is not None and self.static_builds[0][i][j] == 1:
                             return
                         old_int = self.zoneMap[-1][i][j]
@@ -183,6 +199,7 @@ class TileMap(object):
 #                   print('unexpected (zone-square) build fail: {} at {} {} with code {}'.format(zone, x, y, result))
                     return
             if result == 1:
+                # we can just call self._addZoneSquare here, right?
                 self.num_empty -= (x1 - x0) * (y1 - y0)
                 self.zoneMap[-1,x0 : x1, y0 : y1] = zone_square[-1, : x1 - x0, : y1 - y0]
                 self.zoneMap[:self.num_zones, x0 : x1, y0 : y1] = zone_square[:self.num_zones, : x1 - x0, : y1 - y0]
