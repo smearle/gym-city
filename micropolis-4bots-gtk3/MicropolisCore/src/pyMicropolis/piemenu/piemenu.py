@@ -35,6 +35,8 @@ http://www.PieMenu.com
 
 from gi.repository import Gtk as gtk
 from gi.repository import Gdk as gdk
+import gi
+gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
 import cairo
 from gi.repository import Pango as pango
@@ -1637,14 +1639,14 @@ class PieMenu(gtk.Window):
 
         print("Rectangle coords: {}, {}, {}, {}".format(event.path_extents()[0],
             event.path_extents()[1],
-            event.path_extents()[2],
-            event.path_extents()[3]))
+            event.path_extents()[2]+ 10,
+            event.path_extents()[3]+ 10))
 
         context.rectangle(
             0,
             0,
-            100,
-            100)
+            400,
+            400)
         context.clip()
 
         self.drawBackground(context, pcontext, playout)

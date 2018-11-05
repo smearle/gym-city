@@ -99,7 +99,8 @@ class MicropolisTool(tiletool.TileTool):
         x = int(x)
         y = int(y)
         print("DOWN", x, y, "index", self.toolIndex, view.engine.toolDown)
-        if view.engine.toolDown(self.toolIndex, x, y) == 1:
+        print('Generic Engine: ', view.engine.generic_engine.views)
+        if view.engine.toolDown(self.toolIndex, x, y) == 1 and view.engine.generic_engine.builderBot:
             print("bot is registering successful player build")
             view.engine.bot.playerToolDown(self.toolIndex, x, y)
         self.lastX = x

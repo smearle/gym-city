@@ -5,6 +5,8 @@ import math
  
 import sys
 if sys.version_info[0] >= 3:
+    import gi
+    gi.require_version('Gtk', '3.0')
     from gi.repository import Gtk as gtk
     from .tilemap import TileMap 
     from .corecontrol import MicropolisControl
@@ -22,7 +24,7 @@ class MicropolisEnv(core.Env):
         self.start_time = time.time()
         self.print_map = False
         self.num_episode = 0
-        self.max_step = 500
+        self.max_step = 1500
         self.max_static = 0
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
 
@@ -109,6 +111,8 @@ class MicropolisEnv(core.Env):
                         self.intsToActions[i] = [z, x, y]
                         i += 1
 
+    def randomStep(self):
+        self.step(self.action_space.sample())
 
     def close(self):
         self.micro.close()
@@ -203,9 +207,8 @@ class MicropolisEnv(core.Env):
             self.printMap()
         self.num_step += 1
         if self.render_gui:
-            pass
-           #self.micro.render()
-           #self.micro.render()
+            self.micro.render()
+            self.micro.render()
            #time.sleep(1)
         return (self.state, reward, terminal, {})
 

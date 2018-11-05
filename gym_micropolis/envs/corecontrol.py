@@ -213,6 +213,8 @@ class MicropolisControl():
 
     def playerToolDown(self, tool_int, x, y):
         zone_int = self.map.zoneInts[self.engineTools[tool_int]]
+        x += self.MAP_XS
+        y += self.MAP_YS
         self.map.addZoneSquare(zone_int, x, y, static_build=True)
 
     def toolDown(self, x, y, tool):

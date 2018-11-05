@@ -5,10 +5,12 @@
 """
 
 import pyMicropolis.micropolisEngine
-from pyMicropolis.micropolisEngine import micropolisengine, micropolisgtkengine, micropoliswindow, micropolisrobot
-from gi.repository import Gtk as gtk
 import gi
+gi.require_version('Gtk', '3.0')
 gi.require_version('PangoCairo', '1.0')
+from pyMicropolis.micropolisEngine import micropolisengine, micropolisgtkengine, micropoliswindow, micropolisrobot
+
+from gi.repository import Gtk as gtk
 import random
 import math
 
@@ -65,8 +67,8 @@ def run(builderBot=None):
 # for bots. Return the engine for training simulation
 def train(bot=None):
 
-    engine = micropolisgtkengine.CreateGTKEngine()
-    engine.bot = bot
+    kwargs = {'bot': bot}
+    engine = micropolisgtkengine.CreateGTKEngine(**kwargs)
 
     engine.cityTax = 10
     engine.setPasses(200)
@@ -80,7 +82,7 @@ def train(bot=None):
 
     if True:
         win1 = micropoliswindow.MicropolisPanedWindow(engine=engine)
-        #win1.set_default_size(w, h)
+        win1.set_default_size(w, h)
         win1.set_size_request(w, h)
         win1.move(x, y)
         win1.show_all()
