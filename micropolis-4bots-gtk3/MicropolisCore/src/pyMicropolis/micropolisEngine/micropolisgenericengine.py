@@ -121,16 +121,14 @@ class MicropolisGenericEngine(micropolisengine.Micropolis):
             self,
             running=False,
             timeDelay=10,
+            bot=None,
             *args,
             **kwargs):
         #print "MicropolisGenericEngine.__init__", self, "calling micropolisengine.Micropolis.__init__", micropolisengine.Micropolis.__init__, args, kwargs
 
         micropolisengine.Micropolis.__init__(self, *args, **kwargs)
 
-        self.builderBot = None
-        if kwargs: 
-            if 'bot' in kwargs.keys():
-                self.builderBot = kwargs['bot']
+        self.builderBot = bot
         self.resourceDir = 'res'
         self.running = running
         self.timeDelay = timeDelay

@@ -21,12 +21,14 @@ else:
 
 CURR_DIR = os.getcwd()
 # we need to do this so the micropolisgenericengine can access images/micropolisEngine/dataColorMap.png
+
+
 os.chdir(MICROPOLISCORE_DIR)   
 
 from pyMicropolis.gtkFrontend import main
 
 
-# os.chdir(CURR_DIR)
+os.chdir(CURR_DIR)
 
 class MicropolisControl():
 
@@ -194,7 +196,8 @@ class MicropolisControl():
         return self.engine.totalFunds
 
     def render(self):
-        gtk.main_iteration()
+        while gtk.events_pending():
+            gtk.main_iteration()
 
     def setFunds(self, funds):
         return self.engine.setFunds(funds)
@@ -213,8 +216,8 @@ class MicropolisControl():
 
     def playerToolDown(self, tool_int, x, y):
         zone_int = self.map.zoneInts[self.engineTools[tool_int]]
-        x += self.MAP_XS
-        y += self.MAP_YS
+       #x += self.MAP_XS
+       #y += self.MAP_YS
         self.map.addZoneSquare(zone_int, x, y, static_build=True)
 
     def toolDown(self, x, y, tool):

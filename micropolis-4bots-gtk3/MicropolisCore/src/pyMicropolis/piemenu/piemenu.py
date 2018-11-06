@@ -1637,16 +1637,11 @@ class PieMenu(gtk.Window):
 
         self.validate(context, pcontext, playout)
 
-        print("Rectangle coords: {}, {}, {}, {}".format(event.path_extents()[0],
-            event.path_extents()[1],
-            event.path_extents()[2]+ 10,
-            event.path_extents()[3]+ 10))
-
         context.rectangle(
             0,
             0,
-            400,
-            400)
+            self.get_allocated_width(),
+            self.get_allocated_height())
         context.clip()
 
         self.drawBackground(context, pcontext, playout)

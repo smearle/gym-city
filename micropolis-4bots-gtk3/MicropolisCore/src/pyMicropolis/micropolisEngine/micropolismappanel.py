@@ -89,6 +89,8 @@ class MicropolisMapPanel(gtk.Frame):
         mapViews=None,
         **args):
 
+        print("Initializing Map Panel")
+
         gtk.Frame.__init__(
             self,
             **args)

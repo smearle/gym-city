@@ -196,7 +196,7 @@ class MicropolisView(gtk.DrawingArea):
         ctx,
         playout):
 
-        playout.set_text(text)
+        playout.set_text(text, -1)
 
         ctx.set_source_rgb(1.0, 1.0, 1.0)
         for dx, dy in (

@@ -99,10 +99,11 @@ class MicropolisTool(tiletool.TileTool):
         x = int(x)
         y = int(y)
         print("DOWN", x, y, "index", self.toolIndex, view.engine.toolDown)
-        print('Generic Engine: ', view.engine.generic_engine.views)
-        if view.engine.toolDown(self.toolIndex, x, y) == 1 and view.engine.generic_engine.builderBot:
-            print("bot is registering successful player build")
-            view.engine.bot.playerToolDown(self.toolIndex, x, y)
+        if view.engine.toolDown(self.toolIndex, x, y) == 1:
+            print("Successful player build")
+            if view.engine.generic_engine.builderBot is not None:
+                print("Bot is registering successful player build")
+                view.engine.builderBot.playerToolDown(self.toolIndex, x, y)
         self.lastX = x
         self.lastY = y
 
@@ -114,6 +115,7 @@ class MicropolisTool(tiletool.TileTool):
         y = int(y)
         #print "DRAG", self.lastX, self.lastY, x, y, "index", self.toolIndex, view.engine.toolDrag
         view.engine.toolDrag(self.toolIndex, self.lastX, self.lastY, x, y)
+        # TODO: bot should register this
         self.lastX = x
         self.lastY = y
 

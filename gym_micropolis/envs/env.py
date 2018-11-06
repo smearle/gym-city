@@ -15,7 +15,6 @@ else:
     from tilemap import TileMap 
     from corecontrol import MicropolisControl
 import time
-from time import sleep
 
 class MicropolisEnv(core.Env):
 
@@ -24,7 +23,7 @@ class MicropolisEnv(core.Env):
         self.start_time = time.time()
         self.print_map = False
         self.num_episode = 0
-        self.max_step = 1500
+        self.max_step = 500
         self.max_static = 0
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
 
@@ -45,7 +44,6 @@ class MicropolisEnv(core.Env):
             self.MAP_X = size[0]
             self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
-        print(parallel_gui)
         self.micro = MicropolisControl(self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui)
         self.static_builds = True
         if self.static_builds:
@@ -208,8 +206,6 @@ class MicropolisEnv(core.Env):
         self.num_step += 1
         if self.render_gui:
             self.micro.render()
-            self.micro.render()
-           #time.sleep(1)
         return (self.state, reward, terminal, {})
 
     def printMap(self):

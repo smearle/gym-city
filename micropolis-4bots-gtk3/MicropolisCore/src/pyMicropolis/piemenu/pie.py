@@ -1594,11 +1594,16 @@ class PieMenu:
 
         self.validate(context, pcontext, playout)
 
-        context.rectangle(
-            event.area.x,
-            event.area.y,
-            event.area.width,
-            event.area.height)
+# OLD GTK2 CODE:
+#       context.rectangle(
+#           event.area.x,
+#           event.area.y,
+#           event.area.width,
+#           event.area.height)
+
+        context.rectangle( 0, 0,
+                self.get_allocated_width(), self.get_allocated_height())
+
         context.clip()
 
         self.drawBackground(context, pcontext, playout)

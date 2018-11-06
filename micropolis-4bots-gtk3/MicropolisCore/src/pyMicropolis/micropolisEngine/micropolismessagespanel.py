@@ -122,7 +122,7 @@ class MicropolisMessagesPanel(gtk.Frame):
         scrolledWindow.show()
         textView.show()
 
-        textBuffer.set_text("Micropolis ready!\n")
+        textBuffer.set_text("Micropolis ready!\n", -1)
 
         self.add(scrolledWindow)
 

@@ -958,7 +958,7 @@ class TileDrawingArea(gtk.DrawingArea):
         if (hasattr(event, 'is_hint') and
             event.is_hint):
 
-            _, x, y, state = event.window.get_pointer()
+            _, x, y, state = event.get_window().get_pointer()
         else:
             x = event.x
             y = event.y
@@ -976,7 +976,7 @@ class TileDrawingArea(gtk.DrawingArea):
         event):
         if (hasattr(event, 'is_hint') and
             event.is_hint):
-            _, x, y, state = event.window.get_pointer()
+            _, x, y, state = event.get_window().get_pointer()
         else:
             x = event.x
             y = event.y
@@ -1173,10 +1173,10 @@ class TileDrawingArea(gtk.DrawingArea):
         event):
 
         if not event:
-            _, x, y, state = self.window.get_pointer()
+            _, x, y, state = self.get_window().get_pointer()
         elif (hasattr(event, 'is_hint') and
               event.is_hint):
-            _, x, y, state = event.window.get_pointer()
+            _, x, y, state = event.get_window().get_pointer()
         else:
             x = event.x
             y = event.y
@@ -1247,7 +1247,7 @@ class TileDrawingArea(gtk.DrawingArea):
 
             if pie:
 
-                _, win_x, win_y, state = event.window.get_pointer()
+                _, win_x, win_y, state = event.get_window().get_pointer()
 
                 #print "POP UP PIE", pie, win_x, win_y, state
                 #print "WIN", win_x, win_y

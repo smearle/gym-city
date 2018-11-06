@@ -351,8 +351,10 @@ class MicropolisHistoryView(micropolisview.MicropolisView):
 
             ctx.stroke()
 
+            #print("HISTORY LEGENDS: ", historyLegends)
             label = historyLegends[i]
-            playout.set_text(label -1)
+            #print("LABEL: ", label)
+            playout.set_text(label, -1)
             labelWidth, labelHeight = playout.get_pixel_size()
 
             xx = boxX + (boxWidth / 2) - (labelWidth / 2)
@@ -416,7 +418,7 @@ class MicropolisHistoryView(micropolisview.MicropolisView):
 
         ctx.stroke()
 
-        playout.set_text(label)
+        playout.set_text(label, -1)
         labelWidth, labelHeight = playout.get_pixel_size()
 
         xx = 0 + (scaleWidth / 2) - (labelWidth / 2)
@@ -564,10 +566,10 @@ class MicropolisHistoryView(micropolisview.MicropolisView):
         elif historyScale == micropolisengine.HISTORY_SCALE_LONG:
 
             sx /= 10
-            past = 10 * (year % 10)
+            past = int(10 * (year % 10))
             year = int(year / 10) * 10
             dur = 1200
-            r = list(range(dur - past, -1, -dur / 10))
+            r = list(range(dur - past, -1, int(-dur / 10)))
 
         else:
 
@@ -601,7 +603,7 @@ class MicropolisHistoryView(micropolisview.MicropolisView):
                 label = str(year)
                 year -= 10
 
-            playout.set_text(label)
+            playout.set_text(label, -1)
             labelWidth, labelHeight = playout.get_pixel_size()
 
             xx = x + 4

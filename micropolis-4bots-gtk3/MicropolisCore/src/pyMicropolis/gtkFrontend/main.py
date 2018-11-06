@@ -56,7 +56,7 @@ def run(builderBot=None):
 
     if True:
         win1 = micropoliswindow.MicropolisPanedWindow(engine=engine)
-        #win1.set_default_size(w, h)
+        win1.set_default_size(w, h)
         win1.set_size_request(w, h)
         win1.move(x, y)
         win1.show_all()
