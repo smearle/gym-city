@@ -57,7 +57,7 @@ class MicropolisEnv(core.Env):
         self.num_zones = self.micro.num_zones
         self.num_scalars = 1
         # traffic, power, density
-        self.num_obs_channels = self.num_zones + self.num_scalars + 3
+        self.num_obs_channels = self.micro.map.num_features + self.num_scalars + 3
         if self.static_builds:
             self.num_obs_channels += 1
        #ac_low = np.zeros((3))
@@ -139,13 +139,13 @@ class MicropolisEnv(core.Env):
 
 
     def reset(self):
-#   self.micro.engine.generateMap()
-        self.micro.clearMap()
+        self.micro.newMap()
+        self.micro.updateMap()
         self.num_step = 0
 #       self.randomStaticStart()
-        self.micro.engine.simTick()
+#       self.micro.engine.simTick()
         self.micro.setFunds(self.initFunds)
-        curr_funds = self.micro.getFunds()
+       #curr_funds = self.micro.getFunds()
         curr_pop = self.getPop()
         self.state = self.observation([curr_pop])
         self.last_pop=0
@@ -169,32 +169,19 @@ class MicropolisEnv(core.Env):
         return state
 
     def getPop(self):
-        curr_pop = self.micro.getResPop() / 4 + self.micro.getComPop() + \
-                self.micro.getIndPop()
+        curr_pop = self.micro.getResPop() / 4 + \
+                   8 * self.micro.getComPop() + \
+                   4 * self.micro.getIndPop()
         return curr_pop
 
     def step(self, a, static_build=False):
-
         reward = 0
         a = self.intsToActions[a]
-      # if self.past_actions[a[0]][a[1]][a[2]]:
-      #     reward = 0
-      # else:
-      #     self.past_actions[a[0]][a[1]][a[2]] = True
         self.micro.takeAction(a, static_build)
         self.curr_pop = self.getPop()
         self.state = self.observation([self.curr_pop])
-       #if self.micro.map.no_change:
-       #    reward -= 1
+        reward += (self.curr_pop - self.last_pop)
 #       reward += (self.micro.total_traffic - self.micro.last_total_traffic)
-        # anneal road reward
-#       road_diff = self.micro.num_roads - self.last_num_roads
-#       road_diff = road_diff * (max(0, 70 - self.micro.num_roads) / 70) * 0.2
-#       reward += road_diff  * (max(0, 7200 - abs(time.time() - self.start_time)) / 7200)
-        # anneal the following to zero over 1hr
-        reward += (self.curr_pop - self.last_pop)#* (max(0, 14400 - abs(time.time() - self.start_time)) / 14400)
-        self.last_num_roads = self.micro.num_roads
-#       print(self.micro.num_roads)
         self.last_pop = self.curr_pop
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
@@ -208,11 +195,15 @@ class MicropolisEnv(core.Env):
             self.micro.render()
         return (self.state, reward, terminal, {})
 
-    def printMap(self):
+    def printMap(self, static_builds=False):
+            if static_builds:
+                static_map = self.micro.map.static_builds
+            else:
+                static_map = None
             np.set_printoptions(threshold=np.inf)
             zone_map = self.micro.map.zoneMap[-1]
             zone_map = np.array_repr(zone_map).replace(',  ','  ').replace('],\n', ']\n').replace(',\n', ',').replace(', ', ' ').replace('        ',' ').replace('         ','  ')
-            print('{}\npopulation: {}, traffic: {}, episode: {}, step: {} \n{}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.micro.map.static_builds))
+            print('{}\npopulation: {}, traffic: {}, episode: {}, step: {} \n{}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, static_map))
 
 
     

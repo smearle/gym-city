@@ -11,11 +11,11 @@ else:
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
 if sys.version_info[0] >= 3:
-    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis-4bots-gtk3/MicropolisCore/src'
+    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
     sys.path.append(MICROPOLISCORE_DIR)
-    from .tilemap import TileMap
+    from .tilemap import TileMap, zoneFromInt
 else:
-    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis-4bots/MicropolisCore/src'
+    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
     sys.path.append(MICROPOLISCORE_DIR)
     from tilemap import TileMap
 
@@ -33,25 +33,6 @@ os.chdir(CURR_DIR)
 class MicropolisControl():
 
     def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False):
-        self.parallel_gui = parallel_gui
-        self.pgui = None
-        if parallel_gui:
-            import pexpect
-            self.pgui = pexpect.spawn('/bin/bash')
-            self.pgui.expect('sme')
-            self.pgui.sendline('cd gym-micropolis')
-            self.pgui.expect('sme')
-            self.pgui.sendline('pwd')
-            self.pgui.expect('sme')
-            self.pgui.sendline('python2')
-            self.pgui.expect('>>>')
-            self.pgui.sendline('from gym_micropolis.envs.gui import MicropolisGUI')
-            self.pgui.expect('>>>')
-            self.pgui.sendline('m = MicropolisGUI({}, {})'.format(MAP_W, MAP_H))
-            self.pgui.expect('>>>')
-            self.pgui.sendline('m.render()')
-            self.pgui.expect('>>>')
-
         self.SHOW_GUI=False
         engine, win1 = main.train(bot=self)
         os.chdir(CURR_DIR)
@@ -63,8 +44,8 @@ class MicropolisControl():
         # shifts build area to centre of 120 by 100 tile map
        # self.MAP_XS = 59 - self.MAP_X // 2
        # self.MAP_YS = 49 - self.MAP_Y //2
-        self.MAP_XS = 1
-        self.MAP_YS = 1
+        self.MAP_XS = 5
+        self.MAP_YS = 5
         self.num_roads = 0
         self.engineTools = ['Residential', 'Commercial', 'Industrial', 
                 'FireDept', 
@@ -91,8 +72,9 @@ class MicropolisControl():
                 'FireDept', 
                 'PoliceDept', 
              # 'Query',
+                'Clear',
                'Wire',
-               'Clear',
+               'Land',
                'Rail',
                'Road',
                 'Stadium',
@@ -150,12 +132,21 @@ class MicropolisControl():
                     tool_i = random.randint(0, 3-1)
                     self.doTool(i, j, ['Residential', 'Commercial', 'Industrial'][tool_i])
     
-    def clearMap(self):
-        self.engine.clearMap()
-        self.map.setEmpty()
-        if self.parallel_gui:
-            self.pgui.sendline('m.clearMap()')
-            self.pgui.expect('>>>')
+    def newMap(self):
+        self.engine.generateMap()
+        self.updateMap()
+       #self.engine.clearMap()
+       #self.map.setEmpty()
+
+
+    def updateMap(self):
+        for i in range(self.MAP_X):
+            for j in range(self.MAP_Y):
+                tile_int = self.getTile(i,j)
+                zone = zoneFromInt(tile_int)
+                # assuming there are no zones not built via us, 
+                # or else we must find center
+                self.map.updateTile(i, j, zone, (i,j))
 
     def getPopDensityMap(self):
         pop_density_map = np.zeros((1, self.MAP_X, self.MAP_Y))
@@ -197,6 +188,7 @@ class MicropolisControl():
 
     def render(self):
         while gtk.events_pending():
+       #for i in range(2):
             gtk.main_iteration()
 
     def setFunds(self, funds):
@@ -208,21 +200,23 @@ class MicropolisControl():
 
     def doBotTool(self, x, y, tool, static_build=False):
         '''Takes string for tool'''
-        return self.map.addZone(x + self.PADDING, y + self.PADDING, tool, static_build) 
+        return self.map.addZoneBot(x + self.PADDING, y + self.PADDING, tool, static_build) 
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''
-        return self.map.addZone(x, y, tool) 
+        return self.map.addZoneBot(x, y1tool) 
 
     def playerToolDown(self, tool_int, x, y):
-        zone_int = self.map.zoneInts[self.engineTools[tool_int]]
+        if not x < self.MAP_X and y < self.MAP_Y:
+            return
        #x += self.MAP_XS
        #y += self.MAP_YS
-        self.map.addZoneSquare(zone_int, x, y, static_build=True)
+        tool = self.tools[tool_int]
+        self.map.addZonePlayer(x, y, tool, static_build=True)
 
     def toolDown(self, x, y, tool):
         '''Takes int for tool, depending on engine's index'''
-        self.map.addZone(x, y, self.engineTools[tool])
+        self.map.addZoneBot(x, y, self.engineTools[tool])
 
         # called by map module
     def doSimTool(self, x, y, tool):
@@ -231,10 +225,13 @@ class MicropolisControl():
         tool = self.engineTools.index(tool)
         return self.doSimToolInt(x, y, tool)
 
+    def getTile(self, x, y):
+        x += self.MAP_XS
+        y += self.MAP_YS
+        return self.engine.getTile(x, y) & 1023
+
     def doSimToolInt(self, x, y, tool):
-        if self.parallel_gui:
-            self.pgui.sendline('m.doSimToolInt({}, {}, {})'.format(x, y, tool))
-            self.pgui.expect('>>>')
+
         return self.engine.toolDown(tool, x, y)
 
     def getResPop(self):
@@ -263,6 +260,13 @@ class MicropolisControl():
         self.doBotTool(x, y, tool, static_build)
         self.engine.simTick()
 #       gtk.mainiteration()
+
+    def printTileMap(self):
+        tileMap = np.zeros(shape=(self.MAP_X, self.MAP_Y))
+        for i in range(self.MAP_X):
+            for j in range(self.MAP_Y):
+                tileMap[i][j] = self.getTile(i, j)
+        print(tileMap)
  
     def close(self):
     #   self.engine.doReallyQuit()
