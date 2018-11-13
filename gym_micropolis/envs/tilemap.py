@@ -97,7 +97,8 @@ class TileMap(object):
                 'Land': 1, 
                 'Forest': 1,
                 'Church': 3,
-                'Hospital': 3
+                'Hospital': 3,
+                'Fire': 1
                }
         # if this feature, then another
         link_features = {
@@ -112,8 +113,20 @@ class TileMap(object):
                 "Bridge": ["Road", "Water"],
                 "RoadRail": ["Road", "Rail"],
                 "WaterWire": ["Water", "Wire"],
-                "Radar": ["Net", "Airport"]
+                "Radar": ["Net", "Airport"],
+                "RailBridge": ["Rail", "Water"]
                 }
+        # a dictionary of zone A to zones B which A cannot overwrite
+        zone_compat = {}
+        for k in composite_zones:
+            l = composite_zones[k]
+            for c in l:
+                if c in zone_compat:
+                    zone_compat[c] += [zone for zone in l if zone not in zone_compat[c]]
+                else:
+                    zone_compat[c] = l
+        self.zone_compat = zone_compat
+        print(zone_compat)
         self.zones = list(self.zoneSize.keys()) + list(composite_zones.keys())
         for c in composite_zones.keys():
             self.zoneSize[c] = self.zoneSize[composite_zones[c][0]]
@@ -192,46 +205,52 @@ class TileMap(object):
         zone = tool
         if zone == 'Clear': 
             zone = 'Land'
-        zone_size = self.zoneSize[zone]
-        self.clearPatch(x, y, zone_size)
+        self.clearPatch(x, y, zone, static_build=static_build)
         result = self.micro.doSimTool(x, y, tool)
         if result == 1:
             self.addZone(x, y, static_build)
 
 
-    def clearPatch(self, x, y, zone_size):
+    def clearPatch(self, x, y, zone, static_build=False):
+        old_zone = self.zones[self.zoneMap[-1][x][y]]
+        if zone in self.zone_compat and old_zone in self.zone_compat[zone]:
+            return # do not prevent composite build
+        zone_size = self.zoneSize[zone]
         if zone_size == 1:
-            old_zone = self.zones[self.zoneMap[-1,x,y]]
-            old_zone_size = self.zoneSize[old_zone]
-            if old_zone_size == 1:
-                return # could be a composite build
-            self.clearTile(x, y)
-        x0, x1 = max(x-1, 0), min(x-1+zone_size, self.MAP_X)
-        y0, y1 = max(y-1, 0), min(y-1+zone_size, self.MAP_Y)
-        for i in range(x0, x1):
-            for j in range(y0, y1):
-                self.clearTile(i, j)
+            self.clearTile(x, y, static_build=static_build)
+            return
+        else:
+            x0, x1 = max(x-1, 0), min(x-1+zone_size, self.MAP_X)
+            y0, y1 = max(y-1, 0), min(y-1+zone_size, self.MAP_Y)
+            for i in range(x0, x1):
+                for j in range(y0, y1):
+                    if static_build == False and self.static_builds[0][i][j] == 1:
+                        return
+                    self.clearTile(i, j, static_build=static_build)
 
 
-    def clearTile(self, x, y):
+    def clearTile(self, x, y, static_build=False):
         ''' This ultimately calls itself until the tile is clear'''
         old_zone = self.zoneMap[-1][x][y]
-        if old_zone in ['Land', 'Water']:
+        if old_zone in ['Land']:
             return
         cnt = self.centers[x][y]
-        result = self.micro.doBulldoze(cnt[0], cnt[1])
-        if old_zone in ['Land', 'Water']:
-            return
         if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
+           return
+        result = self.micro.doSimTool(cnt[0], cnt[1], 'Clear')
+        #assert self.static_builds[0][x][y] == self.static_builds[0][cnt[0]][cnt[1]]
+        #assert self.centers[x][y] == self.centers[cnt[0]][cnt[1]]
+        if self.static_builds[0][x][y] == 1 and static_build == False:
             return
         self.removeZone(cnt[0], cnt[1])
 
 
     def removeZone(self, x, y):
+       #print("CLEAR ", x, y)
         old_zone = self.zones[self.zoneMap[-1][x][y]]
         size = self.zoneSize[old_zone]
         if size == 1:
-            self.updateTile(x, y)
+            self.updateTile(x, y, static_build=False)
             return
         if size == 5:
             x -= 1
@@ -240,10 +259,10 @@ class TileMap(object):
         x1, y1 = min(x-1+size, self.MAP_X,), min(y-1+size, self.MAP_Y)
         for i in range(x0, x1):
             for j in range(y0, y1):
-                self.updateTile(i, j)
+                self.updateTile(i, j, static_build = False)
 
 
-    def addZone(self, x, y, static_build=False, build=True):
+    def addZone(self, x, y, static_build=False):
         ''' Assume the bot has succeeded in its build (so we can lay the centers) '''
         tile_int = self.micro.getTile(x, y)
         zone = zoneFromInt(tile_int)
@@ -262,22 +281,30 @@ class TileMap(object):
                 for j in range(y0, y1):
                     self.updateTile(i, j, zone, center, static_build)
 
-    def updateTile(self, x, y, zone=None, center=None, static_build=False):
-       if zone is None:
-           tile_int = self.micro.getTile(x, y)
-           zone = zoneFromInt(tile_int)
-           if self.zoneSize[zone] != 1:
-               center = self.centers[x][y]
-           center = (x, y)
+    def updateTile(self, x, y, zone=None, center=None, static_build=None):
+        ''' static_build should be None when simply updating from map,
+        True when building, and False when deleting '''
+        if zone is None:
+            tile_int = self.micro.getTile(x, y)
+            zone = zoneFromInt(tile_int)
+            if self.zoneSize[zone] != 1:
+                center = self.centers[x][y]
+            else:
+                center = (x, y)
+            if static_build == False:
+                self.static_builds[0][x][y] = 0
       #print(zone, self.micro.getTile(x, y), x, y)
-       else:
-           assert zone == zoneFromInt(self.micro.getTile(x, y))
-       zone_col = self.zoneCols[zone]
-       self.zoneMap[:, x:x+1, y:y+1] = zone_col
-       self.centers[x][y] = center
-       if static_build:
-           if zone not in ['Land', 'Rubble', 'Water']:
-               self.static_builds[0][x][y] = 1       
+        else: # then we are adding or deleting a zone
+           #assert zone == zoneFromInt(self.micro.getTile(x, y))
+            if static_build and zone not in ['Land', 'Rubble', 'Water']:
+                self.static_builds[0][x][y] = 1
+            else:
+                self.static_builds[0][x][y] = 0
+        zone_col = self.zoneCols[zone]
+        self.zoneMap[:, x:x+1, y:y+1] = zone_col
+        self.centers[x][y] = center
+
+
     
 
 

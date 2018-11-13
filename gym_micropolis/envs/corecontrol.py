@@ -135,9 +135,10 @@ class MicropolisControl():
     def newMap(self):
         self.engine.generateMap()
         self.updateMap()
-       #self.engine.clearMap()
-       #self.map.setEmpty()
 
+    def clearMap(self):
+        self.engine.clearMap()
+        self.updateMap()
 
     def updateMap(self):
         for i in range(self.MAP_X):
@@ -198,9 +199,16 @@ class MicropolisControl():
     def doBulldoze(self, x, y):
         return self.doSimTool(x,y,'Clear')
 
+    def doLandOver(self, x, y):
+        ''' a glitchy replacement to doBulldoze (layered buildings
+        - to verify in terms of population effect, possibly have to integrate
+        into bot's internal map, OR we make it's network architecture recurrent,
+        and entrust it with the layering)
+        '''
+
     def doBotTool(self, x, y, tool, static_build=False):
         '''Takes string for tool'''
-        return self.map.addZoneBot(x + self.PADDING, y + self.PADDING, tool, static_build) 
+        return self.map.addZoneBot(x + self.PADDING, y + self.PADDING, tool, static_build=static_build) 
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''

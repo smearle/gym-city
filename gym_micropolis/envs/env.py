@@ -36,7 +36,10 @@ class MicropolisEnv(core.Env):
         np.random.seed(seed)
         return [seed1, seed2]
 
-    def setMapSize(self, size, print_map=False, PADDING=0, static_builds=True, parallel_gui=False, render_gui=False):
+    def setMapSize(self, size, print_map=False, PADDING=0, static_builds=True, 
+            parallel_gui=False, render_gui=False,
+            empty_start=True):
+        self.empty_start = empty_start
         if type(size) == int:
             self.MAP_X = size
             self.MAP_Y = size
@@ -116,8 +119,7 @@ class MicropolisEnv(core.Env):
         self.micro.close()
 
     def randomStaticStart(self):
-        '''Cannot overwrite itself'''
-        num_static = 50
+        num_static = 100
         lst_epi = 500
 #       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)   
 #       num_static = max(0, max_static)
@@ -125,6 +127,10 @@ class MicropolisEnv(core.Env):
         if num_static > 0:
             num_static = self.np_random.randint(0, num_static + 1)
         for i in range(num_static):
+            if i % 2 == 0:
+                static_build = True
+            else:
+                static_build = False
             self.step(self.action_space.sample(), static_build=True)
 
     def randomStart(self):
@@ -139,11 +145,13 @@ class MicropolisEnv(core.Env):
 
 
     def reset(self):
-        self.micro.newMap()
-        self.micro.updateMap()
+        if self.empty_start:
+            self.micro.clearMap()
+        else:
+            self.micro.newMap()
         self.num_step = 0
-#       self.randomStaticStart()
-#       self.micro.engine.simTick()
+       #self.randomStaticStart()
+        self.micro.engine.simTick()
         self.micro.setFunds(self.initFunds)
        #curr_funds = self.micro.getFunds()
         curr_pop = self.getPop()
@@ -169,8 +177,8 @@ class MicropolisEnv(core.Env):
         return state
 
     def getPop(self):
-        curr_pop = self.micro.getResPop() / 4 + \
-                   8 * self.micro.getComPop() + \
+        curr_pop = 0.2 *  self.micro.getResPop() + \
+                   12 * self.micro.getComPop() + \
                    4 * self.micro.getIndPop()
         return curr_pop
 
@@ -195,7 +203,7 @@ class MicropolisEnv(core.Env):
             self.micro.render()
         return (self.state, reward, terminal, {})
 
-    def printMap(self, static_builds=False):
+    def printMap(self, static_builds=True):
             if static_builds:
                 static_map = self.micro.map.static_builds
             else:
@@ -204,6 +212,7 @@ class MicropolisEnv(core.Env):
             zone_map = self.micro.map.zoneMap[-1]
             zone_map = np.array_repr(zone_map).replace(',  ','  ').replace('],\n', ']\n').replace(',\n', ',').replace(', ', ' ').replace('        ',' ').replace('         ','  ')
             print('{}\npopulation: {}, traffic: {}, episode: {}, step: {} \n{}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, static_map))
+           #print(self.micro.map.centers)
 
 
     

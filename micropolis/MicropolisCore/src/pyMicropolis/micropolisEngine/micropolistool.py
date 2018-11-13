@@ -64,7 +64,6 @@
 # Micropolis Tool
 # Don Hopkins
 
-
 ########################################################################
 # Import Modules
 
@@ -72,6 +71,8 @@
 from . import micropolisengine
 from pyMicropolis.tileEngine import tiletool
 
+# to allow calling python from c++
+# import cb
 
 ########################################################################
 
@@ -127,6 +128,15 @@ class MicropolisTool(tiletool.TileTool):
         # TODO: bot should register this
         self.lastX = x
         self.lastY = y
+
+    def toolDown(tool_int, x, y):
+        ''' called from c++'''
+        x, y, = int(x), int(y)
+        print("TOOL ", tool_int)
+
+#   o = cb.ObjWithPyCallback()
+#   o.setCallback(toolDown)
+#   o.call()
 
 
     def handleMouseUp(self, view, event):
