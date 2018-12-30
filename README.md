@@ -1,14 +1,7 @@
 # gym-micropolis
 An interface with micropolis for city-building agents, packaged as an OpenAI gym environment.
 
-
-The gifs below show excerpts of the work of a a3c-trained models consisting of 5 convolutional lstms followed by fully-connected layers. At each step, the agents are rewarded by the change in total population from the last.
-
-![14x14linAC population reward](https://github.com/smearle/gym-micropolis/blob/master/a3c/demo/14x14linAC.gif)
-*14x14 map*
-
-![10x10linAC population reward](https://github.com/smearle/gym-micropolis/blob/master/a3c/demo/10x10linAC.gif)
-*10x10 map*
+We can render a training agent in real time and interact with its gui. An experimental hack makes builds taken by the player during training appear to the agent as samples from its own action probability distribution, so that it backpropogates over its own weights as a result of our actions, allowing us to expose the agent to handpicked behaviours so that it might learn from them, or, as is more often the case, so that they may violently disrupt its training.
 
 # Installation
 
