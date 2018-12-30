@@ -34,6 +34,7 @@ http://www.PieMenu.com
 
 
 from gi.repository import Gtk as gtk
+from gi.repository import Gdk as gdk
 import cairo
 import pango
 import math
@@ -1533,20 +1534,20 @@ class PieMenu:
         d.grab_add()
         d.grab_focus()
 
-        #print "W", self.window
+        #print "W", self.get_window()
 
         print("POINTER_GRAB")
-        gtk.gdk.pointer_grab(
-            d.window,
+        gdk.pointer_grab(
+            d.get_window(),
             True,
-            gtk.gdk.BUTTON_PRESS_MASK |
-            gtk.gdk.BUTTON_RELEASE_MASK |
-            gtk.gdk.ENTER_NOTIFY_MASK |
-            gtk.gdk.LEAVE_NOTIFY_MASK |
-            gtk.gdk.POINTER_MOTION_MASK)
+            gdk.BUTTON_PRESS_MASK |
+            gdk.BUTTON_RELEASE_MASK |
+            gdk.ENTER_NOTIFY_MASK |
+            gdk.LEAVE_NOTIFY_MASK |
+            gdk.POINTER_MOTION_MASK)
 
-        gtk.gdk.keyboard_grab(
-            d.window,
+        gdk.keyboard_grab(
+            d.get_window()
             owner_events=True)
 
         self.handlePopUp()
@@ -1559,7 +1560,7 @@ class PieMenu:
         self.d.grab_remove()
 
         print("POINTER_UNGRAB")
-        gtk.gdk.pointer_ungrab(gdk.CURRENT_TIME)
+        gdk.pointer_ungrab(gdk.CURRENT_TIME)
 
         self.hide()
        
@@ -1586,7 +1587,7 @@ class PieMenu:
 
     def draw(self, widget, event):
 
-        context = widget.window.cairo_create()
+        context = widget.get_window().cairo_create()
         pcontext = widget.create_pango_context()
         playout = pango.Layout(pcontext)
 

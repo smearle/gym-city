@@ -1,0 +1,9 @@
+The critic shouldn't observe the static build layer
+	- pro: will encourage actor to mimic those states (because it will not learn to attribute value to certain configurations conditional on their being a static build or not: so if only the human player has built roads next to powered residential zones, leading to bursts in population, this looks the same to the critic as if the actor had caused these configurations)
+	- con(?): if the game were competitive ion the sense of a geographically partitioned population, this breaks down - since it can't tell whose population is whose.
+
+Can we make the static build layer invisible to the actor as well?
+	- No, what if it really wanted to delete an antagonistic static build? It would learn to give up on such an obstruction, even if it were its own, perhaps chance, mistake --> but assuming it were *chance*, it could learn to avoid the initial obstruction... still this seems to dilute the agent's problem space, open the way for faulty correlations.
+
+What if the agent correlates its own actions to the states brought on by the player (not itself)? 
+	--> s0 a0 r1 s1 (pi...) s1p a1 s2... - are we not currently missing s1 here, substituting s1p?

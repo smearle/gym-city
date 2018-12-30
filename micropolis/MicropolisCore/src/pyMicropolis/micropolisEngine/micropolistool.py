@@ -120,11 +120,14 @@ class MicropolisTool(tiletool.TileTool):
 
     def handleMouseDrag(self, view, event):
 
+
         x, y = view.getEventXY(event)
         x = int(x)
         y = int(y)
-        #print "DRAG", self.lastX, self.lastY, x, y, "index", self.toolIndex, view.engine.toolDrag
-        view.engine.toolDrag(self.toolIndex, self.lastX, self.lastY, x, y)
+        bot = view.engine.generic_engine.builderBot
+        if bot is None:
+            #print "DRAG", self.lastX, self.lastY, x, y, "index", self.toolIndex, view.engine.toolDrag
+            view.engine.toolDrag(self.toolIndex, self.lastX, self.lastY, x, y)
         # TODO: bot should register this
         self.lastX = x
         self.lastY = y

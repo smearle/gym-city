@@ -70,6 +70,7 @@
 
 from gi.repository import Gtk as gtk
 from gi.repository import GObject as gobject
+from gi.repository import Gdk as gdk
 import cairo
 import math
 import array
@@ -217,7 +218,8 @@ class TileDrawingArea(gtk.DrawingArea):
             gdk.EventMask.KEY_PRESS_MASK |
             gdk.EventMask.KEY_RELEASE_MASK |
             gdk.EventMask.PROXIMITY_IN_MASK |
-            gdk.EventMask.PROXIMITY_OUT_MASK)
+            gdk.EventMask.PROXIMITY_OUT_MASK |
+            gdk.EventMask.SCROLL_MASK)
 
         self.connect('draw', self.handleExpose)
         self.connect('enter_notify_event', self.handleEnterNotify)
@@ -335,7 +337,7 @@ class TileDrawingArea(gtk.DrawingArea):
 
         self.scale = scale
 
-        ctxWindow = self.get_window.cairo_create()
+        ctxWindow = self.get_window().cairo_create()
         self.loadGraphics(ctxWindow, True)
 
         self.updateView()
@@ -1306,9 +1308,9 @@ class TileDrawingArea(gtk.DrawingArea):
 
         direction = event.direction
 
-        if direction == gtk.gdk.SCROLL_UP:
+        if direction == gdk.ScrollDirection.UP:
             self.changeScale(self.scale * self.scrollWheelZoomScale)
-        elif direction == gtk.gdk.SCROLL_DOWN:
+        elif direction == gdk.ScrollDirection.DOWN:
             self.changeScale(self.scale / self.scrollWheelZoomScale)
 
 

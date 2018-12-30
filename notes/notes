@@ -1,0 +1,10 @@
+- for now: initialize tilemap with padding, corecontrol pads bot actions itself 
+
+- is there any point at which continuous strips of road become worthwhile? Or will the agent be able to effectively maximize population without roads?
+	- increase difficulty level
+	- limit funds (and terminate, negatively reward when funds are depleted)
+		- start off with few enough funds that rushing directly to the optimal city layout is not feasible, so that the agent has to grow its funds (without explicit reward to do so).
+	- try not to explicitly reward for roads
+
+1) get success with current architecture on largest possible map size
+2) tweak and compare architectures

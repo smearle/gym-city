@@ -127,7 +127,8 @@ class MicropolisView(gtk.DrawingArea):
             gdk.EventMask.POINTER_MOTION_HINT_MASK |
             gdk.EventMask.BUTTON_MOTION_MASK |
             gdk.EventMask.BUTTON_PRESS_MASK |
-            gdk.EventMask.BUTTON_RELEASE_MASK)
+            gdk.EventMask.BUTTON_RELEASE_MASK |
+            gdk.EventMask.SCROLL_MASK)
 
         self.connect('draw', self.handleExpose)
         self.connect('enter_notify_event', self.handleEnterNotify)
@@ -282,7 +283,7 @@ class MicropolisView(gtk.DrawingArea):
 
     def handleButtonPress(self, widget, event):
 
-        #print "handleButtonPress", self, event, event.x, event.y
+        print("handleButtonPress", self, event, event.x, event.y)
 
         if not self.clickable:
             return
@@ -311,7 +312,7 @@ class MicropolisView(gtk.DrawingArea):
 
         direction = event.direction
 
-        #print "handleMouseScroll", direction
+        print("handleMouseScroll", direction)
 
 
     def pointInRect(self, x, y, rect):

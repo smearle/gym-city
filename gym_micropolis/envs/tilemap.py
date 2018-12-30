@@ -116,6 +116,7 @@ class TileMap(object):
                 "Radar": ["Net", "Airport"],
                 "RailBridge": ["Rail", "Water"]
                 }
+        self.composite_zones = composite_zones
         # a dictionary of zone A to zones B which A cannot overwrite
         zone_compat = {}
         for k in composite_zones:
@@ -136,6 +137,8 @@ class TileMap(object):
         for z in range(self.num_zones):
             self.zoneInts[self.zones[z]] = z
         self.clear_int = self.zoneInts['Land']
+
+
 
 
         def makeZoneSquare(width, zone_int, feature_ints=None):
@@ -172,21 +175,147 @@ class TileMap(object):
                 self.zoneSquares[z] = makeZoneSquare(self.zoneSize[z], zone_int, feature_ints)
         # first dimension is binary feature-vector - followed by zone int
         self.zoneMap = np.zeros((self.num_features + 1,self.MAP_X, self.MAP_Y), dtype=np.uint8)
-        self.static_builds = None
+        self.static_builds = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
+        self.road_int = self.zoneInts['Road']
+        self.road_networks = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
         self.setEmpty()
         self.micro = micro
         self.zoneCols = {}
         for zone in self.zones:
             self.zoneCols[zone] = self.zoneSquares[zone][:, 0:1, 0:1]
+        self.road_labels = list(range(1, int(self.MAP_X * self.MAP_Y / 2) + 1)) # for potential one-hot encoding, for ex.,
+        self.num_road_nets = 0 
+        self.road_net_sizes = {} # using unique road net numbers as keys
+        self.num_roads = 0
+        self.priority_road_net = None
+        # number of surrounding roads for road-tiles, updated on road bld/del
+       #self.road_crowding_map = np.zeros(0, self.MAP_X, self.MAP_Y) 
 
 
-    def initStaticBuilds(self):
-        self.static_builds = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
+    def didRoadBuild(self, x, y):
+       #assert self.road_networks[0, x, y] == 0
+        x0, y0, x1, y1 = max(0, x-1), max(0, y-1), \
+            min(x+1, self.MAP_X-1), min(y+1, self.MAP_Y-1) # get adj. coords
+        self.road_networks[0, x, y] = 0
+        for xi, yi in [(x0, y), (x1, y), (x, y0), (x, y1)]:
+            if xi == x and yi == y:
+                pass
+            else:
+                if self.zoneMap[self.road_int][xi][yi] == 1:
+                    net_i = self.road_networks[0, xi, yi]
+                   #assert net_i != 0
+                    if net_i == 0:
+                        print(self.road_networks, x, y, self.road_net_sizes, print('road label is on map, but not in size dict'))
+                        raise Exception
+                    elif self.road_networks[0, x, y] == 0: # set the build road to match a connecting piece
+                        self.road_networks[0, x, y] = net_i
+                        if net_i in self.road_net_sizes:
+                            self.road_net_sizes[net_i] += 1
+                        else:
+                            print(self.road_networks, x, y, old_net, 'road label is on map, but not in size dict')
+                            raise Exception
 
+                    elif self.road_networks[0, x, y] == net_i: # not a conflict
+                        pass
+                    else: # resolve conflict, assimilate net
+                        self.road_labels.append(net_i)
+                        self.road_net_sizes.pop(net_i)
+                        self.num_road_nets -= 1
+                        self.setRoadNet(xi, yi, self.road_networks[0, x, y]) # if we recurse back to (x, y),
+                        # setRoadNet will recognize it as friendly and skip
+
+        net_n = self.road_networks[0, x, y]
+        if net_n == 0: # this is a new net
+            net_n = self.road_labels.pop()
+            self.road_networks[0, x, y] = net_n
+            self.num_road_nets += 1
+            self.road_net_sizes[net_n] = 1
+           #assert self.road_net_sizes[net_n] == 1
+        else:
+           #assert self.road_net_sizes[net_n] > 1
+           pass
+
+
+    def setRoadNet(self, x, y, net_n):
+        # switch index of entire road net
+        old_net = self.road_networks[0, x, y]
+        self.road_networks[0, x, y] = net_n
+        self.road_net_sizes[net_n] += 1
+        x0, y0, x1, y1 = max(0, x-1), max(0, y-1), min(x+1, self.MAP_X-1), min(y+1, self.MAP_Y-1) # get adj. coords
+        for xi, yi in [(x0, y), (x1, y), (x, y0), (x, y1)]:
+            if xi == x and yi == y:
+                pass
+            elif self.zoneMap[self.road_int][xi][yi] == 1:
+                net_i = self.road_networks[0, xi, yi]
+                if net_i == 0: # in the process of deleting, we have recursed bacck to the piece being deleted
+                    pass
+                elif net_i == net_n:
+                   #assert net_i == net_n
+                   pass
+                elif net_i == old_net:
+                    self.setRoadNet(xi, yi, net_n)
+                else:
+                    print("found unamissilated net piece while setting it to a new value", self.road_networks, x, y, old_net, net_n, net_i)
+                    raise Exception
+
+
+
+    def didRoadDelete(self, x, y):
+        old_net = self.road_networks[0, x, y]
+       #assert self.road_net_sizes[old_net] > 0
+        self.road_networks[0, x, y] = 0
+        if old_net in self.road_net_sizes:
+            self.road_net_sizes[old_net] -= 1
+        else:
+            print(self.road_networks, self.road_net_sizes, x, y, old_net, "road label not in size dict")
+        x0, y0, x1, y1 = max(0, x-1), max(0, y-1), min(x+1, self.MAP_X-1), min(y+1, self.MAP_Y-1) # get adj. coords
+        cnx = 0
+        cnx_0 = None
+        for xi, yi in [(x0, y), (x1, y), (x, y0), (x, y1)]:
+            if xi == x and yi == y:
+                pass
+            elif self.zoneMap[self.road_int][xi][yi] == 1:
+               #assert self.road_networks[0, xi, yi] != 0
+                cnx += 1
+                if self.road_networks[0, xi, yi] != old_net:
+                   #assert cnx > 1
+                    pass # we have flipped this cnxn while visiting another
+                else:
+                    # flip all the connected subnets until none belongs to 
+                    # the former network
+                    new_net = self.road_labels.pop()
+                    self.num_road_nets += 1
+                    self.road_net_sizes[new_net] = 0
+                    self.setRoadNet(xi, yi, new_net)
+        self.road_labels.append(old_net)
+        self.road_net_sizes.pop(old_net)
+        self.num_road_nets -= 1
+       #try:
+       #    assert self.road_net_sizes[old_net] == 0
+       #except AssertionError:
+       #    print(self.road_networks, x, y, old_net, self.road_net_sizes)
+       #    raise Exception("trying to pop a non-zero size net from the size dict")
+        if self.priority_road_net == old_net:
+            if self.num_roads > 0:
+                self.priority_road_net = next(iter(self.road_net_sizes))
+            else:
+                self.priority_road_net = None
+
+    def clearBotBuilds(self):
+        for i in range(self.MAP_X):
+            for j in range(self.MAP_Y):
+                if self.static_builds[0, i, j] == 0:
+                    self.addZoneBot(i, j, 'Land',  static_build=False)
 
     def setEmpty(self):
-        if self.static_builds is not None:
-            self.static_builds.fill(0)
+        self.num_roads = 0
+        self.static_builds.fill(0)
+        self.road_networks.fill(0)
+        self.road_labels = list(range(1, int(self.MAP_X * self.MAP_Y / 2) + 1))
+        self.road_net_sizes = {}
+        self.priotiry_net_size = 0
+        self.priority_road_net = None
+        self.num_road_nets = 0
         self.centers.fill(None)
         self.zoneMap.fill(0)
         self.zoneMap[-1,:,:] = self.zoneInts['Land']
@@ -200,33 +329,44 @@ class TileMap(object):
 
     def addZoneBot(self, x, y, tool, static_build=False):
        #print("BUILD: ", tool, x, y)
-        if not static_build and self.static_builds[0][x][y] == 1:
-            return
         zone = tool
+        old_zone = self.zones[self.zoneMap[-1][x][y]]
+        if  (zone in self.zone_compat and (old_zone in self.zone_compat[zone] or (old_zone in self.composite_zones and zone in self.composite_zones[old_zone]))) and zone != 'Water':
+            if self.static_builds[0][x][y] == 1:
+                static_build = True
+        if (not static_build) and self.static_builds[0][x][y] == 1:
+
+            return
         if zone == 'Clear': 
             zone = 'Land'
-        self.clearPatch(x, y, zone, static_build=static_build)
-        result = self.micro.doSimTool(x, y, tool)
+
+        result = self.clearPatch(x, y, zone, static_build=static_build)
         if result == 1:
-            self.addZone(x, y, static_build)
+            result = self.micro.doSimTool(x, y, tool)
+        if result == 1:
+            self.addZone(x, y, zone, static_build)
+
+
 
 
     def clearPatch(self, x, y, zone, static_build=False):
         old_zone = self.zones[self.zoneMap[-1][x][y]]
-        if zone in self.zone_compat and old_zone in self.zone_compat[zone]:
-            return # do not prevent composite build
+        if zone in self.zone_compat and (old_zone in self.zone_compat[zone]):
+            return 1 # do not prevent composite build
         zone_size = self.zoneSize[zone]
-        if zone_size == 1:
+        if zone_size == 1 and not ((static_build == False) and self.static_builds[0][x][y] == 1):
             self.clearTile(x, y, static_build=static_build)
-            return
+            return 1
         else:
             x0, x1 = max(x-1, 0), min(x-1+zone_size, self.MAP_X)
             y0, y1 = max(y-1, 0), min(y-1+zone_size, self.MAP_Y)
             for i in range(x0, x1):
                 for j in range(y0, y1):
-                    if static_build == False and self.static_builds[0][i][j] == 1:
-                        return
-                    self.clearTile(i, j, static_build=static_build)
+                    if self.static_builds[0][i][j] == 1:
+                        return 0
+                    else:
+                        self.clearTile(i, j, static_build=static_build)
+            return 1
 
 
     def clearTile(self, x, y, static_build=False):
@@ -235,13 +375,16 @@ class TileMap(object):
         if old_zone in ['Land']:
             return
         cnt = self.centers[x][y]
+        if cnt is None:
+            cnt = (x, y)
         if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
-           return
+            return
+        if self.static_builds[0][x][y] == 1 and static_build == False:
+            return
+
         result = self.micro.doSimTool(cnt[0], cnt[1], 'Clear')
         #assert self.static_builds[0][x][y] == self.static_builds[0][cnt[0]][cnt[1]]
         #assert self.centers[x][y] == self.centers[cnt[0]][cnt[1]]
-        if self.static_builds[0][x][y] == 1 and static_build == False:
-            return
         self.removeZone(cnt[0], cnt[1])
 
 
@@ -262,10 +405,14 @@ class TileMap(object):
                 self.updateTile(i, j, static_build = False)
 
 
-    def addZone(self, x, y, static_build=False):
+    def addZone(self, x, y, zone, static_build=False):
         ''' Assume the bot has succeeded in its build (so we can lay the centers) '''
+        trg_zone = zone
         tile_int = self.micro.getTile(x, y)
-        zone = zoneFromInt(tile_int)
+        map_zone = zoneFromInt(tile_int)
+       #if map_zone != trg_zone and not (map_zone in self.zone_compat and trg_zone in self.zone_compat[map_zone]):
+       #    static_build = False
+        zone = map_zone
         zone_size = self.zoneSize[zone]
         if zone_size == 5:
             center = (x+1, y+1)
@@ -284,6 +431,7 @@ class TileMap(object):
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
         ''' static_build should be None when simply updating from map,
         True when building, and False when deleting '''
+        was_road = self.zoneMap[self.road_int][x][y] == 1
         if zone is None:
             tile_int = self.micro.getTile(x, y)
             zone = zoneFromInt(tile_int)
@@ -299,13 +447,23 @@ class TileMap(object):
             if static_build and zone not in ['Land', 'Rubble', 'Water']:
                 self.static_builds[0][x][y] = 1
             else:
-                self.static_builds[0][x][y] = 0
+               self.static_builds[0][x][y] = 0
         zone_col = self.zoneCols[zone]
         self.zoneMap[:, x:x+1, y:y+1] = zone_col
         self.centers[x][y] = center
+        is_road = self.zoneMap[self.road_int][x][y] == 1
+        net = None
+        if was_road and not is_road:
+            self.num_roads -= 1
+            self.didRoadDelete(x, y)
+        elif not was_road and is_road:
+            self.didRoadBuild(x, y)
+            self.num_roads += 1
+            if self.priority_road_net is None:
+                self.priority_road_net = next(iter(self.road_net_sizes))
 
 
-    
+
 
 
     def getMapState(self):

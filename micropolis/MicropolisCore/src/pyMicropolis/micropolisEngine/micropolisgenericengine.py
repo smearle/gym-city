@@ -122,6 +122,8 @@ class MicropolisGenericEngine(micropolisengine.Micropolis):
             running=False,
             timeDelay=10,
             bot=None,
+            rank=None,
+            root_gtk=None,
             *args,
             **kwargs):
         #print "MicropolisGenericEngine.__init__", self, "calling micropolisengine.Micropolis.__init__", micropolisengine.Micropolis.__init__, args, kwargs
@@ -129,6 +131,7 @@ class MicropolisGenericEngine(micropolisengine.Micropolis):
         micropolisengine.Micropolis.__init__(self, *args, **kwargs)
 
         self.builderBot = bot
+        self.rank = rank
         self.resourceDir = 'res'
         self.running = running
         self.timeDelay = timeDelay

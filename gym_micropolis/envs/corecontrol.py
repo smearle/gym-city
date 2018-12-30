@@ -25,6 +25,7 @@ CURR_DIR = os.getcwd()
 
 os.chdir(MICROPOLISCORE_DIR)   
 
+#import micropolis
 from pyMicropolis.gtkFrontend import main
 
 
@@ -32,9 +33,9 @@ os.chdir(CURR_DIR)
 
 class MicropolisControl():
 
-    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False):
+    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False, rank=None):
         self.SHOW_GUI=False
-        engine, win1 = main.train(bot=self)
+        engine, win1 = main.train(bot=self, rank=rank)
         os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
@@ -74,7 +75,7 @@ class MicropolisControl():
              # 'Query',
                 'Clear',
                'Wire',
-               'Land',
+              #'Land',
                'Rail',
                'Road',
                 'Stadium',
@@ -97,15 +98,17 @@ class MicropolisControl():
         # allows building on rubble and forest
         self.engine.autoBulldoze = True
         # for bots 
+        self.land_value = 0
         win1.playCity()
         self.engine.setFunds(1000000)
         engine.setSpeed(3)
-        engine.setPasses(500)
+        engine.setPasses(100)
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0
 #       engine.clearMap()
         self.win1=win1
+        self.player_builds = []
 
     def layGrid(self, w, h):
 
@@ -137,8 +140,12 @@ class MicropolisControl():
         self.updateMap()
 
     def clearMap(self):
+        self.map.setEmpty()
         self.engine.clearMap()
         self.updateMap()
+
+    def clearBotBuilds(self):
+        self.map.clearBotBuilds()
 
     def updateMap(self):
         for i in range(self.MAP_X):
@@ -149,31 +156,29 @@ class MicropolisControl():
                 # or else we must find center
                 self.map.updateTile(i, j, zone, (i,j))
 
-    def getPopDensityMap(self):
-        pop_density_map = np.zeros((1, self.MAP_X, self.MAP_Y))
-        for i in range (self.MAP_X):
-            for j in range(self.MAP_Y):
-                im = i + self.MAP_XS
-                jm = j + self.MAP_YS
-                im -= 2
-                jm -= 2
-                pop_density_map[0][i][j] = self.engine.getPopulationDensity(im, jm)
-        return pop_density_map
 
-    def getTrafficDensityMap(self):
-        self.last_total_traffic = self.total_traffic
+
+    def getDensityMaps(self):
+       #self.last_pollution = self.pollution
         self.total_traffic = 0
-        traffic_density_map = np.zeros((1, self.MAP_X, self.MAP_Y))
+        self.land_value = 0
+        density_maps = np.zeros((3, self.MAP_X, self.MAP_Y))
         for i in range (self.MAP_X):
             for j in range(self.MAP_Y):
-                im = i + self.MAP_XS
-                jm = j + self.MAP_YS
-                im -= 2
-                jm -= 4
-                xy_density = self.engine.getTrafficDensity(im, jm)
-                self.total_traffic += xy_density
-                traffic_density_map[0][i][j] = self.engine.getTrafficDensity(im, jm)
-        return traffic_density_map
+                im = p_im = t_im = i + self.MAP_XS
+                jm = p_jm = t_jm = j + self.MAP_YS
+                t_im -= 2
+                t_jm -= 4
+                t_xy_density = self.engine.getTrafficDensity(im, jm)
+                self.total_traffic += t_xy_density
+                density_maps[2][i][j] = self.engine.getTrafficDensity(t_im, t_jm)
+                p_im -= 2
+                p_jm -= 2
+                density_maps[1][i][j] = self.engine.getPopulationDensity(p_im, p_jm)
+                density_maps[0][i][j] = self.engine.getPowerGrid(im, jm)
+                self.land_value += self.engine.getLandValue(im, jm)
+
+        return density_maps
 
     def getPowerMap(self):
         power_map = np.zeros((1, self.MAP_X, self.MAP_Y))
@@ -181,7 +186,6 @@ class MicropolisControl():
             for j in range(self.MAP_Y):
                 im = i + self.MAP_XS
                 jm = j + self.MAP_YS
-                power_map[0][i][j] = self.engine.getPowerGrid(im, jm)
         return power_map
 
     def getFunds(self):
@@ -200,10 +204,7 @@ class MicropolisControl():
         return self.doSimTool(x,y,'Clear')
 
     def doLandOver(self, x, y):
-        ''' a glitchy replacement to doBulldoze (layered buildings
-        - to verify in terms of population effect, possibly have to integrate
-        into bot's internal map, OR we make it's network architecture recurrent,
-        and entrust it with the layering)
+        ''' a glitchy replacement to doBulldoze (layered buildings)
         '''
 
     def doBotTool(self, x, y, tool, static_build=False):
@@ -212,15 +213,16 @@ class MicropolisControl():
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''
-        return self.map.addZoneBot(x, y1tool) 
+        return self.map.addZoneBot(x, y, tool) 
 
     def playerToolDown(self, tool_int, x, y):
         if not x < self.MAP_X and y < self.MAP_Y:
             return
        #x += self.MAP_XS
        #y += self.MAP_YS
-        tool = self.tools[tool_int]
-        self.map.addZonePlayer(x, y, tool, static_build=True)
+       #tool = self.tools[tool_int]
+       #self.map.addZonePlayer(x, y, tool, static_build=True)
+        self.player_builds += [(tool_int, x, y)]
 
     def toolDown(self, x, y, tool):
         '''Takes int for tool, depending on engine's index'''
@@ -250,6 +252,7 @@ class MicropolisControl():
 
     def getIndPop(self):
         return self.engine.indPop
+
 
     def getTotPop(self):
         return self.engine.totalPop
