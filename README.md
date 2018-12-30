@@ -35,8 +35,10 @@ To use micropolis as a gym environment, install [gym](https://github.com/openai/
 To train an agent using ACKTR:
 
 ```
-python3 main.py --log-dir trained_models/acktr --save-dir trained_models/acktr --algo acktr --num-process 24 --map-width 20
+python3 main.py --log-dir trained_models/acktr --save-dir trained_models/acktr --algo acktr --model squeeze --num-process 24 --map-width 27 --render
 ```
+
+To visualize reward: ` python -m visdom.server`
 
 To run inference using the agent we have just trained:
 
