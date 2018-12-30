@@ -5,7 +5,7 @@ We can render a training agent in real time and interact with its gui. An experi
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
 
-The agent above has a sequential brain of convolutions on a 3D feaure map, where the dimensions corresponding to height and width in terms of game tiles are fixed. One 3x3 kernel convolution is repeated 20 times to allow input activations on opposite ends of the map to affect one another. Only the critic compresses this feature map at its output layer to predict the reward value of an observed map-state.
+The agent above has a sequential brain of convolutions on a 3D feaure map, where the dimensions corresponding to height and width in terms of game tiles are fixed. One 3x3 kernel convolution is repeated 20 times to allow input activations on opposite ends of the map to affect one another. Only the critic compresses this feature map at its output layer to predict the reward value of an observed map-state. 
 
 Currently I'm working on a model that uses repeated (de-)convolutions to compress and expand the feature map, combined with repeated convolutions on a fixed feature map, so that the agent might learn more abstract features of the map. 
 
@@ -35,8 +35,10 @@ To use micropolis as a gym environment, install [gym](https://github.com/openai/
 To train an agent using ACKTR:
 
 ```
-python3 main.py --log-dir trained_models/acktr --save-dir trained_models/acktr --algo acktr --num-process 24 --map-width 20
+python3 main.py --log-dir trained_models/acktr --save-dir trained_models/acktr --algo acktr --model squeeze --num-process 24 --map-width 27 --render
 ```
+
+To visualize reward: ` python -m visdom.server`
 
 To run inference using the agent we have just trained:
 
