@@ -256,30 +256,30 @@ class MicropolisBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20):
         super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
-        self.num_maps = 4 # how many different sizes
+        self.num_maps = 3 # how many different sizes
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
-            lambda x: nn.init.constant_(x, 0.1),
+            lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('relu'))
         linit_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
 
         self.conv_00 = init_(nn.Conv2d(num_inputs, 64, 1, 1, 0))
-        self.conv_0 = init_(nn.Conv2d(64, 64, 3, 2, 1))
+        self.conv_0 = init_(nn.Conv2d(64, 64, 3, 3, 0))
 
        #self.conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))
 
        #self.lin_0 = linit_(nn.Linear(1024, 1024))
 
 
-        self.act_convt = init_(nn.ConvTranspose2d(64 + 64, 64, 2, 2, 0))
+        self.act_convt = init_(nn.ConvTranspose2d(64 + 64, 64, 3, 3, 0))
         self.act_conv_0 = init_(nn.Conv2d(64 + 64, 64, 3, 1, 1))
         self.fixed_conv = init_(nn.Conv2d(64, 64, 3, 1, 1))
 
         self.val_cmprs = init_(nn.Conv2d(64 + 64, 64, 3, 1, 1))
-        self.val_conv = init_(nn.Conv2d(64, 64, 2, 2, 0))
+        self.val_conv = init_(nn.Conv2d(64, 64, 3, 3, 0))
         self.val_conv_0 = init_(nn.Conv2d(64, 64, 3, 1, 1))
 
         init_ = lambda m: init(m,
@@ -322,7 +322,7 @@ class MicropolisBase(NNBase):
             
         vals = F.relu(self.val_cmprs(acts))
 
-        for i in range(5):
+        for i in range(self.num_maps):
             vals = F.relu(self.val_conv(vals))
             vals = F.relu(self.val_conv_0(vals))
         vals = self.val_out(vals)
