@@ -230,8 +230,8 @@ class MicropolisEnv(core.Env):
             zone_variety += 1
         if indPop > 0:
             zone_variety += 1
-        zone_bonus = (zone_variety - 1) * curr_pop
-        curr_pop += zone_bonus
+       #zone_bonus = (zone_variety - 1) * curr_pop
+       #curr_pop += zone_bonus
 
        #curr_pop = np.log(resPop + 1) + np.log(comPop + 1) + np.log(indPop + 1)
         
