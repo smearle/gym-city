@@ -5,6 +5,12 @@ We can render a training agent in real time and interact with its gui. An experi
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
 
+The agent above has a sequential brain of convolutions on a 3D feaure map, where the dimensions corresponding to height and width in terms of game tiles are fixed. One 3x3 kernel convolution is repeated 20 times to allow input activations on opposite ends of the map to affect one another. Only the critic compresses this feature map at its output layer to predict the reward value of an observed map-state.
+
+Currently I'm working on a model that uses repeated (de-)convolutions to compress and expand the feature map, combined with repeated convolutions on a fixed feature map, so that the agent might learn more abstract features of the map. 
+
+I'm using acktr, but would like to develop and compare models using recurrent convolutions, which are helpful for establishing long-range dependencies not just over time, but also, like the recurrent convolutions mentioned above, over map-space.
+
 # Installation
 
 Clone this repository, then 
