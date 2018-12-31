@@ -35,7 +35,7 @@ To use micropolis as a gym environment, install [gym](https://github.com/openai/
 To train an agent using ACKTR:
 
 ```
-python3 main.py --log-dir trained_models/acktr --save-dir trained_models/acktr --algo acktr --model squeeze --num-process 24 --map-width 27 --render
+python3 main.py --log-dir trained_models/acktr --algo acktr --model squeeze --num-process 24 --map-width 27 --render
 ```
 
 To visualize reward: ` python -m visdom.server`
@@ -43,7 +43,7 @@ To visualize reward: ` python -m visdom.server`
 To run inference using the agent we have just trained:
 
 ```
-python3 enjoy.py --load-dir trained_models/acktr --map-width 20
+python3 enjoy.py --load-dir trained_models/acktr --map-width 27
 ```
 
 The neural architecture consists of a 3x3 convolution applied repeatedly to a fixed-size feature map - enacting a kind of neural game-of-life on the feature map.
