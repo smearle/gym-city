@@ -297,6 +297,7 @@ class MicropolisBase(NNBase):
         for i in range(self.num_maps):
             x  = F.relu(self.conv_0(x))
             x_cmps += [x]
+           #print(x.shape)
 
 
        #for i in range(5):
@@ -309,19 +310,20 @@ class MicropolisBase(NNBase):
        #x = x.view(*cmprs_shape)
 
 
+        for i in range(self.map_width):
+            x = F.relu(self.fixed_conv(x))
         acts = x
         for i in range(self.num_maps):
             x_i = x_cmps[self.num_maps-1-i]
             acts = torch.cat((acts, x_i), 1)
             acts = F.relu(self.act_convt(acts))
+           #print(acts.shape)
         acts = torch.cat((acts, x_0), 1)
         acts = F.relu(self.act_conv_0(acts))
-        for i in range(5):
-            acts = F.relu(self.fixed_conv(acts))
+
         acts = torch.cat((acts, x_0), 1)
             
         vals = F.relu(self.val_cmprs(acts))
-
         for i in range(self.num_maps):
             vals = F.relu(self.val_conv(vals))
             vals = F.relu(self.val_conv_0(vals))
