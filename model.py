@@ -204,10 +204,10 @@ class MicropolisBase_fixedmap(NNBase):
         super(MicropolisBase_fixedmap, self).__init__(recurrent, hidden_size, hidden_size)
 
         self.map_width = map_width
-        self.num_maps = int(math.log(self.map_width, 2))
+        self.num_maps = int(math.log(self.map_width, 3))
         init_ = lambda m: init(m,
             nn.init.dirac_,
-            lambda x: nn.init.constant_(x, 0.1),
+            lambda x: nn.init.constant_(x, 0.0),
             nn.init.calculate_gain('relu'))
 
 
@@ -220,8 +220,7 @@ class MicropolisBase_fixedmap(NNBase):
         self.conv_2 = nn.Conv2d(64, 64, 3, 1, 1)
         init_(self.conv_2)
         self.critic_compress = init_(nn.Conv2d(79, 64, 3, 1, 1))
-        self.critic_downsize = init_(nn.Conv2d(64, 64, 3, 2, 1))
-        self.critic_conv = init_(nn.Conv2d(64, 64, 3, 2, 1))
+        self.critic_downsize = init_(nn.Conv2d(64, 64, 3, 3, 0))
 
 
         init_ = lambda m: init(m,
@@ -229,7 +228,7 @@ class MicropolisBase_fixedmap(NNBase):
             lambda x: nn.init.constant_(x, 0))
 
         self.actor_compress = init_(nn.Conv2d(79, 19, 3, 1, 1))
-        self.critic_conv_1 = init_(nn.Conv2d(64, 1, 1, 1, 0))
+        self.critic_conv = init_(nn.Conv2d(64, 1, 1, 1, 0))
 #       self.critic_conv_2 = init_(nn.Conv2d(1, 1, 2, 1, 0)) # for 40x40 map
         self.train()
 
@@ -238,15 +237,14 @@ class MicropolisBase_fixedmap(NNBase):
         x = F.relu(self.conv_0(x))
         skip_input = F.relu(self.skip_compress(inputs))
         x = F.relu(self.conv_1(x))
-        for i in range(1):
+        for i in range(self.map_width):
            #print(self.conv_2.weight)
-            x = self.conv_2(x)
-            x = F.relu(x)
+            x = F.relu(self.conv_2(x))
         x = torch.cat((x, skip_input), 1)
         values = F.relu(self.critic_compress(x))
         for i in range(self.num_maps):
             values = F.relu(self.critic_downsize(values))
-        values = self.critic_conv_1(values)
+        values = self.critic_conv(values)
         values = values.view(values.size(0), -1)
         actions = self.actor_compress(x)
 
