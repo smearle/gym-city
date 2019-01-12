@@ -161,7 +161,7 @@ class MicropolisEnv(core.Env):
                 self.micro.clearBotBuilds()
             else:
                 self.micro.clearMap()
-        self.micro.newMap()
+       #self.micro.newMap()
         self.num_step = 0
        #self.randomStaticStart()
         self.micro.engine.simTick()
@@ -250,13 +250,14 @@ class MicropolisEnv(core.Env):
         self.curr_mayor_rating = self.getRating()
         self.state = self.getState()
         if not self.no_reward:
-            reward = self.curr_pop  + (self.micro.total_traffic / 100)
+            reward = self.curr_pop #+ (self.micro.total_traffic / 100)
             if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
                 max_net = 0
                 for n in  self.micro.map.road_net_sizes.values():
                     if n > max_net:
                         max_net = n
-                reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
+               #reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
+#           reward -= (self.micro.map.num_plants - 1) * 20
             self.curr_reward = reward - self.last_reward
             self.last_reward = reward
 

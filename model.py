@@ -204,7 +204,6 @@ class MicropolisBase_fixedmap(NNBase):
         super(MicropolisBase_fixedmap, self).__init__(recurrent, hidden_size, hidden_size)
 
         self.map_width = map_width
-        self.num_maps = int(math.log(self.map_width, 3))
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
@@ -256,8 +255,8 @@ class MicropolisBase(NNBase):
         super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.chunk_size = 3
         self.map_width = map_width
-       #self.num_maps = 3
-        self.num_maps = int(math.log(self.map_width, self.chunk_size)) # how many different sizes
+        self.num_maps = 3
+       #self.num_maps = int(math.log(self.map_width, self.chunk_size)) # how many different sizes
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
@@ -268,74 +267,81 @@ class MicropolisBase(NNBase):
             lambda x: nn.init.constant_(x, 0))
 
         self.cmp_in = init_(nn.Conv2d(num_inputs, 64, 1, 1, 0))
-        self.prj_life_in = init_(nn.Conv2d(64, 64, 3, 1, 1))
-        self.cmp_life_in = init_(nn.Conv2d(128, 64, 3, 1, 1))
-        self.shrink_life = init_(nn.Conv2d(64, 64, 3, 3, 0))
+        for i in range(self.num_maps):
+            setattr(self, 'prj_life_obs_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
+            setattr(self, 'cmp_life_obs_{}'.format(i), init_(nn.Conv2d(128, 64, 3, 1, 1)))
+       #self.shrink_life = init_(nn.Conv2d(64, 64, 3, 3, 0))
 
        #self.conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))
        #self.lin_0 = linit_(nn.Linear(1024, 1024))
 
-        self.expand_life = init_(nn.ConvTranspose2d(64 + 64, 64, 3, 3, 0))
-        self.cmp_pre_life_out = init_(nn.Conv2d(128, 64, 3, 1, 1))
-        self.prj_life_out = init_(nn.Conv2d(64, 64, 3, 1, 1))
-        self.cmp_life_out = init_(nn.Conv2d(128, 64, 3, 1, 1))
+        for i in range(self.num_maps):
+            setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 3, 0)))
+            setattr(self, 'expand_life_{}'.format(i), init_(nn.ConvTranspose2d(64 + 64, 64, 3, 3, 0)))
+            setattr(self, 'prj_life_act_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
+            setattr(self, 'cmp_life_act_{}'.format(i), init_(nn.Conv2d(128, 64, 3, 1, 1)))
+            setattr(self, 'cmp_life_val_in_{}'.format(i), init_(nn.Conv2d(128, 64, 3, 1, 1)))
+            setattr(self, 'dwn_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 3, 0)))
+            setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
 
         self.cmp_act = init_(nn.Conv2d(128, 64, 3, 1, 1))
 
-        self.shrink_val = init_(nn.Conv2d(64, 64, 3, 3, 0))
-        self.prj_life_val = init_(nn.Conv2d(64, 64, 3, 1, 1))
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1))
 
         self.act_tomap = init_(nn.Conv2d(64, 19, 5, 1, 2))
-        self.cmp_val_out = init_(nn.Conv2d(64, 1, 5, 1, 2))
+        self.cmp_val_out = init_(nn.Conv2d(64, 1, 1, 1, 0))
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
         x = inputs
-        x = x_0 = F.relu(self.cmp_in(x))
-        for i in range(self.chunk_size):
-            x = F.relu(self.prj_life_in(x))
-        x = torch.cat((x, x_0), 1)
-        x = self.cmp_life_in(x)
-        x_cmps = []
-        for i in range(self.num_maps):
-            x = x_i = self.shrink_life(x)
-            for c in range(self.chunk_size * (i+ 2)):
-                x = F.relu(self.prj_life_in(x))
-            x = torch.cat((x, x_i), 1)
-            x = self.cmp_life_in(x)
-            x_cmps += [x]
-            #print(x.shape)
+        x = F.relu(self.cmp_in(x))
+        x_obs = [] 
+        for i in range(self.num_maps): # shrink if not first, then run life sim
+            if i != 0:
+                shrink_life = getattr(self, 'dwn_{}'.format(i))
+                x = F.relu(shrink_life(x))
+            x_0 = x
+            if i > -1:
+                prj_life_obs = getattr(self, 'prj_life_obs_{}'.format(i))
+                for c in range(3):
+                    x = F.relu(prj_life_obs(x))
+                x = torch.cat((x, x_0), 1)
+                cmp_life_obs = getattr(self,'cmp_life_obs_{}'.format(i))
+                x = F.relu(cmp_life_obs(x))
+            x_obs += [x]
 
-       #cmprs_shape = x.shape
-       #x = x.view(x.size(0), -1)
-       #x = torch.tanh(self.lin_0(x))
-       #x = x.view(*cmprs_shape)
 
-      # for i in range(self.chunk_size):
-      #     x = F.relu(self.fixed_cmp_conv(x))
-
-        for i in range(self.num_maps):
-            x_j = x_cmps[self.num_maps-1-i]
-            x = torch.cat((x, x_j), 1)
-            x = x_i = F.relu(self.expand_life(x))
-            for c in range(self.chunk_size * (i + 1)):
-                x = F.relu(self.prj_life_out(x))
-            x = torch.cat((x, x_i), 1)
-            x = self.cmp_life_out(x)
-           #print(acts.shape)
-        x = torch.cat((x, x_0), 1)
+        for j in range(self.num_maps): # run life sim, then expand if not last
+            if j != 0:
+                x_i = x_obs[self.num_maps-1-j]
+                x = torch.cat((x, x_i), 1)
+                cmp_life_act = getattr(self, 'cmp_life_act_{}'.format(j))
+                x =  F.relu(cmp_life_act(x))
+            x_0 = x
+            if j > -1:
+                prj_life_act = getattr(self, 'prj_life_act_{}'.format(j))
+                for c in range(1):
+                    x = F.relu(prj_life_act(x))
+                x = torch.cat((x, x_0), 1)
+            if j < self.num_maps - 1:
+                expand_life = getattr(self, 'expand_life_{}'.format(j))
+                x = F.relu(expand_life(x))
         x = F.relu(self.cmp_act(x))
         acts = F.relu(self.act_tomap(x))
 
         for i in range(self.num_maps):
-            x = F.relu(self.shrink_val(x))
-            x = F.relu(self.prj_life_val(x))
-        vals = self.cmp_val_out(x)
-
+            dwn_val = getattr(self, 'dwn_val_{}'.format(i))
+            prj_life_val = getattr(self, 'prj_life_val_{}'.format(i))
+            cmp_life_val_in = getattr(self, 'cmp_life_val_in_{}'.format(i))
+            x_i = x_obs[i]
+            x = torch.cat((x, x_i), 1)
+            x = F.relu(cmp_life_val_in(x))
+            x = F.relu(dwn_val(x))
+            x = F.relu(prj_life_val(x))
+        vals = self.cmp_val_out(x) 
         return vals.view(vals.size(0), -1), acts, rnn_hxs
 
 class MicropolisBase_ICM(MicropolisBase_fixedmap):

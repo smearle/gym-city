@@ -187,9 +187,11 @@ class TileMap(object):
         self.num_road_nets = 0 
         self.road_net_sizes = {} # using unique road net numbers as keys
         self.num_roads = 0
+        self.num_plants = 0
         self.priority_road_net = None
         # number of surrounding roads for road-tiles, updated on road bld/del
        #self.road_crowding_map = np.zeros(0, self.MAP_X, self.MAP_Y) 
+        self.numPlants = 0 # power plants
 
 
     def didRoadBuild(self, x, y):
@@ -309,6 +311,7 @@ class TileMap(object):
 
     def setEmpty(self):
         self.num_roads = 0
+        self.num_plants = 0
         self.static_builds.fill(0)
         self.road_networks.fill(0)
         self.road_labels = list(range(1, int(self.MAP_X * self.MAP_Y / 2) + 1))
@@ -335,8 +338,8 @@ class TileMap(object):
             if self.static_builds[0][x][y] == 1:
                 static_build = True
         if (not static_build) and self.static_builds[0][x][y] == 1:
-
             return
+
         if zone == 'Clear': 
             zone = 'Land'
 
@@ -431,6 +434,7 @@ class TileMap(object):
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
         ''' static_build should be None when simply updating from map,
         True when building, and False when deleting '''
+        was_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
         was_road = self.zoneMap[self.road_int][x][y] == 1
         if zone is None:
             tile_int = self.micro.getTile(x, y)
@@ -452,6 +456,8 @@ class TileMap(object):
         self.zoneMap[:, x:x+1, y:y+1] = zone_col
         self.centers[x][y] = center
         is_road = self.zoneMap[self.road_int][x][y] == 1
+        is_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
+
         net = None
         if was_road and not is_road:
             self.num_roads -= 1
@@ -461,6 +467,12 @@ class TileMap(object):
             self.num_roads += 1
             if self.priority_road_net is None:
                 self.priority_road_net = next(iter(self.road_net_sizes))
+
+        if was_plant and not is_plant:
+            assert self.num_plants > 0
+            self.num_plants -= 1
+        elif not was_plant and is_plant:
+            self.num_plants += 1
 
 
 
