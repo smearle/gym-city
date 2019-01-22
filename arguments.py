@@ -1,7 +1,7 @@
 import argparse
 
 import torch
-
+import datetime
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
@@ -49,10 +49,10 @@ def get_args():
                         help='number of frames to train (default: 10e6)')
     parser.add_argument('--env-name', default='MicropolisEnv-v0',
                         help='environment to train on (default: PongNoFrameskip-v4)')
-    parser.add_argument('--log-dir', default='trained_models',
-                        help='directory to save agent logs (default: /tmp/gym)')
-    parser.add_argument('--save-dir', default='./trained_models',
-                        help='directory to save agent logs (default: ./trained_models/)')
+#   parser.add_argument('--log-dir', default='trained_models',
+#                       help='directory to save agent logs (default: /tmp/gym)')
+#   parser.add_argument('--save-dir', default='./trained_models',
+#                       help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--render', action='store_true', default=False, 
@@ -72,7 +72,7 @@ def get_args():
     parser.add_argument('--model', default='fixed')
     parser.add_argument('--curiosity', action='store_true', default=False)
     parser.add_argument('--no-reward', action='store_true', default=False)
-    parser.add_argument('--env-type', default='yeet')
+    parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
 ########################################### ICM
     parser.add_argument(
         '--eta', 
@@ -95,5 +95,10 @@ def get_args():
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    if args.experiment_name == '':
+        args.experiment_name += '{}'.format(datetime.datetime.now())
+  # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
+    args.save_dir = "trained_models/{}/{}/w{}/{}M/{}".format(args.algo, args.model, args.map_width, int(args.num_frames / 1000000), args.experiment_name)
 
     return args

@@ -20,7 +20,7 @@ from utils import get_vec_normalize
 from visualize import visdom_plot
 
 args = get_args()
-args.log_dir = args.save_dir
+args.log_dir = args.save_dir + '/logs'
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
@@ -64,7 +64,7 @@ def main():
                         args=args)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
-        base_kwargs={'recurrent': args.recurrent_policy},
+            base_kwargs={'map_width': args.map_width, 'num_actions': 18, 'recurrent': args.recurrent_policy},
         curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
     actor_critic.to(device)
 
