@@ -229,11 +229,9 @@ class MicropolisEnv(core.Env):
             zone_variety += 1
         if indPop > 0:
             zone_variety += 1
-        zone_bonus = (zone_variety - 1) * curr_pop
-        curr_pop += zone_bonus
+        zone_bonus = (zone_variety - 1) * 50
+        curr_pop += max(0, zone_bonus)
 
-       #curr_pop = np.log(resPop + 1) + np.log(comPop + 1) + np.log(indPop + 1)
-        
         return curr_pop
 
 
@@ -258,7 +256,7 @@ class MicropolisEnv(core.Env):
                         max_net = n
                #reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
 #           reward -= (self.micro.map.num_plants - 1) * 20
-            self.curr_reward = reward - self.last_reward
+            self.curr_reward = reward#- self.last_reward
             self.last_reward = reward
 
            #reward += (self.curr_mayor_rating - self.last_mayor_rating)
