@@ -20,7 +20,7 @@ from utils import get_vec_normalize
 from visualize import visdom_plot
 
 args = get_args()
-
+args.log_dir = args.save_dir
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
@@ -166,7 +166,7 @@ def main():
         rollouts.after_update()
 
         if j % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
+            save_path = os.path.join(args.save_dir)
             try:
                 os.makedirs(save_path)
             except OSError:
