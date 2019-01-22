@@ -73,6 +73,13 @@ def get_args():
     parser.add_argument('--curiosity', action='store_true', default=False)
     parser.add_argument('--no-reward', action='store_true', default=False)
     parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
+    # Fractal Net
+    parser.add_argument('--squeeze', default=False, action='store_true',
+            help= 'whether or not to squeeze outward columns of fractal by recurrent up and down convolution')
+    parser.add_argument('--n-recs', default=3, type=int,
+            help='number of times the expansion rule is applied in the construction of a fractal net')
+    parser.add_argument('--n-conv-recs', default=2,
+            help='number of recurrences of convolution at base level of fractal net')
 ########################################### ICM
     parser.add_argument(
         '--eta', 

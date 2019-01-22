@@ -45,17 +45,6 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
 
 # We need to use the same statistics for normalization as used in training
 actor_critic = Policy(env.observation_space.shape, env.action_space, args=args)
-#dict1 = torch.load(os.path.join(args.load_dir, args.env_name + "_weights.pt"))
-#dict2 = {}
-#for s in dict1.keys():
-#    s2 = ''.join(''.join(s.split('.module')).split('.add_bias')).replace('._bias', '.bias')
-#    dict2[s2] = dict1[s]
-#    if len(dict1[s].shape) == 2 and dict1[s].shape[1] == 1:
-#        dict2[s2] = dict2[s2].view((dict2[s2].shape)).view((-1))
-#    if len(dict2[s2].shape) == 4 and dict2[s2].shape[1] == 15:
-##       dict2[s2] = dict2[s2].view((1,) + dict2[s2].shape)
-#        print(dict1[s].shape)
-##actor_critic.load_state_dict(dict2)
 
 actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
@@ -111,5 +100,4 @@ while True:
             humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
             p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
 
-#   if render_func is not None:
-#       render_func('human')
+

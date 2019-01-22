@@ -30,6 +30,8 @@ class Policy(nn.Module):
                 if not args.model:
                     args.model = 'fixed'
                 base_model = globals()['MicropolisBase_{}'.format(args.model)]
+                if args.model == 'fractal':
+                    base_kwargs += {'n_recs': args.n_recs, 'n_conv_recs': args.n_conv_recs, 'squeeze':args.squeeze}
                 self.base = base_model(obs_shape[0], **base_kwargs)
             print('BASE NETWORK: \n', self.base)
 
@@ -246,7 +248,8 @@ class MicropolisBase_FullyConv(NNBase):
 
 class MicropolisBase_fractal(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512, 
-                 map_width=20, n_conv_recs=2, n_recs=4, squeeze=True):
+                 map_width=20, n_conv_recs=2, n_recs=3, squeeze=True, 
+                 num_actions=None):
 
         super(MicropolisBase_fractal, self).__init__(
                 recurrent, hidden_size, hidden_size)
@@ -254,6 +257,7 @@ class MicropolisBase_fractal(NNBase):
         self.map_width = map_width
         self.n_channels = 32
         self.n_recs = n_recs
+        print(self.n_recs, "RECURRENCES")
         self.n_conv_recs = n_conv_recs
 
         init_ = lambda m: init(m,
