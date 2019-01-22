@@ -6,6 +6,9 @@ from distributions import Categorical, Categorical2D
 from utils import init, init_normc_
 import math
 
+from densenet_pytorch.densenet import DenseNet
+# from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
+#from nn.Conv2d_pytorch.nn.Conv2d import nn.Conv2d, nn.Conv2dTranspose
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -23,12 +26,12 @@ class Policy(nn.Module):
         if len(obs_shape) == 3:
             if curiosity:
                 self.base = MicropolisBase_ICM(obs_shape[0], **base_kwargs)
-            elif args.model == 'squeeze':
-                self.base = MicropolisBase(obs_shape[0], **base_kwargs, map_width=args.map_width)
-            elif args.model == 'mlp':
-                self.base = MLPBase(obs_shape[0], **base_kwargs, map_width=args.map_width)
-            else:
-                self.base = MicropolisBase_fixedmap(obs_shape[0], **base_kwargs, map_width=args.map_width)
+            else: 
+                if not args.model:
+                    args.model = 'fixed'
+                base_model = globals()['MicropolisBase_{}'.format(args.model)]
+                self.base = base_model(obs_shape[0], **base_kwargs)
+            print('BASE NETWORK: \n', self.base)
 
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -199,15 +202,191 @@ class NNBase(nn.Module):
 
         return x, hxs
 
-class MicropolisBase_fixedmap(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20):
-        super(MicropolisBase_fixedmap, self).__init__(recurrent, hidden_size, hidden_size)
+class MicropolisBase_FullyConv(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256, 
+            map_width=20, num_actions=18):
 
+        super(MicropolisBase_FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
+        num_actions = num_actions
         self.map_width = map_width
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
+            nn.init.calculate_gain('relu'))
+
+        self.embed = init_(nn.Conv2d(num_inputs, 32, 1, 1, 0))
+        self.k5 = init_(nn.Conv2d(32, 16, 5, 1, 2))
+        self.k3 = init_(nn.Conv2d(16, 32, 3, 1, 1))
+        state_size = map_width * map_width * 32
+
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.dense = init_(nn.Linear(state_size, 256))
+        self.val = init_(nn.Linear(256, 1))
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
-            lambda x: nn.init.constant_(x, 0.0),
+            lambda x: nn.init.constant_(x, 0))
+
+        self.act = init_(nn.Conv2d(32, num_actions, 1, 1, 0))
+
+    def forward(self, x, rhxs, masks):
+
+        x = F.relu(self.embed(x))
+        x = F.relu(self.k5(x))
+        x = F.relu(self.k3)
+        x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
+        val = self.val(x_lin)
+        act = self.act(x)
+
+        return val, act, rhxs
+
+
+class MicropolisBase_fractal(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, 
+                 map_width=20, n_conv_recs=2, n_recs=4, squeeze=True):
+
+        super(MicropolisBase_fractal, self).__init__(
+                recurrent, hidden_size, hidden_size)
+
+        self.map_width = map_width
+        self.n_channels = 32
+        self.n_recs = n_recs
+        self.n_conv_recs = n_conv_recs
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
+            nn.init.calculate_gain('relu'))
+
+        self.conv_00 = init_(nn.Conv2d(num_inputs, self.n_channels, 1, 1, 0))
+
+        f_c = None
+        for i in range(self.n_recs):
+            if not squeeze:
+                f_c = SubFractal(f_c, n_layer=i, conv=None, n_conv_recs=self.n_conv_recs)
+            else:
+                f_c = SubFractal_squeeze(f_c, n_layer=i, map_width = self.map_width)
+        self.f_c = f_c
+        self.compress = init_(nn.Conv2d(2 * self.n_channels, self.n_channels, 3, 1, 1))
+
+        for i in range(int(math.log(self.map_width, 2))):
+            setattr(self, 'critic_squeeze_{}'.format(i), init_(nn.Conv2d(self.n_channels, self.n_channels, 2, 2, 0)))
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+
+
+        self.actor_out = init_(nn.Conv2d(self.n_channels, 19, 3, 1, 1)) 
+        self.critic_out = init_(nn.Conv2d(self.n_channels, 1, 3, 1, 1))
+        self.train()
+
+    def forward(self, x, rnn_hxs, masks):
+
+        x = x_0 = F.relu(self.conv_00(x))
+        x = F.relu(self.f_c(x))
+        x = F.relu(self.compress(torch.cat((x, x_0), 1)))
+        values = x
+        for i in range(int(math.log(self.map_width, 2))):
+            critic_squeeze = getattr(self, 'critic_squeeze_{}'.format(0))
+            values = F.relu(critic_squeeze(values))
+        values = self.critic_out(values)
+        values = values.view(values.size(0), -1)
+        actions = self.actor_out(x)
+
+        return values, actions, rnn_hxs
+
+
+class SubFractal(nn.Module):
+    def __init__(self, f_c, n_layer, conv, n_conv_recs=2):
+        super(SubFractal, self).__init__()
+
+        self.n_layer = n_layer
+        self.n_conv_recs = n_conv_recs
+        self.n_channels = 32
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
+            nn.init.calculate_gain('relu'))
+
+        if conv is None:
+            conv = init_(nn.Conv2d(self.n_channels, self.n_channels, 3, 1, 1))
+        self.conv = conv
+        self.f_c = f_c
+        self.train()
+
+    def forward(self, x):
+        x_c, x_c1 = x, x
+        if self.n_layer > 0:
+            for i in range(2):
+                x_c1 = F.relu(self.conv(x_c1))
+            for i in range(2):
+                x_c = F.relu(self.f_c(x_c))
+            x = (x_c1 + x_c * (self.n_layer)) / (self.n_layer + 1)
+        else:
+            for i in range(self.n_conv_recs):
+                x = F.relu(self.conv(x))
+        return x
+
+
+
+class SubFractal_squeeze(nn.Module):
+    def __init__(self, f_c, n_layer, map_width=16):
+        super(SubFractal_squeeze, self).__init__()
+
+        self.map_width = map_width
+        self.n_layer = n_layer
+        self.n_channels = 32
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
+            nn.init.calculate_gain('relu'))
+
+
+        self.fixed = init_(nn.Conv2d(self.n_channels, self.n_channels, 3, 1, 1))
+        if n_layer > 0:
+            self.dwn = init_(nn.Conv2d(self.n_channels, self.n_channels, 2, 2))
+            self.up = init_(nn.ConvTranspose2d(self.n_channels, self.n_channels, 2, 2))
+            self.num_down = min(int(math.log(self.map_width, 2)) - 1, n_layer)
+
+        self.f_c = f_c
+        self.train()
+
+    def forward(self, x):
+        x_c, x_c1 = x, x
+        if self.n_layer > 0:
+            for d in range(self.num_down):
+                x_c1 = F.relu(self.dwn(x_c1))
+               #print(x_c1.shape)
+                for f in range(self.num_down - d):
+                    x_c1 = F.relu(self.fixed(x_c1))
+            for u in range(self.num_down):
+                x_c1 = F.relu(self.up(x_c1))
+               #print(x_c1.shape)
+                for f in range(self.num_down - u):
+                    x_c1 = F.relu(self.fixed(x_c1))
+            for i in range(2):
+                x_c = F.relu(self.f_c(x_c))
+            x = (x_c1 + x_c * (self.n_layer)) / (self.n_layer + 1)
+        else:
+            for i in range(2):
+                x = F.relu(self.fixed(x))
+        return x
+
+
+
+class MicropolisBase_fixed(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20):
+        super(MicropolisBase_fixed, self).__init__(recurrent, hidden_size, hidden_size)
+
+        self.num_recursions = map_width
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
 
 
@@ -217,10 +396,11 @@ class MicropolisBase_fixedmap(NNBase):
         init_(self.conv_0)
         self.conv_1 = nn.Conv2d(64, 64, 5, 1, 2)
         init_(self.conv_1)
-        self.conv_2 = nn.Conv2d(64, 64, 3, 1, 1)
-        init_(self.conv_2)
+        for i in range(1):
+            setattr(self, 'conv_2_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
         self.critic_compress = init_(nn.Conv2d(79, 64, 3, 1, 1))
-        self.critic_downsize = init_(nn.Conv2d(64, 64, 3, 3, 0))
+        for i in range(1):
+            setattr(self, 'critic_downsize_{}'.format(i), init_(nn.Conv2d(64, 64, 2, 2, 0)))
 
 
         init_ = lambda m: init(m,
@@ -229,7 +409,6 @@ class MicropolisBase_fixedmap(NNBase):
 
         self.actor_compress = init_(nn.Conv2d(79, 19, 3, 1, 1))
         self.critic_conv = init_(nn.Conv2d(64, 1, 1, 1, 0))
-#       self.critic_conv_2 = init_(nn.Conv2d(1, 1, 2, 1, 0)) # for 40x40 map
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
@@ -237,62 +416,68 @@ class MicropolisBase_fixedmap(NNBase):
         x = F.relu(self.conv_0(x))
         skip_input = F.relu(self.skip_compress(inputs))
         x = F.relu(self.conv_1(x))
-        for i in range(self.map_width):
+        for i in range(self.num_recursions):
            #print(self.conv_2.weight)
-            x = F.relu(self.conv_2(x))
+            conv_2 = getattr(self, 'conv_2_{}'.format(0))
+            x = F.relu(conv_2(x))
         x = torch.cat((x, skip_input), 1)
         values = F.relu(self.critic_compress(x))
-        for i in range(self.num_maps):
-            values = F.relu(self.critic_downsize(values))
+        for i in range(4):
+            critic_downsize = getattr(self, 'critic_downsize_{}'.format(0))
+            values = F.relu(critic_downsize(values))
         values = self.critic_conv(values)
         values = values.view(values.size(0), -1)
         actions = self.actor_compress(x)
 
         return values, actions, rnn_hxs
 
-class MicropolisBase(NNBase):
+class MicropolisBase_squeeze(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20):
-        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
+        super(MicropolisBase_squeeze, self).__init__(recurrent, hidden_size, hidden_size)
         self.chunk_size = 3
         self.map_width = map_width
-        self.num_maps = 3
+        self.num_maps = 4
        #self.num_maps = int(math.log(self.map_width, self.chunk_size)) # how many different sizes
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
-            lambda x: nn.init.constant_(x, 0),
+            lambda x: nn.init.constant_(x, -10),
             nn.init.calculate_gain('relu'))
         linit_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
 
-        self.cmp_in = init_(nn.Conv2d(num_inputs, 64, 1, 1, 0))
+        self.cmp_in = init_(nn.Conv2d(num_inputs, 64, 1, stride=1, padding=0))
         for i in range(self.num_maps):
-            setattr(self, 'prj_life_obs_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
-            setattr(self, 'cmp_life_obs_{}'.format(i), init_(nn.Conv2d(128, 64, 3, 1, 1)))
+            setattr(self, 'prj_life_obs_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+            setattr(self, 'cmp_life_obs_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
        #self.shrink_life = init_(nn.Conv2d(64, 64, 3, 3, 0))
 
        #self.conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))
        #self.lin_0 = linit_(nn.Linear(1024, 1024))
 
         for i in range(self.num_maps):
-            setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 3, 0)))
-            setattr(self, 'expand_life_{}'.format(i), init_(nn.ConvTranspose2d(64 + 64, 64, 3, 3, 0)))
-            setattr(self, 'prj_life_act_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
-            setattr(self, 'cmp_life_act_{}'.format(i), init_(nn.Conv2d(128, 64, 3, 1, 1)))
-            setattr(self, 'cmp_life_val_in_{}'.format(i), init_(nn.Conv2d(128, 64, 3, 1, 1)))
-            setattr(self, 'dwn_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 3, 0)))
-            setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
+            if i == 0:
+                setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))
+            setattr(self, 'expand_life_{}'.format(i), init_(nn.ConvTranspose2d(64 + 64, 64, 2, stride=2, padding=0)))
+            setattr(self, 'prj_life_act_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+            setattr(self, 'cmp_life_act_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
+            setattr(self, 'cmp_life_val_in_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
+            setattr(self, 'dwn_val_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))
+            if i == self.num_maps - 1:
+                setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+            else:
+                setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
 
-        self.cmp_act = init_(nn.Conv2d(128, 64, 3, 1, 1))
+        self.cmp_act = init_(nn.Conv2d(128, 64, 3, stride=1, padding=1))
 
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1))
 
-        self.act_tomap = init_(nn.Conv2d(64, 19, 5, 1, 2))
-        self.cmp_val_out = init_(nn.Conv2d(64, 1, 1, 1, 0))
+        self.act_tomap = init_(nn.Conv2d(64, 19, 5, stride=1, padding=2))
+        self.cmp_val_out = init_(nn.Conv2d(64, 1, 1, stride=1, padding=0))
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
@@ -301,7 +486,7 @@ class MicropolisBase(NNBase):
         x_obs = [] 
         for i in range(self.num_maps): # shrink if not first, then run life sim
             if i != 0:
-                shrink_life = getattr(self, 'dwn_{}'.format(i))
+                shrink_life = getattr(self, 'dwn_{}'.format(0))
                 x = F.relu(shrink_life(x))
             x_0 = x
             if i > -1:
@@ -333,7 +518,7 @@ class MicropolisBase(NNBase):
         acts = F.relu(self.act_tomap(x))
 
         for i in range(self.num_maps):
-            dwn_val = getattr(self, 'dwn_val_{}'.format(i))
+            dwn_val = getattr(self, 'dwn_val_{}'.format(0))
             prj_life_val = getattr(self, 'prj_life_val_{}'.format(i))
             cmp_life_val_in = getattr(self, 'cmp_life_val_in_{}'.format(i))
             x_i = x_obs[i]
@@ -342,9 +527,10 @@ class MicropolisBase(NNBase):
             x = F.relu(dwn_val(x))
             x = F.relu(prj_life_val(x))
         vals = self.cmp_val_out(x) 
-        return vals.view(vals.size(0), -1), acts, rnn_hxs
+        vals = vals.view(vals.size(0), -1)
+        return  vals, acts, rnn_hxs
 
-class MicropolisBase_ICM(MicropolisBase_fixedmap):
+class MicropolisBase_ICM(MicropolisBase_fixed):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512):
         super(MicropolisBase_ICM, self).__init__(num_inputs, recurrent, hidden_size)
 
