@@ -266,7 +266,7 @@ class MicropolisBase_fractal(NNBase):
         self.n_conv_recs = n_conv_recs
 
         self.FORWARD = True
-        self.DROPPATH = True
+        self.join_masks = None
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
@@ -274,6 +274,7 @@ class MicropolisBase_fractal(NNBase):
             nn.init.calculate_gain('relu'))
 
         self.conv_00 = init_(nn.Conv2d(num_inputs, self.n_channels, 1, 1, 0))
+        self.active_column = None
 
         f_c = None
         for i in range(self.n_recs):
@@ -305,26 +306,30 @@ class MicropolisBase_fractal(NNBase):
         if not self.FORWARD:
             x = F.relu(self.f_c(x))
         else:
-            if self.active_subgraph is not None:
-                j = self.active_subgraph
+            if self.active_column is not None:
+                j = self.active_column
                 for i in range(pow(2, self.n_recs) // (2 ** j)):
-                    active_subgraph = getattr(self, 'col_{}'.format(j))
-                    x = active_subgraph(x)
-            else:
+                    active_column = getattr(self, 'col_{}'.format(j))
+                    x = active_column(x)
+            else: # assume local drop path
                 for r in range(self.n_recs):
                     globals()['in_{}'.format(r)] = x
                 for i in range(pow(2, self.n_recs)):
                    #print('depth ', i)
-                    j = 0 # inputs added to join layer
+                    j = 0 # potential inputs added to join layer
+                    a = 0 # actual added inputs to join layer
                     while (i + 1) % (2 ** j) == 0 and j < self.n_recs:
                        #print('forward col ', j)
                         column = getattr(self, 'col_{}'.format(j))
-                       #print('ins len', len(ins), j)
-                        out_j = column(globals()['in_{}'.format(j)])
+                        if self.join_masks[i][j]:
+                            out_j = column(globals()['in_{}'.format(j)])
+                            a += 1
+                        else:
+                            out_j = 0
                         if j == 0:
                             out = out_j
                         else:
-                            out = (out * j + out_j) / (j + 1)
+                            out = (out * j + out_j) / (a + 1)
                         j += 1
                     for k in range(j):
                         globals()['in_{}'.format(k)] = out 
@@ -342,14 +347,24 @@ class MicropolisBase_fractal(NNBase):
         return values, actions, rnn_hxs
     
     def get_local_drop(self):
-        self.active_subgraph = None
-        pass
+        self.active_column = None
+        self.join_masks = []
+        for i in range(2 ** (self.n_recs)):
+            n = 1
+            n_ins = 0
+            while (i + 1) % n == 0:
+                n = n * 2
+                n_ins += 1
+            mask = np.random.random_sample(n_ins) > 0.15
+            if 1 not in mask:
+                mask[np.random.randint(0, n_ins)] = 1
+            self.join_masks.append(mask)
 
 
     def get_global_drop(self):
-        self.active_subgraph = None
+        self.join_masks = None
         i = np.random.randint(0, self.n_recs)
-        self.active_subgraph = i
+        self.active_column = i
 
     def get_drop_path(self):
         if np.random.randint(0, 2) == 1:
@@ -382,7 +397,7 @@ class FractalColumn(nn.Module):
                     x = F.relu(self.fixed(x))
             for u in range(self.num_down):
                 x = F.relu(self.up(x))
-                for f in range((self.num_down + u)):
+                for f in range((self.num_down + u + 1)):
                     x = F.relu(self.fixed(x))
         else:
             x = F.relu(self.fixed(x))

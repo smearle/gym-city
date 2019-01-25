@@ -41,7 +41,7 @@ class MicropolisEnv(core.Env):
 
     def setMapSize(self, size, max_step=None, rank=None, print_map=False, PADDING=0, static_builds=True, 
             parallel_gui=False, render_gui=False,
-            empty_start=True, noreward=False):
+            empty_start=True):
         if max_step is not None:
             self.max_step = max_step
         self.empty_start = empty_start
@@ -87,7 +87,6 @@ class MicropolisEnv(core.Env):
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
         self.print_map = print_map
         self.render_gui = render_gui
-        self.no_reward = noreward
         self.mayor_rating = 50
         self.last_mayor_rating = self.mayor_rating
         
@@ -248,20 +247,19 @@ class MicropolisEnv(core.Env):
         self.curr_pop = self.getPopReward()
         self.curr_mayor_rating = self.getRating()
         self.state = self.getState()
-        if not self.no_reward:
-            reward = self.curr_pop #+ (self.micro.total_traffic / 100)
-            if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
-                max_net = 0
-                for n in  self.micro.map.road_net_sizes.values():
-                    if n > max_net:
-                        max_net = n
-               #reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
-#           reward -= (self.micro.map.num_plants - 1) * 20
-            self.curr_reward = reward#- self.last_reward
-            self.last_reward = reward
+        reward = self.curr_pop #+ (self.micro.total_traffic / 100)
+        if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
+            max_net = 0
+            for n in  self.micro.map.road_net_sizes.values():
+                if n > max_net:
+                    max_net = n
+           #reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
+#       reward -= (self.micro.map.num_plants - 1) * 20
+        self.curr_reward = reward#- self.last_reward
+        self.last_reward = reward
 
-           #reward += (self.curr_mayor_rating - self.last_mayor_rating)
-            self.last_mayor_rating = self.curr_mayor_rating
+        #reward += (self.curr_mayor_rating - self.last_mayor_rating)
+        self.last_mayor_rating = self.curr_mayor_rating
         self.last_pop = self.curr_pop
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds

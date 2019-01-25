@@ -60,7 +60,7 @@ def main():
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, None,
-                        map_width=args.map_width, render_gui=args.render, print_map=args.print_map, noreward=args.no_reward,
+
                         args=args)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
@@ -138,6 +138,8 @@ def main():
                             )
 
                 intrinsic_reward = args.eta * ((feature_state - feature_state_pred).pow(2)).sum() / 2.
+                if args.no_reward:
+                    reward = 0
                 reward += intrinsic_reward.cpu()
 
             for info in infos:

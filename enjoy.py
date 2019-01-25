@@ -16,7 +16,7 @@ parser.add_argument('--load-dir', default='./trained_models/a2c',
                     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument('--non-det', action='store_true', default=False,
                     help='whether to use a non-deterministic policy')
-parser.add_argument('--max-step', type=int, default=None)
+parser.add_argument('--active-column', default=None, type=int, help='Run only one vertical column of a fractal model to see what it has learnt independently')
 args = parser.parse_args()
 
 args.det = not args.non_det
@@ -26,8 +26,7 @@ import gym_micropolis
 env = make_vec_envs(args.env_name, args.seed + 1000, 1,
                             None, None, args.add_timestep, device='cpu',
                             allow_early_resets=False,
-                            map_width=args.map_width,
-                            print_map=args.print_map, render_gui=not args.render, parallel_py2gui=False, max_step = args.max_step)
+                            args=args)
 
 # Get a render function
 # render_func = get_render_func(env)
@@ -35,9 +34,11 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
 # We need to use the same statistics for normalization as used in training
 actor_critic = Policy(env.observation_space.shape, env.action_space, args=args)
 
+
 actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
-
+if args.active_column is not None:
+    actor_critic.base.active_column = args.active_column
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()

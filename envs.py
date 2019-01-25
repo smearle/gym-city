@@ -41,9 +41,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             if 'micropolis' in env_id.lower():
                 print("ENV RANK: ", rank)
                 if rank == 0:
-                    env.setMapSize(map_width, print_map=print_map, parallel_gui=parallel_py2gui, render_gui=render_gui, empty_start=True, noreward=noreward, max_step=max_step, rank=rank)
+                    env.setMapSize(map_width, print_map=print_map, render_gui=render_gui, empty_start=not args.random_terrain, max_step=max_step, rank=rank)
                 else:
-                    env.setMapSize(map_width, rank=rank)
+                    env.setMapSize(map_width, max_step=max_step, rank=rank, empty_start=not args.random_terrain)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -75,11 +75,10 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None, 
-                  args=None, map_width=20, render_gui=False, print_map=False, 
-                  parallel_py2gui=False, noreward=False, max_step=None):
+                  args=None):
     envs = [make_env(env_name, seed, i, log_dir, add_timestep, 
-        allow_early_resets, map_width=map_width, render_gui=render_gui, 
-        print_map=print_map, parallel_py2gui=parallel_py2gui, noreward=noreward, max_step=max_step, args=args)
+        allow_early_resets, map_width=args.map_width, render_gui=args.render, 
+        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, args=args)
             for i in range(num_processes)]
 
     if len(envs) > 1:
@@ -102,7 +101,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
         print(num_frame_stack)
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
     elif len(envs.observation_space.shape) == 3:
-        envs = VecPyTorchFrameStack(envs, 2, device)
+        envs = VecPyTorchFrameStack(envs, 1, device)
 
     return envs
 

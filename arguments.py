@@ -96,7 +96,9 @@ def get_parser():
             help='number of times the expansion rule is applied in the construction of a fractal net')
     parser.add_argument('--n-conv-recs', default=2,
             help='number of recurrences of convolution at base level of fractal net')
+    parser.add_argument('--max-step', type=int, default=200)
     parser.add_argument('--drop-path', default=False)
+
 ########################################### ICM
     parser.add_argument(
         '--eta', 
