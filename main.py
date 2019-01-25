@@ -103,6 +103,8 @@ def main():
 
     start = time.time()
     for j in range(num_updates):
+        if args.drop_path:
+            actor_critic.base.get_drop_path()
         player_act = None
         for step in range(args.num_steps):
             # Sample actions

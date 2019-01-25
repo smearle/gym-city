@@ -4,6 +4,17 @@ import torch
 import datetime
 
 def get_args():
+    ''' For training.'''
+    parser =  get_parser()
+    args = parser.parse_args()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    if args.experiment_name == '':
+        args.experiment_name += '{}'.format(datetime.datetime.now())
+  # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
+    args.save_dir = "trained_models/{}/{}/w{}/{}M/{}".format(args.algo, args.model, args.map_width, int(args.num_frames / 1000000), args.experiment_name)
+    return args
+
+def get_parser():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument('--algo', default='acktr',
                         help='algorithm to use: a2c | ppo | acktr')
@@ -73,6 +84,11 @@ def get_args():
     parser.add_argument('--curiosity', action='store_true', default=False)
     parser.add_argument('--no-reward', action='store_true', default=False)
     parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
+    parser.add_argument('--random-terrain', default=False,
+            help='whether or not episode begins on randomly generated micropolis terrain map')
+    parser.add_argument('--random-builds', default=False,
+            help='whether or not the episode begins with random static (unbulldozable) builds on the map')
+
     # Fractal Net
     parser.add_argument('--squeeze', default=False, action='store_true',
             help= 'whether or not to squeeze outward columns of fractal by recurrent up and down convolution')
@@ -80,6 +96,7 @@ def get_args():
             help='number of times the expansion rule is applied in the construction of a fractal net')
     parser.add_argument('--n-conv-recs', default=2,
             help='number of recurrences of convolution at base level of fractal net')
+    parser.add_argument('--drop-path', default=False)
 ########################################### ICM
     parser.add_argument(
         '--eta', 
@@ -99,13 +116,4 @@ def get_args():
         default=0.1,
         metavar='LR',
         help='lambda : balance between A2C & icm')
-    args = parser.parse_args()
-
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
-
-    if args.experiment_name == '':
-        args.experiment_name += '{}'.format(datetime.datetime.now())
-  # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
-    args.save_dir = "trained_models/{}/{}/w{}/{}M/{}".format(args.algo, args.model, args.map_width, int(args.num_frames / 1000000), args.experiment_name)
-
-    return args
+    return parser
