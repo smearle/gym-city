@@ -41,7 +41,7 @@ class MicropolisEnv(core.Env):
 
     def setMapSize(self, size, max_step=None, rank=None, print_map=False, PADDING=0, static_builds=True, 
             parallel_gui=False, render_gui=False,
-            empty_start=False, noreward=False):
+            empty_start=True, noreward=False):
         if max_step is not None:
             self.max_step = max_step
         self.empty_start = empty_start
@@ -161,7 +161,8 @@ class MicropolisEnv(core.Env):
                 self.micro.clearBotBuilds()
             else:
                 self.micro.clearMap()
-       #self.micro.newMap()
+        if not self.empty_start:
+            self.micro.newMap()
         self.num_step = 0
        #self.randomStaticStart()
         self.micro.engine.simTick()
