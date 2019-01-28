@@ -35,6 +35,7 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
 actor_critic = Policy(env.observation_space.shape, env.action_space, args=args)
 
 
+torch.nn.Module.dump_patches = True
 actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 if args.active_column is not None:
@@ -64,7 +65,7 @@ num_step = 0
 player_act = None
 while True:
     with torch.no_grad():
-        value, action, _, _, recurrent_hidden_states = actor_critic.act(
+        value, action, _, recurrent_hidden_states = actor_critic.act(
             obs, recurrent_hidden_states, masks, deterministic=args.det,
             player_act=player_act)
 
