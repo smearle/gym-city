@@ -15,6 +15,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 import gym_micropolis
 
+
 try:
     import dm_control2gym
 except ImportError:
@@ -222,6 +223,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
                 self.stacked_obs[i] = 0
         self.stacked_obs[:, -self.shape_dim0:] = obs
         return self.stacked_obs, rews, news, infos
+
 
     def reset(self):
         obs = self.venv.reset()

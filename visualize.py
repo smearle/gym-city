@@ -51,9 +51,14 @@ def fix_point(x, y, interval):
     return fx, fy
 
 
-def load_data(indir, smooth, bin_size):
+def load_data(indir, smooth, bin_size, col=None):
     datas = []
-    infiles = glob.glob(os.path.join(indir, '*.monitor.csv'))
+    if col is not None:
+        infiles = glob.glob(os.path.join(indir, 'col_{}_eval.csv'.format(col)))
+    else:
+        infiles = glob.glob(os.path.join(indir, '*.monitor.csv'))
+    if len(infiles) == 0:
+        print('no files found at {}'.format(indir))
 
     for inf in infiles:
         with open(inf, 'r') as f:
@@ -100,14 +105,26 @@ color_defaults = [
     '#17becf'   # blue-teal
 ]
 
+def visdom_plot_eval(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_cols=None):
+    return visdom_plot(viz, win, folder, game, name, num_steps, bin_size, smooth, n_graphs=n_cols)
 
-def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1):
-    tx, ty = load_data(folder, smooth, bin_size)
-    if tx is None or ty is None:
-        return win
+def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
+    if n_graphs is not None:
+        for i in range(n_graphs):
+            tx, ty = load_data(folder, smooth, bin_size, col=i)
+            if tx is None or ty is None:
+                return win
 
-    fig = plt.figure()
-    plt.plot(tx, ty, label="{}".format(name))
+            fig = plt.figure()
+            print('in daplotter')
+            plt.plot(tx, ty, label="{}".format(name))
+    else:
+        tx, ty = load_data(folder, smooth, bin_size)
+        if tx is None or ty is None:
+            return win
+
+        fig = plt.figure()
+        plt.plot(tx, ty, label="{}".format(name))
 
     tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
     ticks = tick_fractions * num_steps

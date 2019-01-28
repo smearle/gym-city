@@ -17,7 +17,9 @@ from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage, CuriosityRolloutStorage
 from utils import get_vec_normalize
-from visualize import visdom_plot
+from visualize import visdom_plot, visdom_plot_eval
+
+import csv
 
 args = get_args()
 args.log_dir = args.save_dir + '/logs'
@@ -39,14 +41,8 @@ except OSError:
     for f in files:
         os.remove(f)
 
-eval_log_dir = args.log_dir + "_eval"
 
-try:
-    os.makedirs(eval_log_dir)
-except OSError:
-    files = glob.glob(os.path.join(eval_log_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
+
 
 
 def main():
@@ -65,8 +61,10 @@ def main():
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
             base_kwargs={'map_width': args.map_width, 'num_actions': 18, 'recurrent': args.recurrent_policy},
-        curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
+            curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
     actor_critic.to(device)
+
+    evaluator = None
 
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
@@ -110,7 +108,7 @@ def main():
             # Sample actions
             with torch.no_grad():
 
-                value, action, action_log_probs, action_bin, recurrent_hidden_states = actor_critic.act(
+                value, action, action_log_probs, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
@@ -211,41 +209,20 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
         if (args.eval_interval is not None
                 and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
-            eval_envs = make_vec_envs(
-                args.env_name, args.seed + args.num_processes, args.num_processes,
-                args.gamma, eval_log_dir, args.add_timestep, device, True, map_width=args.map_width)
+            if evaluator is None:
+                evaluator = Evaluator(args, actor_critic, device)
 
-            vec_norm = get_vec_normalize(eval_envs)
-            if vec_norm is not None:
-                vec_norm.eval()
-                vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
 
-            eval_episode_rewards = []
+            if args.model == 'fractal' and actor_critic.base.COLUMNS:
+                for i in range(-1, args.n_recs):
+                    evaluator.evaluate(column=i)
+                num_eval_frames = (args.num_frames // (args.num_steps * args.num_processes * args.eval_interval)) * args.max_step * args.num_processes 
+                win = visdom_plot_eval(viz, win, evaluator.eval_log_dir, args.env_name,
+                              args.algo, num_eval_frames, n_cols=args.n_recs)
+            else:
+                    evaluator.evaluate(column=None)
 
-            obs = eval_envs.reset()
-            eval_recurrent_hidden_states = torch.zeros(args.num_processes,
-                            actor_critic.recurrent_hidden_state_size, device=device)
-            eval_masks = torch.zeros(args.num_processes, 1, device=device)
 
-            while len(eval_episode_rewards) < 10:
-                with torch.no_grad():
-                    _, action, _, eval_recurrent_hidden_states = actor_critic.act(
-                        obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
-
-                # Obser reward and next obs
-                obs, reward, done, infos = eval_envs.step(action)
-
-                eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
-                                                for done_ in done])
-                for info in infos:
-                    if 'episode' in info.keys():
-                        eval_episode_rewards.append(info['episode']['r'])
-
-            eval_envs.close()
-
-            print(" Evaluation using {} episodes: mean reward {:.5f}\n".
-                format(len(eval_episode_rewards),
-                       np.mean(eval_episode_rewards)))
 
         if args.vis and j % args.vis_interval == 0:
             try:
@@ -254,6 +231,102 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+
+
+class Evaluator(object):
+    def __init__(self, args, actor_critic, device):
+        eval_args = args
+       #eval_args.render = True
+        self.device = device
+        if args.model == 'fractal' and actor_critic.base.COLUMNS:
+            for i in range(-1, args.n_recs):
+                eval_log_dir = args.log_dir + "_eval_col_{}".format(i)
+                try:
+                    os.makedirs(eval_log_dir)
+                except OSError:
+                    files = glob.glob(os.path.join(eval_log_dir,  '*.monitor.csv'))
+                    for f in files:
+                        os.remove(f)
+                setattr(self, 'eval_log_dir_col_{}'.format(i), eval_log_dir)
+                
+        self.eval_log_dir = args.log_dir + "_eval"
+        try:
+            os.makedirs(self.eval_log_dir)
+        except OSError:
+            files = glob.glob(os.path.join(self.eval_log_dir,  '*.monitor.csv'))
+            for f in files:
+                os.remove(f)
+        eval_args.num_processes = 20
+        self.eval_envs = make_vec_envs(
+                    eval_args.env_name, eval_args.seed + eval_args.num_processes, eval_args.num_processes,
+                    eval_args.gamma, self.eval_log_dir, eval_args.add_timestep, self.device, True, args=eval_args)
+        self.vec_norm = get_vec_normalize(self.eval_envs)
+        if self.vec_norm is not None:
+            self.vec_norm.eval()
+            self.vec_norm.ob_rms = get_vec_normalize(self.eval_envs).ob_rms
+        self.actor_critic = actor_critic
+        self.tstart = time.time()
+        fieldnames = ['r', 'l', 't']
+        if actor_critic.base.COLUMNS:
+            for i in range(-1, args.n_recs):
+                log_file_col = open('{}/col_{}_eval.csv'.format(self.eval_log_dir, i), mode='w')
+                setattr(self, 'log_file_col_{}'.format(i), log_file_col)
+                writer_col = csv.DictWriter(log_file_col, fieldnames=fieldnames)
+                setattr(self, 'writer_col_{}'.format(i), writer_col)
+                writer_col.writeheader()
+                log_file_col.flush()
+        else:
+            self.log_file = open('{}/col_evals.csv'.format(self.eval_log_dir), mode='w')
+            self.writer = csv.DictWriter(self.log_file, fieldnames=fieldnames)
+            self.writer.writeheader()
+            self.log_file.flush()
+
+
+    def evaluate(self, column=None):
+
+
+        if column is not None:
+            if column == -1:
+                self.actor_critic.base.active_column = None
+            else:
+                self.actor_critic.base.active_column = column
+
+        eval_episode_rewards = []
+
+        obs = self.eval_envs.reset()
+        eval_recurrent_hidden_states = torch.zeros(args.num_processes,
+                        self.actor_critic.recurrent_hidden_state_size, device=self.device)
+        eval_masks = torch.zeros(args.num_processes, 1, device=self.device)
+
+        while len(eval_episode_rewards) < 10:
+            with torch.no_grad():
+                _, action, _, eval_recurrent_hidden_states = self.actor_critic.act(
+                    obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
+
+            # Obser reward and next obs
+            obs, reward, done, infos = self.eval_envs.step(action)
+
+            eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                            for done_ in done])
+            for info in infos:
+                if 'episode' in info.keys():
+                    eval_episode_rewards.append(info['episode']['r'])
+
+       #eval_envs.close()
+        eprew = np.mean(eval_episode_rewards)
+        eplen = len(eval_episode_rewards)
+        if column is not None:
+            print(" Column {}".format(column))
+        print(" Evaluation using {} episodes: mean reward {:.5f}\n".
+            format(len(eval_episode_rewards),
+                   eprew))
+
+        log_info = {'r': round(eprew, 6),  'l': eplen, 't': round(time.time() - self.tstart, 6)}
+        writer, log_file = getattr(self, 'writer_col_{}'.format(column)),\
+                           getattr(self, 'log_file_col_{}'.format(column))
+        writer.writerow(log_info)
+        log_file.flush()
+
 
 
 if __name__ == "__main__":
