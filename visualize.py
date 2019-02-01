@@ -105,30 +105,28 @@ color_defaults = [
     '#17becf'   # blue-teal
 ]
 
-def visdom_plot_eval(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_cols=None):
-    return visdom_plot(viz, win, folder, game, name, num_steps, bin_size, smooth, n_graphs=n_cols)
-
 def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
+    tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ticks = tick_fractions * num_steps
+    tick_names = ["{:.0e}".format(tick) for tick in ticks]
+    fig = plt.figure()
     if n_graphs is not None:
-        for i in range(n_graphs):
+        #print('indaplotter')
+        for i in range(-1, n_graphs):
             tx, ty = load_data(folder, smooth, bin_size, col=i)
             if tx is None or ty is None:
+                #print('could not find x y data columns in csv')
                 return win
 
-            fig = plt.figure()
-            print('in daplotter')
-            plt.plot(tx, ty, label="{}".format(name))
+            plt.plot(tx, ty, label="{}_col_{}".format(name, i), color=color_defaults[i])
     else:
         tx, ty = load_data(folder, smooth, bin_size)
         if tx is None or ty is None:
             return win
 
-        fig = plt.figure()
-        plt.plot(tx, ty, label="{}".format(name))
+        plt.plot(tx, ty, label="non-det")
 
-    tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
-    ticks = tick_fractions * num_steps
-    tick_names = ["{:.0e}".format(tick) for tick in ticks]
+
     plt.xticks(ticks, tick_names)
     plt.xlim(0, num_steps * 1.01)
 

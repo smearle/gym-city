@@ -17,7 +17,7 @@ from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage, CuriosityRolloutStorage
 from utils import get_vec_normalize
-from visualize import visdom_plot, visdom_plot_eval
+from visualize import visdom_plot
 
 import csv
 
@@ -34,18 +34,34 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-try:
-    os.makedirs(args.log_dir)
-except OSError:
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
+
 
 
 
 
 
 def main():
+    saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
+    if os.path.exists(saved_model):
+        actor_critic, ob_rms = \
+                torch.load(saved_model)
+        agent = \
+            torch.load(os.path.join(args.save_dir, args.env_name + '_agent.pt'))
+        for i in agent.optimizer.state_dict():
+            print(dir(agent.optimizer))
+            print(getattr(agent.optimizer, 'steps'))
+            print(agent.optimizer.state_dict()[i])
+        past_steps = agent.optimizer.steps
+    else: 
+        actor_critic = False
+        agent = False
+        past_steps = 0
+        try:
+            os.makedirs(args.log_dir)
+        except OSError:
+            files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
+            for f in files:
+                os.remove(f)
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
 
@@ -53,36 +69,47 @@ def main():
         from visdom import Visdom
         viz = Visdom(port=args.port)
         win = None
+        win_eval = None
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, None,
 
                         args=args)
 
-    actor_critic = Policy(envs.observation_space.shape, envs.action_space,
+    if actor_critic:
+        pass
+      # vec_norm = get_vec_normalize(envs)
+      # if vec_norm is not None:
+      #     vec_norm.eval()
+      #     vec_norm.ob_rms = ob_rms
+        
+    else:
+        actor_critic = Policy(envs.observation_space.shape, envs.action_space,
             base_kwargs={'map_width': args.map_width, 'num_actions': 18, 'recurrent': args.recurrent_policy},
             curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
     actor_critic.to(device)
 
     evaluator = None
 
-    if args.algo == 'a2c':
-        agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
-                               args.entropy_coef, lr=args.lr,
-                               eps=args.eps, alpha=args.alpha,
-                               max_grad_norm=args.max_grad_norm,
-                               curiosity=args.curiosity, args=args)
-    elif args.algo == 'ppo':
-        agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch,
-                         args.value_loss_coef, args.entropy_coef, lr=args.lr,
-                               eps=args.eps,
-                               max_grad_norm=args.max_grad_norm)
-    elif args.algo == 'acktr':
-        agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
-                               args.entropy_coef, lr=args.lr,
-                               eps=args.eps, alpha=args.alpha,
-                               max_grad_norm=args.max_grad_norm,
-                               curiosity=args.curiosity, args=args)
+    if not agent:
+        if args.algo == 'a2c':
+            agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
+                                   args.entropy_coef, lr=args.lr,
+                                   eps=args.eps, alpha=args.alpha,
+                                   max_grad_norm=args.max_grad_norm,
+                                   curiosity=args.curiosity, args=args)
+        elif args.algo == 'ppo':
+            agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch,
+                             args.value_loss_coef, args.entropy_coef, lr=args.lr,
+                                   eps=args.eps,
+                                   max_grad_norm=args.max_grad_norm)
+        elif args.algo == 'acktr':
+            agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
+                                   args.entropy_coef, lr=args.lr,
+                                   eps=args.eps, alpha=args.alpha,
+                                   max_grad_norm=args.max_grad_norm,
+                                   acktr=True,
+                                   curiosity=args.curiosity, args=args)
 
     if args.curiosity:
         rollouts = CuriosityRolloutStorage(args.num_steps, args.num_processes,
@@ -100,7 +127,7 @@ def main():
     episode_rewards = deque(maxlen=10)
 
     start = time.time()
-    for j in range(num_updates):
+    for j in range(num_updates - past_steps):
         if args.drop_path:
             actor_critic.base.get_drop_path()
         player_act = None
@@ -183,7 +210,10 @@ def main():
                           getattr(get_vec_normalize(envs), 'ob_rms', None)]
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
-            torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
+            save_agent = copy.deepcopy(agent)
+
+            torch.save(save_agent, os.path.join(save_path, args.env_name + '_agent.pt'))
+           #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
 
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
 
@@ -213,14 +243,14 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 evaluator = Evaluator(args, actor_critic, device)
 
 
-            if args.model == 'fractal' and actor_critic.base.COLUMNS:
+            if args.model == 'fractal':
                 for i in range(-1, args.n_recs):
                     evaluator.evaluate(column=i)
-                num_eval_frames = (args.num_frames // (args.num_steps * args.num_processes * args.eval_interval)) * args.max_step * args.num_processes 
-                win = visdom_plot_eval(viz, win, evaluator.eval_log_dir, args.env_name,
-                              args.algo, num_eval_frames, n_cols=args.n_recs)
+               #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
+                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, args.env_name,
+                              args.algo, args.num_frames, n_graphs=args.n_recs)
             else:
-                    evaluator.evaluate(column=None)
+                evaluator.evaluate(column=None)
 
 
 
@@ -238,16 +268,16 @@ class Evaluator(object):
         eval_args = args
        #eval_args.render = True
         self.device = device
-        if args.model == 'fractal' and actor_critic.base.COLUMNS:
-            for i in range(-1, args.n_recs):
-                eval_log_dir = args.log_dir + "_eval_col_{}".format(i)
-                try:
-                    os.makedirs(eval_log_dir)
-                except OSError:
-                    files = glob.glob(os.path.join(eval_log_dir,  '*.monitor.csv'))
-                    for f in files:
-                        os.remove(f)
-                setattr(self, 'eval_log_dir_col_{}'.format(i), eval_log_dir)
+       #if args.model == 'fractal':
+       #    for i in range(-1, args.n_recs):
+       #        eval_log_dir = args.log_dir + "_eval_col_{}".format(i)
+       #        try:
+       #            os.makedirs(eval_log_dir)
+       #        except OSError:
+       #            files = glob.glob(os.path.join(eval_log_dir,  '*.monitor.csv'))
+       #            for f in files:
+       #                os.remove(f)
+       #        setattr(self, 'eval_log_dir_col_{}'.format(i), eval_log_dir)
                 
         self.eval_log_dir = args.log_dir + "_eval"
         try:
@@ -256,9 +286,9 @@ class Evaluator(object):
             files = glob.glob(os.path.join(self.eval_log_dir,  '*.monitor.csv'))
             for f in files:
                 os.remove(f)
-        eval_args.num_processes = 20
+        self.num_eval_processes = 20
         self.eval_envs = make_vec_envs(
-                    eval_args.env_name, eval_args.seed + eval_args.num_processes, eval_args.num_processes,
+                    eval_args.env_name, eval_args.seed + self.num_eval_processes, self.num_eval_processes,
                     eval_args.gamma, self.eval_log_dir, eval_args.add_timestep, self.device, True, args=eval_args)
         self.vec_norm = get_vec_normalize(self.eval_envs)
         if self.vec_norm is not None:
@@ -267,7 +297,7 @@ class Evaluator(object):
         self.actor_critic = actor_critic
         self.tstart = time.time()
         fieldnames = ['r', 'l', 't']
-        if actor_critic.base.COLUMNS:
+        if args.model == 'fractal':
             for i in range(-1, args.n_recs):
                 log_file_col = open('{}/col_{}_eval.csv'.format(self.eval_log_dir, i), mode='w')
                 setattr(self, 'log_file_col_{}'.format(i), log_file_col)
@@ -280,27 +310,31 @@ class Evaluator(object):
             self.writer = csv.DictWriter(self.log_file, fieldnames=fieldnames)
             self.writer.writeheader()
             self.log_file.flush()
+        self.args = eval_args
 
 
     def evaluate(self, column=None):
 
-
+        self.actor_critic.base.local_drop = False
         if column is not None:
+            self.actor_critic.base.active_column = column
             if column == -1:
-                self.actor_critic.base.active_column = None
+                self.actor_critic.base.global_drop = False
             else:
-                self.actor_critic.base.active_column = column
+                self.actor_critic.base.global_drop = True
 
+        else:
+            self.actor_critic.base.global_drop = False
         eval_episode_rewards = []
 
         obs = self.eval_envs.reset()
-        eval_recurrent_hidden_states = torch.zeros(args.num_processes,
+        eval_recurrent_hidden_states = torch.zeros(self.num_eval_processes,
                         self.actor_critic.recurrent_hidden_state_size, device=self.device)
-        eval_masks = torch.zeros(args.num_processes, 1, device=self.device)
+        eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
         while len(eval_episode_rewards) < 10:
             with torch.no_grad():
-                _, action, _, eval_recurrent_hidden_states = self.actor_critic.act(
+                _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
                     obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
 
             # Obser reward and next obs
@@ -314,19 +348,19 @@ class Evaluator(object):
 
        #eval_envs.close()
         eprew = np.mean(eval_episode_rewards)
-        eplen = len(eval_episode_rewards)
+        args = self.args
+        n_frame = args.num_steps * args.num_processes * args.eval_interval # relative to training session
         if column is not None:
             print(" Column {}".format(column))
         print(" Evaluation using {} episodes: mean reward {:.5f}\n".
             format(len(eval_episode_rewards),
                    eprew))
 
-        log_info = {'r': round(eprew, 6),  'l': eplen, 't': round(time.time() - self.tstart, 6)}
+        log_info = {'r': round(eprew, 6),  'l': n_frame, 't': round(time.time() - self.tstart, 6)}
         writer, log_file = getattr(self, 'writer_col_{}'.format(column)),\
                            getattr(self, 'log_file_col_{}'.format(column))
         writer.writerow(log_info)
         log_file.flush()
-
 
 
 if __name__ == "__main__":

@@ -40,6 +40,7 @@ actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 if args.active_column is not None:
     actor_critic.base.active_column = args.active_column
+    actor_critic.base.global_drop = True
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
