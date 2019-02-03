@@ -220,7 +220,7 @@ class MicropolisControl():
             return
        #x += self.MAP_XS
        #y += self.MAP_YS
-       #tool = self.tools[tool_int]
+        tool_int = self.tools.index(self.engineTools[tool_int])
        #self.map.addZonePlayer(x, y, tool, static_build=True)
         self.player_builds += [(tool_int, x, y)]
 
