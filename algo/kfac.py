@@ -29,7 +29,7 @@ def _extract_patches(x, kernel_size, stride, padding):
 def compute_cov_a(a, classname, layer_info, fast_cnn):
     batch_size = a.size(0)
 
-    if classname == 'Conv2d':
+    if classname == 'Conv2d' or classname == 'ConvTranspose2d':
         if fast_cnn:
             a = _extract_patches(a, *layer_info)
             a = a.view(a.size(0), -1, a.size(-1))
@@ -162,7 +162,7 @@ class KFACOptimizer(optim.Optimizer):
         if self.acc_stats:
             classname = module.__class__.__name__
             layer_info = None
-            if classname == 'Conv2d':
+            if classname == 'Conv2d' or classname == 'ConvTranspose2d':
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
@@ -179,7 +179,8 @@ class KFACOptimizer(optim.Optimizer):
         for module in self.model.modules():
             classname = module.__class__.__name__
             if classname in self.known_modules:
-                assert not ((classname in ['Linear', 'Conv2d']) and module.bias is not None), \
+            
+                assert not ((classname in ['Linear', 'Conv2d', 'ConvTranspose2d']) and module.bias is not None), \
                                     "You must have a bias as a separate layer"
 
                 self.modules.append(module)
