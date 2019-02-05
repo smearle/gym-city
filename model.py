@@ -264,7 +264,7 @@ class MicropolisBase_fractal(NNBase):
         self.n_recs = n_recs
         print("Fractal Net: ", self.n_recs, "recursions, ",squeeze, "squeeze")
         self.n_conv_recs = n_conv_recs
-
+        self.squeeze = squeeze
         self.COLUMNS = True
         self.local_drop = False
         self.join_masks = []
@@ -286,25 +286,26 @@ class MicropolisBase_fractal(NNBase):
             nn.init.calculate_gain('relu'))
 
         self.conv_00 = init_(nn.Conv2d(num_inputs, self.n_channels, 1, 1, 0))
-        self.fixed = init_(nn.Conv2d(self.n_channels, self.n_channels, 3, 1, 1))
-        if squeeze:
-            self.dwn = init_(nn.Conv2d(self.n_channels, self.n_channels, 2, 2, 0))
-            self.up = init_(nn.ConvTranspose2d(self.n_channels, self.n_channels, 2, 2, 0))
+        for i in range(self.n_recs):
+            setattr(self, 'fixed_{}'.format(i), init_(nn.Conv2d(self.n_channels, self.n_channels, 3, 1, 1)))
+            if squeeze and i > 0:
+                setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(self.n_channels, self.n_channels, 2, 2, 0)))
+                setattr(self, 'up_{}'.format(i), init_(nn.ConvTranspose2d(self.n_channels, self.n_channels, 2, 2, 0)))
         self.join_compress = init_(nn.Conv2d(self.n_channels * 2, self.n_channels, 3, 1, 1))
 
 
         f_c = None
-        for i in range(self.n_recs):
-            if self.COLUMNS:
-                if squeeze:
-                    setattr(self, 'col_{}'.format(i), FractalSqueezeColumn(i, map_width, self.dwn, self.fixed, self.up))
-                else:
-                    setattr(self, 'col_{}'.format(i), FractalColumn(i, map_width, self.fixed))
-            else:
-                if squeeze:
-                    f_c = SubFractal_squeeze(self, f_c, n_layer=i, map_width = self.map_width)
-                else:
-                    f_c = SubFractal(self, f_c, n_layer=i)
+       #for i in range(self.n_recs):
+       #    if self.COLUMNS:
+       #        if squeeze:
+       #            setattr(self, 'col_{}'.format(i), FractalSqueezeColumn(i, map_width, self.dwn, self.fixed, self.up))
+       #        else:
+       #            setattr(self, 'col_{}'.format(i), FractalColumn(i, map_width, self.fixed))
+       #    else:
+       #        if squeeze:
+       #            f_c = SubFractal_squeeze(self, f_c, n_layer=i, map_width = self.map_width)
+       #        else:
+       #            f_c = SubFractal(self, f_c, n_layer=i)
         self.f_c = f_c
         self.compress = init_(nn.Conv2d(2 * self.n_channels, self.n_channels, 3, 1, 1))
 
@@ -320,7 +321,7 @@ class MicropolisBase_fractal(NNBase):
 
     def forward(self, x, rnn_hxs, masks):
 
-        depth = pow(2, self.n_recs)
+        depth = pow(2, self.n_recs - 1)
         x = x_0 = F.relu(self.conv_00(x))
         if not self.COLUMNS:
             if self.local_drop or self.global_drop:
@@ -331,12 +332,24 @@ class MicropolisBase_fractal(NNBase):
             if self.global_drop:
                 j = self.active_column
                 for i in range(depth // (2 ** j)):
-                    active_column = getattr(self, 'col_{}'.format(j))
-                    x = active_column(x)
+                   #active_column = getattr(self, 'col_{}'.format(j))
+                   #x = active_column(x)
+                    fixed = getattr(self, 'fixed_{}'.format(j))
+                    if self.squeeze:
+                        if j > 0:
+                            dwn = getattr(self, 'dwn_{}'.format(j))
+                            up = getattr(self, 'up_{}'.format(j))
+                        for k in range(j):
+                            x = F.relu(dwn(x))
+                        x = F.relu(fixed(x))
+                        for k in range(j):
+                            x = F.relu(up(x))
+                    else:
+                        x = F.relu(fixed(x))
             else:
                 for r in range(self.n_recs):
                     globals()['in_{}'.format(r)] = x
-                for i in range(pow(2, self.n_recs)):
+                for i in range(depth):
                    #print('depth ', i)
                     j = 0 # potential inputs added to join layer
                     a = 0 # actual added inputs to join layer
@@ -344,24 +357,35 @@ class MicropolisBase_fractal(NNBase):
                     while (i + 1) % (2 ** j) == 0 and j < self.n_recs:
                         # check for local path drop
                         if not self.local_drop or self.join_masks[i][j]:
-                            column = getattr(self, 'col_{}'.format(j))
-                            out_j = column(globals()['in_{}'.format(j)])
+                           #column = getattr(self, 'col_{}'.format(j))
+                            out_j = globals()['in_{}'.format(j)]
+                            fixed = getattr(self, 'fixed_{}'.format(j))
+                            if self.squeeze:
+                                if j > 0:
+                                    dwn = getattr(self, 'dwn_{}'.format(j))
+                                    up = getattr(self, 'up_{}'.format(j))
+                                for k in range(j):
+                                    out_j = F.relu(dwn(out_j))
+                                out_j = F.relu(fixed(out_j))
+                                for k in range(j):
+                                    out_j = F.relu(up(out_j))
+                            else:
+                                out_j = F.relu(fixed(out_j)) 
+                           #out_j = column(globals()['in_{}'.format(j)])
                            #out = (out * a + out_j) / (a + 1)
                             if out is None:
                                 out = out_j
                             else:
                                 out = F.relu(self.join_compress(torch.cat((out, out_j), 1)))
                             a += 1
+                       #print('depth {} joined w/ col {}'.format(i,j))
                         j += 1
                     for k in range(j):
                         globals()['in_{}'.format(k)] = out 
                 x = in_0
 
 
-        try:
-            x = F.relu(self.compress(torch.cat((x, x_0), 1)))
-        except TypeError:
-            print('Warning, invalid neural activation: {} \n {} \n {} \n {}'.format(x, x_0, self.active_column, self.join_masks))
+        x = F.relu(self.compress(torch.cat((x, x_0), 1)))
         values = x
         for i in range(int(math.log(self.map_width, 2))):
             values = F.relu(self.critic_squeeze(values))
@@ -568,10 +592,8 @@ class MicropolisBase_fixed(NNBase):
 
         self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))
 
-        self.conv_0 = nn.Conv2d(num_inputs, 64, 1, 1, 0)
-        init_(self.conv_0)
-        self.conv_1 = nn.Conv2d(64, 64, 5, 1, 2)
-        init_(self.conv_1)
+        self.conv_0 = init_(nn.Conv2d(num_inputs, 64, 1, 1, 0))
+        self.conv_1 = init_(nn.Conv2d(64, 64, 5, 1, 2))
         for i in range(1):
             setattr(self, 'conv_2_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
         self.critic_compress = init_(nn.Conv2d(79, 64, 3, 1, 1))
@@ -610,10 +632,10 @@ class MicropolisBase_fixed(NNBase):
 class MicropolisBase_squeeze(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20):
         super(MicropolisBase_squeeze, self).__init__(recurrent, hidden_size, hidden_size)
-        self.chunk_size = 3
+        self.chunk_size = 2
         self.map_width = map_width
-        self.num_maps = 4
-       #self.num_maps = int(math.log(self.map_width, self.chunk_size)) # how many different sizes
+       #self.num_maps = 4
+        self.num_maps = int(math.log(self.map_width, self.chunk_size)) # how many different sizes
 
         init_ = lambda m: init(m,
             nn.init.dirac_,
