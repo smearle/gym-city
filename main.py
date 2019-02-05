@@ -42,7 +42,7 @@ if args.cuda:
 
 def main():
     saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
-    if os.path.exists(saved_model):
+    if os.path.exists(saved_model) and not args.overwrite:
         actor_critic, ob_rms = \
                 torch.load(saved_model)
         agent = \
@@ -356,11 +356,12 @@ class Evaluator(object):
             format(len(eval_episode_rewards),
                    eprew))
 
-        log_info = {'r': round(eprew, 6),  'l': n_frame, 't': round(time.time() - self.tstart, 6)}
-        writer, log_file = getattr(self, 'writer_col_{}'.format(column)),\
-                           getattr(self, 'log_file_col_{}'.format(column))
-        writer.writerow(log_info)
-        log_file.flush()
+        if column is not None:
+            log_info = {'r': round(eprew, 6),  'l': n_frame, 't': round(time.time() - self.tstart, 6)}
+            writer, log_file = getattr(self, 'writer_col_{}'.format(column)),\
+                               getattr(self, 'log_file_col_{}'.format(column))
+            writer.writerow(log_info)
+            log_file.flush()
 
 
 if __name__ == "__main__":

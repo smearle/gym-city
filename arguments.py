@@ -84,21 +84,21 @@ def get_parser():
     parser.add_argument('--curiosity', action='store_true', default=False)
     parser.add_argument('--no-reward', action='store_true', default=False)
     parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
-    parser.add_argument('--random-terrain', default=False,
-            help='whether or not episode begins on randomly generated micropolis terrain map')
-    parser.add_argument('--random-builds', default=False,
-            help='whether or not the episode begins with random static (unbulldozable) builds on the map')
+    parser.add_argument('--random-terrain', action='store_true',
+            help='episode begins on randomly generated micropolis terrain map')
+    parser.add_argument('--random-builds', action='store_true',
+            help='episode begins with random static (unbulldozable) builds on the map')
 
     # Fractal Net
-    parser.add_argument('--squeeze', default=False, action='store_true',
-            help= 'whether or not to squeeze outward columns of fractal by recurrent up and down convolution')
+    parser.add_argument('--squeeze', action='store_true',
+            help= 'squeeze outward columns of fractal by recurrent up and down convolution')
     parser.add_argument('--n-recs', default=3, type=int,
             help='number of times the expansion rule is applied in the construction of a fractal net')
     parser.add_argument('--n-conv-recs', default=2,
             help='number of recurrences of convolution at base level of fractal net')
     parser.add_argument('--max-step', type=int, default=200)
     parser.add_argument('--drop-path', default=False)
-
+    parser.add_argument('--overwrite', action='store_true', help='overwrite log files and saved model, optimizer')
 ########################################### ICM
     parser.add_argument(
         '--eta', 
