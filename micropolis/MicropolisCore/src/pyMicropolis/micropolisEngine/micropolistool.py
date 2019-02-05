@@ -106,7 +106,7 @@ class MicropolisTool(tiletool.TileTool):
             x_bot = x - bot.MAP_XS
             y_bot = y - bot.MAP_YS
             if x_bot < bot.MAP_X and y_bot < bot.MAP_Y:
-                print("Bot is adding static build at ", x_bot, y_bot)
+                print("Bot is adding static build at ({}, {}), tool index {}".format(x_bot, y_bot, self.toolIndex))
                 view.engine.builderBot.playerToolDown(self.toolIndex, x_bot, y_bot)
             else:
                 if view.engine.toolDown(self.toolIndex, x, y) == 1:
