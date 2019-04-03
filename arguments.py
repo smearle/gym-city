@@ -88,7 +88,8 @@ def get_parser():
             help='episode begins on randomly generated micropolis terrain map')
     parser.add_argument('--random-builds', action='store_true',
             help='episode begins with random static (unbulldozable) builds on the map')
-
+    parser.add_argument('--overwrite', action='store_true', help='overwrite log files and saved model, optimizer')
+    parser.add_argument('--max-step', type=int, default=200)
     # Fractal Net
     parser.add_argument('--squeeze', action='store_true',
             help= 'squeeze outward columns of fractal by recurrent up and down convolution')
@@ -96,9 +97,9 @@ def get_parser():
             help='number of times the expansion rule is applied in the construction of a fractal net')
     parser.add_argument('--n-conv-recs', default=2,
             help='number of recurrences of convolution at base level of fractal net')
-    parser.add_argument('--max-step', type=int, default=200)
-    parser.add_argument('--drop-path', default=False)
-    parser.add_argument('--overwrite', action='store_true', help='overwrite log files and saved model, optimizer')
+    parser.add_argument('--drop-path', action='store_true', help='enable global and local drop path on fractal model (ignored otherwise)')
+    parser.add_argument('--shared', action='store_true',
+            help='layers shared between columns')
 ########################################### ICM
     parser.add_argument(
         '--eta', 
