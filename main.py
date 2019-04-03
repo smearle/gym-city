@@ -317,7 +317,7 @@ class Evaluator(object):
 
         self.actor_critic.base.local_drop = False
         if column is not None:
-            self.actor_critic.base.active_column = column
+            self.actor_critic.base.set_active_column(column)
             if column == -1:
                 self.actor_critic.base.global_drop = False
             else:
