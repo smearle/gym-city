@@ -254,8 +254,8 @@ class MicropolisEnv(core.Env):
                 if n > max_net:
                     max_net = n
             reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
-        reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-                     self.curr_pop / 2)
+       #reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
+       #             self.curr_pop / 2)
         self.curr_reward = reward#- self.last_reward
         self.last_reward = reward
 
