@@ -11,6 +11,36 @@ class RolloutStorage(object):
         self.args=args
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
+       #self.recurrent_hidden_states = [None for i in range(num_steps + 1)]
+      # width = args.map_width
+      # n_channels = 32 # make this an arg
+      # for j in range(args.n_recs):
+      #     reps = 2 ** (args.n_recs - j - 1) # number of times column segment repeats
+      #     n_squish = min(j, self.num_maps) 
+      #     for r in range(reps):
+      #         if j == 0:
+      #             s = torch.cuda.FloatTensor(size=
+      #                     (n_batch, n_channels, width, width)).fill_(0.0)
+      #         for k in range(n_squish):
+      #             width = int(width / 2)
+      #             s = torch.cuda.FloatTensor(size=(
+      #                     num_process, n_channels, width, width)).fill_(0.0)
+      #             for l in range(k + 3):
+      #                 rnn_hxs[j] += [(s, s)]
+      #         rnn_hxs[j] += [(s, s)]
+      #         for k in range(n_squish):
+      #             for l in range(n_squish - k + 2):
+      #                 width = width 
+      #                 s = torch.cuda.FloatTensor(size=(
+      #                     n_batch, n_channels, width, width)).fill_(0.0)
+      #                 rnn_hxs[j] += [(s, s)]
+      #             width = int(width * 2)
+      #     print([[t[0].shape for t in rnn_hxs[i]] for i in range(len(rnn_hxs))])
+      #     rnn_hxs_i = rnn_hxs
+      #     rnn_hxs = torch.cat(
+      #         [torch.cat([u.squeeze(0) for u in rnn_hxs[v]], dim=0).squeeze(0) for v in len(rnn_hxs)], dim=0)
+      #     rnn_hxs_i = 
+ 
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
@@ -45,7 +75,7 @@ class RolloutStorage(object):
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks):
         self.obs[self.step + 1].copy_(obs)
-        self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
+        self.recurrent_hidden_states[self.step + 1] = (recurrent_hidden_states)
         self.actions[self.step].copy_(actions)
         self.action_log_probs[self.step].copy_(action_log_probs)
         self.value_preds[self.step].copy_(value_preds)
