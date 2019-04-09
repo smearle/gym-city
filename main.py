@@ -236,15 +236,15 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 format(
                        fwd_loss, inv_loss))
 
-        if (args.eval_interval is not None
-                and len(episode_rewards) > 1
+        if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
             if evaluator is None:
                 evaluator = Evaluator(args, actor_critic, device)
 
 
             if args.model == 'fractal':
-                for i in range(-1, args.n_recs):
+                n_cols = evaluator.actor_critic.base.n_cols
+                for i in range(-1, n_cols):
                     evaluator.evaluate(column=i)
                #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
                 win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, args.env_name,
@@ -286,7 +286,7 @@ class Evaluator(object):
             files = glob.glob(os.path.join(self.eval_log_dir,  '*.monitor.csv'))
             for f in files:
                 os.remove(f)
-        self.num_eval_processes = 20
+        self.num_eval_processes = 2
         self.eval_envs = make_vec_envs(
                     eval_args.env_name, eval_args.seed + self.num_eval_processes, self.num_eval_processes,
                     eval_args.gamma, self.eval_log_dir, eval_args.add_timestep, self.device, True, args=eval_args)
@@ -298,7 +298,8 @@ class Evaluator(object):
         self.tstart = time.time()
         fieldnames = ['r', 'l', 't']
         if args.model == 'fractal':
-            for i in range(-1, args.n_recs):
+            n_cols = actor_critic.base.n_cols
+            for i in range(-1, n_cols):
                 log_file_col = open('{}/col_{}_eval.csv'.format(self.eval_log_dir, i), mode='w')
                 setattr(self, 'log_file_col_{}'.format(i), log_file_col)
                 writer_col = csv.DictWriter(log_file_col, fieldnames=fieldnames)
@@ -332,7 +333,7 @@ class Evaluator(object):
                         self.actor_critic.recurrent_hidden_state_size, device=self.device)
         eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
-        while len(eval_episode_rewards) < 10:
+        while len(eval_episode_rewards) < 2:
             with torch.no_grad():
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
                     obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
