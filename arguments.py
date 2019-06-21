@@ -108,7 +108,8 @@ def get_parser():
             help='layers shared between columns')
     parser.add_argument('--simple-reward', action='store_true',
             help='reward only for overall population according to game')
-    parser.add_argument('--rule', default = 'extend')
+    parser.add_argument('--rule', default = 'extend'
+            help='which fractal expansion rule to apply if using a fractal network architecture')
 ########################################### ICM
     parser.add_argument(
         '--eta', 
