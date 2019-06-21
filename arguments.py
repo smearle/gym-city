@@ -11,7 +11,13 @@ def get_args():
     if args.experiment_name == '':
         args.experiment_name += '{}'.format(datetime.datetime.now())
   # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
-    args.save_dir = "trained_models/{}/{}/w{}/{}M/{}".format(args.algo, args.model, args.map_width, int(args.num_frames / 1000000), args.experiment_name)
+    model_name = args.model
+    if args.model == 'fractal':
+        model_name += '-{}-{}recs'.format(args.rule, args.n_recs)
+        if args.squeeze: model_name += '_sqz'
+        if args.shared: model_name += '_shr'
+        if args.drop_path: model_name += '_drop'
+    args.save_dir = "trained_models/{}_{}_w{}/{}".format(args.algo, model_name, args.map_width, args.experiment_name)
     return args
 
 def get_parser():
@@ -66,7 +72,7 @@ def get_parser():
 #                       help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--render', action='store_true', default=False, 
+    parser.add_argument('--render', action='store_true', default=False,
                         help="render gui of single agent during training")
     parser.add_argument('--print-map', action='store_true', default=False)
     parser.add_argument('--add-timestep', action='store_true', default=False,
@@ -77,7 +83,7 @@ def get_parser():
                         help='enable visdom visualization')
     parser.add_argument('--port', type=int, default=8097,
                         help='port to run the server on (default: 8097)')
-    parser.add_argument('--map-width', type=int, default=20, 
+    parser.add_argument('--map-width', type=int, default=20,
                         help="width of micropolis map")
     parser.add_argument('--empty-start', action='store_true', default=False)
     parser.add_argument('--model', default='fixed')
@@ -100,6 +106,9 @@ def get_parser():
     parser.add_argument('--drop-path', action='store_true', help='enable global and local drop path on fractal model (ignored otherwise)')
     parser.add_argument('--shared', action='store_true',
             help='layers shared between columns')
+    parser.add_argument('--simple-reward', action='store_true',
+            help='reward only for overall population according to game')
+    parser.add_argument('--rule', default = 'extend')
 ########################################### ICM
     parser.add_argument(
         '--eta', 
