@@ -6,6 +6,7 @@ if sys.version_info[0] >= 3:
     from gi.repository import Gtk as gtk
 else:
     import gtk
+import time
 
 ## assumes you've downloaded the micropolis-4bots repo into the same directory as this (the gym-micropolis) repo.
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -45,8 +46,8 @@ class MicropolisControl():
         # shifts build area to centre of 120 by 100 tile map
        # self.MAP_XS = 59 - self.MAP_X // 2
        # self.MAP_YS = 49 - self.MAP_Y //2
-        self.MAP_XS = 5
-        self.MAP_YS = 5
+        self.MAP_XS = 16
+        self.MAP_YS = 8
         self.num_roads = 0
         self.engineTools = ['Residential', 'Commercial', 'Industrial', 
                 'FireDept', 
@@ -269,7 +270,10 @@ class MicropolisControl():
         x = int(a[1])
         y = int(a[2])
         self.doBotTool(x, y, tool, static_build)
+       #gtk.main_iteration() # for observation or recording
+       #time.sleep(1/60)
         self.engine.simTick()
+       #time.sleep(1/60)
 #       gtk.mainiteration()
 
     def printTileMap(self):
