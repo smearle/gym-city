@@ -108,24 +108,24 @@ def get_parser():
             help='layers shared between columns')
     parser.add_argument('--simple-reward', action='store_true',
             help='reward only for overall population according to game')
-    parser.add_argument('--rule', default = 'extend'
+    parser.add_argument('--rule', default = 'extend',
             help='which fractal expansion rule to apply if using a fractal network architecture')
 ########################################### ICM
     parser.add_argument(
-        '--eta', 
-        type=float, 
-        default=0.01, 
-        metavar='LR',            
+        '--eta',
+        type=float,
+        default=0.01,
+        metavar='LR',
         help='scaling factor for intrinsic reward')
     parser.add_argument(
-        '--beta', 
-        type=float, 
+        '--beta',
+        type=float,
         default=0.2,
         metavar='LR',
         help='balance between inverse & forward')
     parser.add_argument(
-        '--lmbda', 
-        type=float, 
+        '--lmbda',
+        type=float,
         default=0.1,
         metavar='LR',
         help='lambda : balance between A2C & icm')
