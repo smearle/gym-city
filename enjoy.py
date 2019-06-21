@@ -32,15 +32,19 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
 # render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
-actor_critic = Policy(env.observation_space.shape, env.action_space, args=args)
+actor_critic = Policy(env.observation_space.shape, env.action_space, 
+        base_kwargs={'map_width': args.map_width, 'num_actions': 19, 'recurrent': args.recurrent_policy},
+        curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
 
 
 torch.nn.Module.dump_patches = True
-actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+#actor_critic, ob_rms = \
+#            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+checkpoint = torch.load(os.path.join(args.load_dir, args.env_name + '.tar'))
+actor_critic.load_state_dict(checkpoint['model_state_dict'])
+ob_rms = checkpoint['ob_rms']
 if args.active_column is not None:
-    actor_critic.base.active_column = args.active_column
-    actor_critic.base.global_drop = True
+    actor_critic.base.set_active_column(args.active_column)
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
@@ -70,7 +74,7 @@ while True:
             obs, recurrent_hidden_states, masks, deterministic=args.det,
             player_act=player_act)
 
-    if num_step >= 5000:
+    if num_step >= 5000 or num_step > args.max_step:
         env.reset()
         num_step = 0
     # Obser reward and next obs

@@ -13,7 +13,26 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
-import gym_micropolis
+import csv
+class MicropolisMonitor(bench.Monitor):
+    def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
+        append_log = False # are we merging to an existing log file after pause in training?
+        logfile = filename + '.monitor.csv'
+        if os.path.exists(logfile):
+            append_log = True
+            old_log = '{}_old'.format(logfile)
+            os.rename(logfile, old_log)
+        super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
+        if append_log:
+            with open(old_log, newline='') as old:
+                reader = csv.DictReader(old, fieldnames=('r', 'l', 't'))
+                h = 0
+                for row in reader:
+                    if h > 1:
+                        row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
+                        self.logger.writerow(row)
+                    h += 1
+            os.remove(old_log)
 
 
 try:
@@ -32,7 +51,7 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None, args=None):
+def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None, simple_reward=False, args=None):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -42,9 +61,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             if 'micropolis' in env_id.lower():
                 print("ENV RANK: ", rank)
                 if rank == 0:
-                    env.setMapSize(map_width, print_map=print_map, render_gui=render_gui, empty_start=not args.random_terrain, max_step=max_step, rank=rank)
+                    env.setMapSize(map_width, print_map=print_map, render_gui=render_gui, empty_start=not args.random_terrain, max_step=max_step, rank=rank, simple_reward=simple_reward)
                 else:
-                    env.setMapSize(map_width, max_step=max_step, rank=rank, empty_start=not args.random_terrain)
+                    env.setMapSize(map_width, max_step=max_step, rank=rank, empty_start=not args.random_terrain, simple_reward=simple_reward)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -59,8 +78,14 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = AddTimestep(env)
 
         if log_dir is not None:
-            env = bench.Monitor(env, os.path.join(log_dir, str(rank)),
+            env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
                                 allow_early_resets=allow_early_resets)
+            
+           #print(log_dir)
+           # 
+           #print(type(env))
+           #print(dir(env))
+           #raise Exception
 
         if is_atari:
             env = wrap_deepmind(env)
@@ -79,7 +104,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   args=None):
     envs = [make_env(env_name, seed, i, log_dir, add_timestep, 
         allow_early_resets, map_width=args.map_width, render_gui=args.render, 
-        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, args=args)
+        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, simple_reward=args.simple_reward, args=args)
             for i in range(num_processes)]
 
     if len(envs) > 1:
