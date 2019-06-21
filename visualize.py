@@ -78,7 +78,10 @@ def load_data(indir, smooth, bin_size, col=None):
         timesteps += datas[i][1]
 
     if len(result) < bin_size:
-        return [None, None]
+        if len(result) > 2:
+            bin_size = len(result) # hack, so we see graphs asap
+        else:
+            return [None, None]
 
     x, y = np.array(result)[:, 0], np.array(result)[:, 1]
 
@@ -106,25 +109,36 @@ color_defaults = [
 ]
 
 def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
+    if folder.endswith('logs'):
+        evl = False
+    elif folder.endswith('logs_eval'):
+        evl = True
     tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
     ticks = tick_fractions * num_steps
     tick_names = ["{:.0e}".format(tick) for tick in ticks]
     fig = plt.figure()
     if n_graphs is not None:
         #print('indaplotter')
-        for i in range(-1, n_graphs):
+        color = 0
+        for i in n_graphs:
             tx, ty = load_data(folder, smooth, bin_size, col=i)
             if tx is None or ty is None:
                 #print('could not find x y data columns in csv')
-                return win
+                pass
+               #return win
 
-            plt.plot(tx, ty, label="{}_col_{}".format(name, i), color=color_defaults[i])
+            else:
+                plt.plot(tx, ty, label="{}_col_{}".format(name, i), color=color_defaults[color])
+                color += 1
     else:
         tx, ty = load_data(folder, smooth, bin_size)
         if tx is None or ty is None:
             return win
-
-        plt.plot(tx, ty, label="non-det")
+        if evl:
+            color = 1
+            plt.plot(tx, ty, label='det-eval')
+        else:
+            plt.plot(tx, ty, label="non-det")
 
 
     plt.xticks(ticks, tick_names)
@@ -135,6 +149,12 @@ def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1,
 
     plt.title(game)
     plt.legend(loc=4)
+    if evl:
+        figfolder = folder.replace('/logs_eval', '/eval_')
+    else:
+        figfolder = folder.replace('/logs', '/train_')
+    print('should be saving graph now as {}'.format(figfolder))
+    plt.savefig('./{}fig.png'.format(figfolder), format='png')
     plt.show()
     plt.draw()
 
