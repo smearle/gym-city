@@ -41,10 +41,11 @@ class MicropolisEnv(core.Env):
 
     def setMapSize(self, size, max_step=None, rank=None, print_map=False, PADDING=0, static_builds=True, 
             parallel_gui=False, render_gui=False,
-            empty_start=True):
+            empty_start=True, simple_reward=False):
         if max_step is not None:
             self.max_step = max_step
         self.empty_start = empty_start
+        self.simple_reward = simple_reward
         if type(size) == int:
             self.MAP_X = size
             self.MAP_Y = size
@@ -220,19 +221,22 @@ class MicropolisEnv(core.Env):
 
 
     def getPopReward(self):
-        resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
-        curr_pop = resPop + comPop + indPop
-        zone_variety = 0
-        if resPop > 0:
-            zone_variety += 1
-        if comPop > 0:
-            zone_variety += 1
-        if indPop > 0:
-            zone_variety += 1
-        zone_bonus = (zone_variety - 1) * 50
-        curr_pop += max(0, zone_bonus)
+        if self.simple_reward:
+            return self.micro.getTotPop()
+        else:
+            resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
+            curr_pop = resPop + comPop + indPop
+            zone_variety = 0
+            if resPop > 0:
+                zone_variety += 1
+            if comPop > 0:
+                zone_variety += 1
+            if indPop > 0:
+                zone_variety += 1
+            zone_bonus = (zone_variety - 1) * 50
+            curr_pop += max(0, zone_bonus)
 
-        return curr_pop
+            return curr_pop
 
 
 
@@ -247,15 +251,18 @@ class MicropolisEnv(core.Env):
         self.curr_pop = self.getPopReward()
         self.curr_mayor_rating = self.getRating()
         self.state = self.getState()
-        reward = self.curr_pop  + (self.micro.total_traffic / 100)
-        if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
-            max_net = 0
-            for n in  self.micro.map.road_net_sizes.values():
-                if n > max_net:
-                    max_net = n
-            reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
-       #reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-       #             self.curr_pop / 2)
+        if not self.simple_reward:
+            reward = self.curr_pop  + (self.micro.total_traffic / 100)
+            if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
+                max_net = 0
+                for n in  self.micro.map.road_net_sizes.values():
+                    if n > max_net:
+                        max_net = n
+                reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
+            reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
+                         self.curr_pop / 2)
+        else:
+            reward = self.curr_pop
         self.curr_reward = reward#- self.last_reward
         self.last_reward = reward
 
