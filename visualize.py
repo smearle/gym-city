@@ -135,8 +135,8 @@ def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1,
         if tx is None or ty is None:
             return win
         if evl:
-            color = 1
-            plt.plot(tx, ty, label='det-eval')
+            color = 3
+            plt.plot(tx, ty, label='det-eval', color=color_defaults[color])
         else:
             plt.plot(tx, ty, label="non-det")
 

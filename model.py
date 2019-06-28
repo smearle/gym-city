@@ -395,7 +395,7 @@ class MicropolisBase_FullyConvRec(NNBase):
 
 class MicropolisBase_fractal(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
-                 map_width=20, n_conv_recs=2, n_recs=3, squeeze=False,
+                 map_width=16, n_conv_recs=2, n_recs=3, squeeze=False,
                  shared=False, num_actions=19, rule='extend'):
         super(MicropolisBase_fractal, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
@@ -418,8 +418,9 @@ class MicropolisBase_fractal(NNBase):
        #self.compress = init_(nn.Conv2d(2 * 16, self.n_channels, 3, 1, 1))
 
         n_out_chan = block_chans[-1]
-        self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, 2, 2, 0))
 
+
+        self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, 2, 2, 0))
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
@@ -458,7 +459,7 @@ class MicropolisBase_fractal(NNBase):
 
 class FractalBlock(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512,
-                 map_width=20, n_conv_recs=2, n_recs=3, squeeze=False,
+                 map_width=16, n_conv_recs=2, n_recs=3, squeeze=False,
                  shared=False, num_actions=19, rule='extend', n_chan=32,
                  n_chan_in=32):
 
@@ -803,6 +804,8 @@ class SubFractal_squeeze(nn.Module):
         self.n_channels = root.n_channels
         self.join_masks = root.join_masks
         self.active_column = root.active_column
+        self.num_down = min(int(math.log(self.map_width, 2)) - 1, n_layer)
+        self.dense_nug = (self.num_down > 1)
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
@@ -816,8 +819,14 @@ class SubFractal_squeeze(nn.Module):
             self.up = getattr(root, 'up_{}'.format(j))
             self.dwn = getattr(root, 'dwn_{}'.format(j))
             self.join = getattr(root, 'join_{}'.format(j))
+        if self.dense_nug:
+            squish_width = self.map_width / (2 ** self.num_down)
+            hidden_size = int(squish_width * squish_width * self.n_channels)
+            linit_ = lambda m: init(m,
+                nn.init.orthogonal_,
+                lambda x: nn.init.constant_(x, 0))
+            self.dense = linit_(nn.Linear(hidden_size, hidden_size))
         self.fixed = getattr(root, 'fixed_{}'.format(j))
-        self.num_down = min(int(math.log(self.map_width, 2)) - 1, n_layer)
         if root.batch_norm:
             self.bn_join = nn.BatchNorm2d(self.n_channels)
             if self.num_down == 0:
@@ -844,9 +853,14 @@ class SubFractal_squeeze(nn.Module):
                #bn_dwn = getattr(self, 'bn_dwn_{}'.format(d))
                 x_c1 = F.relu(#bn_dwn
                         (self.dwn(x_c1)))
+            if self.dense_nug:
+                x_c1_shape = x_c1.shape
+                x_c1 = x_c1.view(x_c1.size(0), -1)
+                x_c1 = F.tanh(self.dense(x_c1))
+                x_c1 = x_c1.view(x_c1_shape) 
             for f in range(1):
                #bn_fixed= getattr(self, 'bn_fixed_{}'.format(f))
-                x_c1 = F.hardtanh(#bn_fixed
+                x_c1 = F.relu(#bn_fixed
                         (self.fixed(x_c1)))
             for u in range(self.num_down):
                #bn_up = getattr(self, 'bn_up_{}'.format(u))
