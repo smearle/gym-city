@@ -37,6 +37,7 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
+graph_name = args.save_dir.replace('trained_models/', '').replace('/', ' ')
 
 def main():
 
@@ -66,10 +67,15 @@ def main():
 
                         args=args)
 
-
+    if args.power_puzzle:
+        num_actions = 1
+    else:
+        num_actions = 19
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
-        base_kwargs={'map_width': args.map_width, 'num_actions': 19, 'recurrent': args.recurrent_policy},
-        curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
+        base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
+                     'recurrent': args.recurrent_policy},
+                     curiosity=args.curiosity, algo=args.algo,
+                     model=args.model, args=args)
 
     evaluator = None
 
@@ -103,6 +109,9 @@ def main():
         past_steps = checkpoint['past_steps']
         ob_rms = checkpoint['ob_rms']
         past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
+        saved_args = checkpoint['args']
+        if saved_args.n_recs > args.n_recs:
+            print('applying {} fractal expansions to network'.format(saved_args.n_recs - args.n_recs))
         print('Resuming from step {}'.format(past_steps))
 
        #print(type(next(iter((torch.load(saved_model))))))
@@ -120,16 +129,20 @@ def main():
         if vec_norm is not None:
             vec_norm.eval()
             vec_norm.ob_rms = ob_rms
-    
     actor_critic.to(device)
+
+    if 'LSTM' in args.model:
+        recurrent_hidden_state_size = actor_critic.base.get_recurrent_state_size()
+    else:
+        recurrent_hidden_state_size = actor_critic.recurrent_hidden_state_size
     if args.curiosity:
         rollouts = CuriosityRolloutStorage(args.num_steps, args.num_processes,
                             envs.observation_space.shape, envs.action_space,
-                            actor_critic.recurrent_hidden_state_size, actor_critic.base.feature_state_size(), args=args)
+                            recurrent_hidden_state_size, actor_critic.base.feature_state_size(), args=args)
     else:
         rollouts = RolloutStorage(args.num_steps, args.num_processes,
                             envs.observation_space.shape, envs.action_space,
-                            actor_critic.recurrent_hidden_state_size, args=args)
+                            recurrent_hidden_state_size, args=args)
 
     obs = envs.reset()
     rollouts.obs[0].copy_(obs)
@@ -140,7 +153,7 @@ def main():
     start = time.time()
     model = actor_critic.base
     for j in range(past_steps, num_updates):
-        if args.drop_path:
+        if args.model == 'fractal' and args.drop_path:
             model.get_drop_path()
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
@@ -155,7 +168,8 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
                         player_act=player_act,
-                        icm_enabled=args.curiosity)
+                        icm_enabled=args.curiosity,
+                        deterministic=False)
 
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -228,7 +242,8 @@ def main():
                 'past_steps': step,
                 'model_state_dict': save_model.state_dict(),
                 'optimizer_state_dict': optim_save,
-                'ob_rms': ob_rms
+                'ob_rms': ob_rms,
+                'args': args
                 }, os.path.join(save_path, args.env_name + ".tar"))
 
            #save_model = [save_model,
@@ -270,33 +285,33 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
             model = evaluator.actor_critic.base
             if args.model == 'fractal':
                 n_cols = model.n_cols
-                if args.rule == 'wide1':
+                if args.rule == 'wide1' and args.n_recs > 3:
                     col_step = 3
-                elif args.rule == 'extend':
+                else:
                     col_step = 1
                 col_idx = [-1, *range(0, n_cols, col_step)]
                 for i in col_idx:
                     evaluator.evaluate(column=i)
                #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
                # making sure the evaluator plots the '-1'st column (the overall net)
-                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, args.env_name,
+                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
                               args.algo, args.num_frames, n_graphs= col_idx)
             elif args.model == 'fixed' and model.RAND:
                 for i in model.eval_recs:
                     evaluator.evaluate(num_recursions=i)
-                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, args.env_name,
+                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
                                        args.algo, args.num_frames, n_graphs=model.eval_recs)
             else:
                 evaluator.evaluate(column=None)
-                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, args.env_name,
-                              args.algo, args.num_frames)
+                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
+                              args.algo, args.num_frames * 20 / (args.eval_interval * args.num_steps))
 
 
 
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, args.env_name,
+                win = visdom_plot(viz, win, args.log_dir, graph_name,
                                   args.algo, args.num_frames)
             except IOError:
                 pass
@@ -374,13 +389,6 @@ class Evaluator(object):
                 else:
                     writer_col.writeheader()
                     log_file_col.flush()
-
-
-        else:
-            self.log_file = open('{}/col_evals.csv'.format(self.eval_log_dir), mode='w')
-            self.writer = csv.DictWriter(self.log_file, fieldnames=fieldnames)
-            self.writer.writeheader()
-            self.log_file.flush()
         self.args = eval_args
 
 
@@ -395,9 +403,15 @@ class Evaluator(object):
         eval_episode_rewards = []
 
         obs = self.eval_envs.reset()
-        eval_recurrent_hidden_states = torch.zeros(self.num_eval_processes,
-                        self.actor_critic.recurrent_hidden_state_size, device=self.device)
-        eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
+        if 'LSTM' in self.args.model:
+            recurrent_hidden_state_size = self.actor_critic.base.get_recurrent_state_size()
+            eval_recurrent_hidden_states = torch.zeros(2, self.num_eval_processes,
+                             *recurrent_hidden_state_size, device=self.device)
+        else:
+            recurrent_hidden_state_size = self.actor_critic.recurrent_hidden_state_size
+            eval_recurrent_hidden_states = torch.zeros(self.num_eval_processes,
+                            recurrent_hidden_state_size, device=self.device)
+            eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
         while len(eval_episode_rewards) < 2:
             with torch.no_grad():
@@ -430,6 +444,7 @@ class Evaluator(object):
             print(" Evaluation using {} episodes: mean reward {:.5f}\n".
                 format(len(eval_episode_rewards),
                    eprew))
+        
 
 
 if __name__ == "__main__":

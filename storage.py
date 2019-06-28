@@ -10,7 +10,10 @@ class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size, args=None):
         self.args=args
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
-        self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
+        if type(recurrent_hidden_state_size) is tuple:
+            self.recurrent_hidden_states = torch.zeros(num_steps + 1, 2, num_processes, *recurrent_hidden_state_size)
+        else:
+            self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
        #self.recurrent_hidden_states = [None for i in range(num_steps + 1)]
       # width = args.map_width
       # n_channels = 32 # make this an arg
