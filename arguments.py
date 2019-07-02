@@ -110,6 +110,8 @@ def get_parser():
             help='reward only for overall population according to game')
     parser.add_argument('--rule', default = 'extend',
             help='which fractal expansion rule to apply if using a fractal network architecture')
+    parser.add_argument('--power-puzzle', action='store_true',
+            help='a minigame: the agent uses wire to efficiently connect zones.')
 ########################################### ICM
     parser.add_argument(
         '--eta',

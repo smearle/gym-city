@@ -41,11 +41,12 @@ class MicropolisEnv(core.Env):
 
     def setMapSize(self, size, max_step=None, rank=None, print_map=False, PADDING=0, static_builds=True, 
             parallel_gui=False, render_gui=False,
-            empty_start=True, simple_reward=False):
+            empty_start=True, simple_reward=False, power_puzzle=False):
         if max_step is not None:
             self.max_step = max_step
         self.empty_start = empty_start
         self.simple_reward = simple_reward
+        self.power_puzzle = power_puzzle
         if type(size) == int:
             self.MAP_X = size
             self.MAP_Y = size
@@ -53,7 +54,8 @@ class MicropolisEnv(core.Env):
             self.MAP_X = size[0]
             self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
-        self.micro = MicropolisControl(self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui, rank=rank)
+        self.micro = MicropolisControl(self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui, rank=rank,
+                power_puzzle=power_puzzle)
         self.static_builds = True
         self.win1 = self.micro.win1
         self.micro.SHOW_GUI=self.SHOW_GUI
@@ -121,6 +123,7 @@ class MicropolisEnv(core.Env):
                         self.intsToActions[i] = [z, x, y]
                         self.actionsToInts[z, x, y] = i
                         i += 1
+        print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
 
     def randomStep(self):
         self.step(self.action_space.sample())
@@ -153,6 +156,16 @@ class MicropolisEnv(core.Env):
 #       for j in range(i):
 #           self.micro.takeSetupAction((a[0][j], a[1][j], a[2][j]))
 
+    def powerPuzzle(self):
+        ''' Set up one plant, one res. If we restrict the agent to building power lines, we can test its ability
+        to make long-range associations. '''
+        for i in range(5):
+            self.micro.doBotTool(np.random.randint(0, self.micro.MAP_X),
+                                 np.random.randint(0, self.micro.MAP_Y), 'Residential', static_build=True)
+        while self.micro.map.num_plants == 0:
+            self.micro.doBotTool(np.random.randint(0, self.micro.MAP_X),
+                                  np.random.randint(0, self.micro.MAP_Y),
+                                  'NuclearPowerPlant', static_build=True)
 
     def reset(self):
         if True:
@@ -164,6 +177,8 @@ class MicropolisEnv(core.Env):
         if not self.empty_start:
             self.micro.newMap()
         self.num_step = 0
+        if self.power_puzzle:
+            self.powerPuzzle()
        #self.randomStaticStart()
         self.micro.engine.simTick()
         self.micro.setFunds(self.initFunds)
@@ -186,7 +201,6 @@ class MicropolisEnv(core.Env):
   #             super(roadPenalty, self).__init__()
 
   #             self.
-       
     def getState(self):
         resPop, comPop, indPop = self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
@@ -241,6 +255,7 @@ class MicropolisEnv(core.Env):
 
 
     def step(self, a, static_build=False):
+       #self.micro.engine.setPasses(np.random.randint(1, 101))
         if self.player_step:
             if self.player_step == a:
                 static_build=False
@@ -248,21 +263,22 @@ class MicropolisEnv(core.Env):
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
         reward = 0
-        self.curr_pop = self.getPopReward()
+        self.curr_pop = self.getPopReward() ** 2
         self.curr_mayor_rating = self.getRating()
         self.state = self.getState()
         if not self.simple_reward:
-            reward = self.curr_pop  + (self.micro.total_traffic / 100)
+            reward = self.curr_pop #+ (self.micro.total_traffic / 100)
             if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
                 max_net = 0
                 for n in  self.micro.map.road_net_sizes.values():
                     if n > max_net:
                         max_net = n
-                reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
-            reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-                         self.curr_pop / 2)
+               #reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
+           #reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
+           #             self.curr_pop / 2)
         else:
             reward = self.curr_pop
+        reward = reward / self.max_step
         self.curr_reward = reward#- self.last_reward
         self.last_reward = reward
 

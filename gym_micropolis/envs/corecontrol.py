@@ -34,9 +34,10 @@ os.chdir(CURR_DIR)
 
 class MicropolisControl():
 
-    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False, rank=None):
+    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False, rank=None,
+            power_puzzle=False):
         self.SHOW_GUI=False
-        engine, win1 = main.train(bot=self, rank=rank)
+        engine, win1 = main.train(bot=self, rank=rank, map_x=MAP_W, map_y=MAP_H)
         os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
@@ -70,26 +71,29 @@ class MicropolisControl():
                 'Forest',
                 ]
         # Names correspond to those of resultant zones
-        self.tools = ['Residential', 'Commercial', 'Industrial', 
-                'FireDept', 
-                'PoliceDept', 
-             # 'Query',
-                'Clear',
-               'Wire',
-              #'Land',
-               'Rail',
-               'Road',
-                'Stadium',
-                'Park', 
-                 'Seaport',
-                'CoalPowerPlant', 
-                'NuclearPowerPlant',
-                'Airport',
-                'Net',
-                'Water',
-                'Land',
-                'Forest',
-                ]
+        if power_puzzle:
+            self.tools = ['Wire']
+        else:
+            self.tools = ['Residential', 'Commercial', 'Industrial', 
+                    'FireDept', 
+                    'PoliceDept', 
+                 # 'Query',
+                    'Clear',
+                   'Wire',
+                  #'Land',
+                   'Rail',
+                   'Road',
+                    'Stadium',
+                    'Park', 
+                     'Seaport',
+                    'CoalPowerPlant', 
+                    'NuclearPowerPlant',
+                    'Airport',
+                    'Net',
+                    'Water',
+                    'Land',
+                    'Forest',
+                    ]
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)

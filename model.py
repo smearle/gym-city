@@ -216,8 +216,8 @@ class NNBase(nn.Module):
         return x, hxs
 
 class MicropolisBase_FullyConv(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=256, 
-            map_width=20, num_actions=18):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256,
+            map_width=20, num_actions=19):
         super(MicropolisBase_FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
         num_actions = num_actions
         self.map_width = map_width
@@ -323,7 +323,7 @@ class MicropolisBase_FullyConvLSTM(NNBase):
             lambda x: nn.init.constant_(x, 0))
         self.act = init_(nn.Conv2d(32, num_actions, 1, 1, 0))
 
-    def forward(self, x, rhxs, masks):
+    def forward(self, x, rhxs=None, masks=None):
 
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
@@ -376,7 +376,7 @@ class MicropolisBase_FullyConvRec(NNBase):
 
         self.act = init_(nn.Conv2d(32, num_actions, 1, 1, 0))
 
-    def forward(self, x, rhxs, masks):
+    def forward(self, x, rhxs=None, masks=None):
 
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
@@ -878,11 +878,11 @@ class SubFractal_squeeze(nn.Module):
 
 
 class MicropolisBase_fixed(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=18):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=19):
         super(MicropolisBase_fixed, self).__init__(recurrent, hidden_size, hidden_size)
 
         self.map_width = map_width
-        self.RAND = True
+        self.RAND = False
         self.eval_recs = [1] + [i * 8 for i in range(1, int(map_width * 2 / 8) + 1)]
 
         self.num_recursions = map_width
@@ -931,7 +931,7 @@ class MicropolisBase_fixed(NNBase):
         return values, actions, rnn_hxs
 
 class MicropolisBase_squeeze(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=19):
         super(MicropolisBase_squeeze, self).__init__(recurrent, hidden_size, hidden_size)
         self.chunk_size = 2 # factor by which map dimensions are shrunk
         self.map_width = map_width
@@ -1027,7 +1027,7 @@ class MicropolisBase_squeeze(NNBase):
         return  vals, acts, rnn_hxs
 
 class MicropolisBase_ICM(MicropolisBase_fixed):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
         super(MicropolisBase_ICM, self).__init__(num_inputs, recurrent, hidden_size)
 
         ### ICM feature encoder
@@ -1143,7 +1143,7 @@ class MicropolisBase_ICM(MicropolisBase_fixed):
 
 
 class MicropolisBase_acktr(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
         super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m,
@@ -1193,7 +1193,7 @@ class MicropolisBase_acktr(NNBase):
 
 
 class MicropolisBase_1d(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
         super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m,
@@ -1269,7 +1269,7 @@ class MicropolisBase_1d(NNBase):
 
 
 class MicropolisBase_0(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
         super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m,

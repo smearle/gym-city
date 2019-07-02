@@ -47,9 +47,14 @@ class A2C_ACKTR_NOREWARD():
             action_shape = rollouts.actions.size()[-1]
             actions = rollouts.actions.view(-1, action_shape)
 
+            if 'LSTM' in self.args.model:
+                rec_size = self.actor_critic.base.get_recurrent_state_size()
+                rec_states = rollouts.recurrent_hidden_states[:-1].view(2, -1, *rec_size)
+            else:
+                rec_states = rollouts.recurrent_hidden_states[:-1].view(-1, 1)
         values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
-            rollouts.recurrent_hidden_states[0].view(-1, self.actor_critic.recurrent_hidden_state_size),
+            rec_states,
             rollouts.masks[:-1].view(-1, 1),
             actions)
 

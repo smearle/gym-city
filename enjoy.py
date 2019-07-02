@@ -31,16 +31,23 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
 # Get a render function
 # render_func = get_render_func(env)
 
-# We need to use the same statistics for normalization as used in training
-actor_critic = Policy(env.observation_space.shape, env.action_space, 
-        base_kwargs={'map_width': args.map_width, 'num_actions': 19, 'recurrent': args.recurrent_policy},
-        curiosity=args.curiosity, algo=args.algo, model=args.model, args=args)
 
 
-torch.nn.Module.dump_patches = True
 #actor_critic, ob_rms = \
 #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 checkpoint = torch.load(os.path.join(args.load_dir, args.env_name + '.tar'))
+saved_args = checkpoint['args']
+if saved_args.power_puzzle:
+    num_actions = 1
+else:
+    num_actions = 19
+# We need to use the same statistics for normalization as used in training
+actor_critic = Policy(env.observation_space.shape, env.action_space,
+        base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
+                     'recurrent': args.recurrent_policy},
+                     curiosity=args.curiosity, algo=saved_args.algo,
+                     model=saved_args.model, args=saved_args)
+torch.nn.Module.dump_patches = True
 actor_critic.load_state_dict(checkpoint['model_state_dict'])
 ob_rms = checkpoint['ob_rms']
 if args.active_column is not None:

@@ -60,10 +60,13 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = gym.make(env_id)
             if 'micropolis' in env_id.lower():
                 print("ENV RANK: ", rank)
+                power_puzzle = False
+                if args.power_puzzle:
+                    power_puzzle = True
                 if rank == 0:
-                    env.setMapSize(map_width, print_map=print_map, render_gui=render_gui, empty_start=not args.random_terrain, max_step=max_step, rank=rank, simple_reward=simple_reward)
-                else:
-                    env.setMapSize(map_width, max_step=max_step, rank=rank, empty_start=not args.random_terrain, simple_reward=simple_reward)
+                    render = render_gui
+                else:render = False
+                env.setMapSize(map_width, print_map=print_map, render_gui=render, empty_start=not args.random_terrain, max_step=max_step, rank=rank, simple_reward=simple_reward, power_puzzle=power_puzzle)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)

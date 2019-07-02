@@ -255,7 +255,7 @@ class MicropolisControlPanel(gtk.Frame):
                     (passes == simPasses)):
                     if scaleSpeed.get_value() != i:
                         scaleSpeed.set_value(i)
-                    print(("found speed", speed, "passes", passes, "i", i, "label", label))
+                   #print(("found speed", speed, "passes", passes, "i", i, "label", label))
                     self.setSpeedLabel(label)
                     return
                 i += 1
@@ -264,7 +264,7 @@ class MicropolisControlPanel(gtk.Frame):
                 if (speed == simSpeed):
                     if scaleSpeed.get_value() != i:
                         scaleSpeed.set_value(i)
-                    print(("found speed", speed, "any passes", passes, "current", engine.simPasses, "i", i, "label", label))
+                   #print(("found speed", speed, "any passes", passes, "current", engine.simPasses, "i", i, "label", label))
                     if passes != engine.simPasses:
                         engine.setPasses(passes)
                     self.setSpeedLabel(label)
