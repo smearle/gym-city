@@ -63,9 +63,9 @@ class Policy(nn.Module):
         else:
             raise NotImplementedError
 
-        self.base.cuda()
-        summary(self.base, obs_shape)
-        self.base.cpu()
+       #self.base.cuda()
+       #summary(self.base, obs_shape)
+       #self.base.cpu()
 
 
 

@@ -232,9 +232,10 @@ def main():
             # A really ugly way to save a model to CPU
             save_model = actor_critic
             ob_rms = getattr(get_vec_normalize(envs), 'ob_rms', None)
+            save_model = copy.deepcopy(actor_critic)
+            save_agent = copy.deepcopy(agent)
             if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
-                save_agent = copy.deepcopy(agent)
+                save_model.cpu()
             optim_save = save_agent.optimizer.state_dict()
 
             # experimental:
