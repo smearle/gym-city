@@ -9,9 +9,7 @@ import math
 
 import numpy as np
 
-from densenet_pytorch.densenet import DenseNet
 # from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
-#from nn.Conv2d_pytorch.nn.Conv2d import nn.Conv2d, nn.Conv2dTranspose
 from ConvLSTMCell import ConvLSTMCell
 
 class Flatten(nn.Module):
