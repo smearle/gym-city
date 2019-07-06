@@ -289,8 +289,8 @@ class MicropolisEnv(core.Env):
         bankrupt = curr_funds < self.minFunds
         terminal = bankrupt or self.num_step >= self.max_step
         if True and self.print_map:
-            if static_build:
-                print('STATIC BUILD')
+           #if static_build:
+           #    print('STATIC BUILD')
             self.printMap()
         if self.render_gui:
             self.micro.render()
@@ -310,14 +310,15 @@ class MicropolisEnv(core.Env):
         return self.micro.engine.cityYes
 
     def printMap(self, static_builds=True):
-            if static_builds:
-                static_map = self.micro.map.static_builds
-            else:
-                static_map = None
+           #if static_builds:
+           #    static_map = self.micro.map.static_builds
+           #else:
+           #    static_map = None
             np.set_printoptions(threshold=np.inf)
             zone_map = self.micro.map.zoneMap[-1]
             zone_map = np.array_repr(zone_map).replace(',  ','  ').replace('],\n', ']\n').replace(',\n', ',').replace(', ', ' ').replace('        ',' ').replace('         ','  ')
-            print('{}\npopulation: {}, traffic: {}, episode: {}, step: {}, reward: {}\n {}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.curr_reward, static_map))
+            print('{}\npopulation: {}, traffic: {}, episode: {}, step: {}, reward: {}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.curr_reward#, static_map
+                ))
            #print(self.micro.map.centers)
 
 
