@@ -108,8 +108,11 @@ def main():
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         past_steps = checkpoint['past_steps']
         ob_rms = checkpoint['ob_rms']
-        past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
         saved_args = checkpoint['args']
+        new_recs = args.n_recs - saved_args.n_recs
+        for nr in range(new_recs):
+            actor_critic.base.auto_expand()
+        past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
         if saved_args.n_recs > args.n_recs:
             print('applying {} fractal expansions to network'.format(saved_args.n_recs - args.n_recs))
         print('Resuming from step {}'.format(past_steps))
@@ -154,7 +157,7 @@ def main():
     model = actor_critic.base
     for j in range(past_steps, num_updates):
         if args.model == 'fractal' and args.drop_path:
-            model.get_drop_path()
+            model.set_drop_path()
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
 

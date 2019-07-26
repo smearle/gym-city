@@ -15,7 +15,8 @@ def get_args():
     if args.model == 'fractal':
         model_name += '-{}-{}recs'.format(args.rule, args.n_recs)
         if args.squeeze: model_name += '_sqz'
-        if args.shared: model_name += '_shr'
+        if args.intra_shr: model_name += '_intra_shr'
+        if args.inter_shr: model_name += '_inter_shr'
         if args.drop_path: model_name += '_drop'
     args.save_dir = "trained_models/{}_{}_w{}/{}".format(args.algo, model_name, args.map_width, args.experiment_name)
     return args
@@ -104,8 +105,10 @@ def get_parser():
     parser.add_argument('--n-conv-recs', default=2,
             help='number of recurrences of convolution at base level of fractal net')
     parser.add_argument('--drop-path', action='store_true', help='enable global and local drop path on fractal model (ignored otherwise)')
-    parser.add_argument('--shared', action='store_true',
+    parser.add_argument('--inter-shr', action='store_true',
             help='layers shared between columns')
+    parser.add_argument('--intra-shr', action='store_true',
+            help='layers shared within columns')
     parser.add_argument('--simple-reward', action='store_true',
             help='reward only for overall population according to game')
     parser.add_argument('--rule', default = 'extend',

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import copy
 
 from distributions import Categorical, Categorical2D
 from utils import init, init_normc_
@@ -9,6 +8,7 @@ from torchsummary import summary
 import math
 
 import numpy as np
+import copy
 
 # from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
 from ConvLSTMCell import ConvLSTMCell
@@ -35,10 +35,12 @@ class Policy(nn.Module):
                 if args.model == 'fractal':
                     print(base_kwargs)
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
-                        'n_conv_recs': args.n_conv_recs, 'squeeze':args.squeeze,
-                        'shared':args.shared, 'rule':args.rule, 'map_width':obs_shape[1]}}
+                        'squeeze':args.squeeze, 'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
+                        'rule':args.rule, 'map_width':obs_shape[1],
+                        }}
                 self.base = base_model(obs_shape[0], **base_kwargs)
-            print('BASE NETWORK: \n', self.base)
+            print('BASE NETWORK: n', self.base)
+            print('device', torch.cuda.current_device())
 
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -113,7 +115,6 @@ class Policy(nn.Module):
                     action = dist.mode()
                 else:
                     action = dist.sample()
-
                 action_log_probs = dist.log_probs(action)
 
 
@@ -149,7 +150,7 @@ class Policy(nn.Module):
             dist = torch.distributions.binomial.Binomial(1, actor_features)
             action_log_probs = dist.log_prob(action)
             dist_entropy = None
-           #dist_entropy = (dist.logits * dist.probs).mean()
+            dist_entropy = (dist.logits * dist.probs).mean()
         else:
             dist = self.dist(actor_features)
 
@@ -216,9 +217,9 @@ class NNBase(nn.Module):
 
 class MicropolisBase_FullyConv(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=19):
+            map_width=20, num_actions=1):
         super(MicropolisBase_FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
-        num_chan = 32
+        num_chan = 128
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
@@ -229,16 +230,10 @@ class MicropolisBase_FullyConv(NNBase):
         self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
         self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
         self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, 3, 2, 1))
-       #state_size = map_width * map_width * num_chan
-       #init_ = lambda m: init(m,
-       #    nn.init.orthogonal_,
-       #    lambda x: nn.init.constant_(x, 0))
-       #self.dense = init_(nn.Linear(state_size, 256))
-       #self.val = init_(nn.Linear(128, 1))
-        self.val = init_(nn.Conv2d(num_chan, 1, 3, 1, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
+        self.val = init_(nn.Conv2d(num_chan, 1, 3, 1, 1))
         self.act = init_(nn.Conv2d(num_chan, num_actions, 1, 1, 0))
 
     def forward(self, x, rhxs=None, masks=None):
@@ -258,7 +253,7 @@ class MicropolisBase_FullyConv(NNBase):
 
 class MicropolisBase_FullyConv_linVal(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=18):
+            map_width=20, num_actions=1):
         super(MicropolisBase_FullyConv_linVal, self).__init__(recurrent, hidden_size, hidden_size)
         num_actions = num_actions
         self.map_width = map_width
@@ -269,14 +264,12 @@ class MicropolisBase_FullyConv_linVal(NNBase):
         self.embed = init_(nn.Conv2d(num_inputs, 32, 1, 1, 0))
         self.k5 = init_(nn.Conv2d(32, 32, 5, 1, 2))
         self.k3 = init_(nn.Conv2d(32, 32, 3, 1, 1))
-        self.val_shrink = init_(nn.Conv2d(32, 32, 2, 2, 0))
         state_size = map_width * map_width * 32
         linit_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
         self.dense = linit_(nn.Linear(state_size, hidden_size))
         self.val = linit_(nn.Linear(hidden_size, 1))
-       #self.val = init_(nn.Conv2d(32, 1, 3, 1, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
@@ -290,10 +283,6 @@ class MicropolisBase_FullyConv_linVal(NNBase):
         x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
         val = self.val(x_lin)
         act = self.act(x)
-       #for i in range(int(math.log(self.map_width, 2))):
-       #    x = F.relu(self.val_shrink(x))
-       #val = x
-       #val = self.val(x)
         return val.view(val.shape[0], -1), act, rhxs
 
 class MicropolisBase_FullyConvLSTM(NNBase):
@@ -393,64 +382,59 @@ class MicropolisBase_FullyConvRec(NNBase):
         return val.view(val.shape[0], -1), act, rhxs
 
 
+
 class MicropolisBase_fractal(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
                  map_width=16, n_conv_recs=2, n_recs=3, squeeze=False,
-                 shared=False, num_actions=19, rule='extend'):
+                 intra_shr=False, inter_shr=False,
+                 num_actions=19, rule='extend'):
         super(MicropolisBase_fractal, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
+        # We can stack multiple Fractal Blocks
        #self.block_chans = block_chans = [32, 32, 16]
         self.block_chans = block_chans = [32]
         self.num_blocks = num_blocks = len(block_chans)
-        for i in range(num_blocks):
-            setattr(self, 'block_{}'.format(i),
-                    FractalBlock(n_chan_in=block_chans[i-1], n_chan=block_chans[i],
-                                 num_inputs=num_inputs,
-                                 recurrent=recurrent, n_recs=n_recs,
-                                 squeeze=squeeze, shared=shared,
-                                 num_actions=num_actions, rule=rule))
-        self.n_cols = self.block_0.n_cols
-        init_ = lambda m: init(m,
+        self.conv_init_ = init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
-
-       #self.compress = init_(nn.Conv2d(2 * 16, self.n_channels, 3, 1, 1))
+        for i in range(num_blocks):
+            setattr(self, 'block_{}'.format(i),
+                    FractalBlock(n_chan_in=block_chans[i-1], n_chan=block_chans[i],
+                                 num_inputs=num_inputs, intra_shr=intra_shr,
+                                 inter_shr=inter_shr, recurrent=recurrent,
+                                 n_recs=n_recs, squeeze=squeeze,
+                                 num_actions=num_actions, rule=rule, base=self))
+        # An assumption. Run drop path globally on all blocks of stack if applicable
+        self.n_cols = self.block_0.n_cols
 
         n_out_chan = block_chans[-1]
-
-
         self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, 3, 2, 1))
        #self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, 2, 2, 0))
-        self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
-
-
+        self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
 
+    def auto_expand(self):
+        self.block_0.auto_expand() # assumption
 
     def forward(self, x, rnn_hxs=None, masks=None):
         for i in range(self.num_blocks):
             block = getattr(self, 'block_{}'.format(i))
             x = F.relu(block(x, rnn_hxs, masks))
-           #x = self.maxp(x)
-
-       #x = F.relu(self.compress(torch.cat((x, x_0), 1)))
+        actions = self.actor_out(x)
         values = x
         for i in range(int(math.log(self.map_width, 2))):
             values = F.relu(self.critic_dwn(values))
         values = self.critic_out(values)
         values = values.view(values.size(0), -1)
-        actions = self.actor_out(x)
-
         return values, actions, rnn_hxs # no recurrent states
 
-
-    def get_drop_path(self):
+    def set_drop_path(self):
         for i in range(self.num_blocks):
-            getattr(self, 'block_{}'.format(i)).get_drop_path()
+            getattr(self, 'block_{}'.format(i)).set_drop_path()
 
     def set_active_column(self, a):
         for i in range(self.num_blocks):
@@ -460,51 +444,48 @@ class MicropolisBase_fractal(NNBase):
 
 class FractalBlock(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512,
-                 map_width=16, n_conv_recs=2, n_recs=3, squeeze=False,
-                 shared=False, num_actions=19, rule='extend', n_chan=32,
-                 n_chan_in=32):
+                 map_width=16, n_recs=3, squeeze=False, intra_shr=False,
+                 inter_shr=False, num_actions=19, rule='extend', n_chan=32,
+                 n_chan_in=32, base=None):
 
         super(FractalBlock, self).__init__(
                 recurrent, hidden_size, hidden_size)
 
-        self.intracol_share = False # share weights between layers in a col.
-        self.rule=rule
         self.map_width = map_width
-        self.n_channels = n_chan
+        self.n_chan = n_chan
+        self.squeeze = squeeze
+        self.intracol_share = intra_shr # share weights between layers in a col.
+        self.intercol_share = inter_shr # share weights between columns
+        self.rule = rule # which fractal expansion rule to use
         # each rec is a call to a subfractal constructor, 1 rec = single-layered body
         self.n_recs = n_recs
-        print("Fractal Net: ", self.n_recs, "recursions, ",squeeze, "squeeze")
-        self.n_conv_recs = 1
-        self.squeeze = squeeze
+        print("Fractal Block: expansion type: {}, {} recursions, {} squeeze".format(
+            self.rule, self.n_recs, squeeze))
 
         self.SKIPSQUEEZE = rule == 'wide1' # actually we mean a fractal rule that grows linearly in max depth but exponentially in number of columns, rather than vice versa, with number of recursions #TODO: combine the two rules
-        if self.SKIPSQUEEZE:
+        if self.rule == 'wide1':
             self.n_cols = 2 ** (self.n_recs - 1)
             print('I got {} cols'.format(self.n_cols))
         else:
             self.n_cols = self.n_recs
         self.COLUMNS = False # if true, we do not construct the network recursively, but as a row of concurrent columns
-        self.join_masks = self.init_join_masks()
-        print('join masks: {}'.format(self.join_masks))
         # if true, weights are shared between recursions
-        self.SHARED = shared
         self.local_drop = False
         # at each join, which columns are taken as input (local drop as described in Fractal Net paper)
         self.global_drop = False
         self.active_column = None
         self.batch_norm = False
-        init_ = lambda m: init(m,
+        self.c_init_ = init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
         self.embed_chan = nn.Conv2d(num_inputs, n_chan, 1, 1, 0)
-        self.unique = True
-        if self.unique:
+        if not self.intracol_share:
             pass
 
-        elif not self.unique:
+        elif self.intracol_share:
             # how many columns with distinct sets of layers?
-            if self.SHARED:
+            if self.intercol_share:
                 n_unique_cols = 1
             else:
                 n_unique_cols = self.n_recs
@@ -514,70 +495,59 @@ class FractalBlock(NNBase):
                 else:
                     n_unique_layers = 3
                 setattr(self, 'fixed_{}'.format(i), init_(nn.Conv2d(
-                    self.n_channels, self.n_channels, 3, 1, 1)))
+                    self.n_chan, self.n_chan, 3, 1, 1)))
                 if n_unique_cols == 1 or i > 0:
 
                     setattr(self, 'join_{}'.format(i), init_(nn.Conv2d(
-                        self.n_channels * 2, self.n_channels, 3, 1, 1)))
-                    if squeeze or self.SKIPSQUEEZE:
+                        self.n_chan * 2, self.n_chan, 3, 1, 1)))
+                    if squeeze or self.rule == 'wide1':
                         setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(
-                            self.n_channels, self.n_channels, 2, 2, 0)))
+                            self.n_chan, self.n_chan, 2, 2, 0)))
                         setattr(self, 'up_{}'.format(i), init_(nn.ConvTranspose2d(
-                            self.n_channels, self.n_channels, 2, 2, 0)))
-
-
+                            self.n_chan, self.n_chan, 2, 2, 0)))
         f_c = None
-        for i in range(self.n_recs):
-            if self.rule == 'wide1':
-                f_c = SkipFractal(self, f_c, n_rec=i)
-            elif squeeze:
-                f_c = SubFractal_squeeze(self, f_c, n_layer=i, map_width=self.map_width)
+        if self.rule == 'wide1':
+            subfractal = SkipFractal
+        elif self.rule == 'extend':
+            if self.rule == 'squeeze':
+                subfractal = SubFractal_squeeze
             else:
-                f_c = SubFractal(self, f_c, n_layer=i)
-
+                subfractal = SubFractal
+        n_recs = self.n_recs
+        for i in range(n_recs):
+            f_c = subfractal(self, f_c, n_rec=i)
         self.f_c = f_c
-    def init_join_masks(self):
-        ''' Initializes a data structure which indicates which subnetwork of
-        the fractal should be active on a particular forward pass. '''
-        if self.SKIPSQUEEZE: # grows exponentially in width
-            depth = self.n_recs
-            width = 2 ** (self.n_recs - 1)
-            join_masks = np.ones((depth, width))
-            return join_masks
-        else:
-            join_masks = []
-            depth =  2 ** (self.n_recs - 1)
-            width = self.n_recs
-            for i in range(depth):
-                n = 1
-                width_i = 0
-                while (i + 1) % n == 0:
-                    n = n * 2
-                    width_i += 1
-                mask = [1]*width_i
-                join_masks += [mask]
-            return join_masks
+        self.subfractal = subfractal
+        self.join_masks = self.f_c.join_masks
+
+
+    def auto_expand(self):
+        ''' Apply a fractal expansion without introducing new weight layers.
+        For neuroevolution or inference.'''
+        self.intracol_share = False
+        self.f_c = self.subfractal(self, self.f_c, n_rec=self.n_recs)
+        setattr(self, 'fixed_{}'.format(self.n_recs), None)
+        if not  self.intercol_share:
+            self.f_c.copy_weights()
+        self.n_recs += 1
+        self.n_cols += 1
+
 
     def forward(self, x, rnn_hxs=None, masks=None):
         x = self.embed_chan(x)
         depth = pow(2, self.n_recs - 1)
             # (column, join depth)
-        if self.SKIPSQUEEZE:
+        if self.rule == 'wide1':
             net_coords = (0, self.n_recs - 1)
         else:
             net_coords = (self.n_recs - 1, depth - 1 )
-        x = F.relu(self.f_c(x, net_coords))
+        x = F.relu(self.f_c(x))
         return x
-
-
-
-
-
 
     def clear_join_masks(self):
         ''' Returns a set of join masks that will result in activation flowing
         through the entire fractal network.'''
-        if self.SKIPSQUEEZE:
+        if self.rule == 'wide1':
             self.join_masks.fill(1)
             return
         i = 0
@@ -595,142 +565,182 @@ class FractalBlock(NNBase):
         self.global_drop = True
         self.local_drop = False
         if a == -1:
-            self.clear_join_masks()
-            return
-        self.active_column = a
-        ### For Skip-Squeeze fractal net.
-        if self.rule == 'wide1':
-            self.join_masks.fill(0)
-            b = a # intermediary columns visited before arriving at target column
-            for i in range(self.n_recs):
-                skip_range = 2 ** (i)
-                if isinstance(b, list):
-                    skip_dist = [b_k % skip_range for b_k in b]
-                    b = [b_k - skip_dist_k for (b_k, skip_dist_k) in zip(b, skip_dist)]
-                    j = 0
-                    for b_j in b:
-                        sd_j = skip_dist[j]
-                        if sd_j == 0:
-                            self.join_masks[i][b_j] = 1
-                else:
-                    skip_dist = b % skip_range
-                    b = b - skip_dist
-                    if skip_dist == 0:
-                        self.join_masks[i][b] = 1
-           #print(self.join_masks)
-           #print('active column: {}\n{}'.format(self.active_column, self.join_masks))
-            return
-        ### For traditional Fractal Net
-        i = 0
-        for mask in self.join_masks:
-            n_ins = len(mask)
-            mask = [0]*n_ins
-            if n_ins > a:
-                mask[a] = 1
-            self.join_masks[i] = mask
-            i += 1
+            self.f_c.reset_join_masks(True)
+        else:
+            self.f_c.reset_join_masks(False)
+            self.f_c.set_active_column(a)
+       #print('set active col to {}\n{}'.format(a, self.f_c.get_join_masks()))
 
-    def get_local_drop(self):
+
+    def set_local_drop(self):
         self.global_drop = False
         self.active_column = None
-        if self.rule == 'wide1':
-            # actually just multi-column drop, because any join necessitates entire column
-            mask = (np.random.random_sample(self.n_cols) > 0.15).astype(int)
-            if 1 not in mask:
-                mask[np.random.randint(0, self.n_cols)] = 1
-            actives = []
-            i = 0
-            for m in mask:
-                if m == 1:
-                    actives += [i]
-                i += 1
-           #print(actives)
-            self.set_active_column(actives)
-            return True
-        elif self.rule == 'extend':
-            i = 0
-            for mask in self.join_masks:
-                n_ins = len(mask)
-                mask = (np.random.random_sample(n_ins) > 0.15).astype(int)
-                if 1 not in mask:
-                    mask[np.random.randint(0, n_ins)] = 1
-                self.join_masks[i] = mask
-               #print(mask)
-                i += 1
-        return True
+        reach = False # whether or not there is a path thru
+        reach = self.f_c.set_local_drop(force=True)
+       #print('local_drop\n {}'.format(self.get_join_masks()))
+        assert reach
 
-    def get_global_drop(self):
+
+    def set_global_drop(self):
         a = np.random.randint(0, self.n_recs)
         self.set_active_column(a)
 
-    def get_drop_path(self):
+    def set_drop_path(self):
         if np.random.randint(0, 2) == 1:
-            self.local_drop = self.get_local_drop()
+            self.local_drop = self.set_local_drop()
         else:
-            self.global_drop = self.get_global_drop()
+            self.global_drop = self.set_global_drop()
+
+    def get_join_masks(self):
+        return self.f_c.get_join_masks()
 
 
 
 class SubFractal(nn.Module):
-    def __init__(self, root, f_c, n_layer, conv=None, n_conv_recs=2):
+    def __init__(self, root, f_c, n_rec):
         super(SubFractal, self).__init__()
-        self.n_layer = n_layer
-        self.n_conv_recs = n_conv_recs
-        self.n_channels=32
+        self.n_recs = root.n_recs
+        self.n_rec = n_rec
+        self.n_chan= 32
         self.join_layer = False
-        init_ = lambda m: init(m,
-            nn.init.dirac_,
-            lambda x: nn.init.constant_(x, 0.1),
-            nn.init.calculate_gain('relu'))
-        self.f_c_A = f_c
+        init_ = root.c_init_
         if f_c is not None:
+            self.f_c_A = f_c
             self.f_c_B = f_c.mutate_copy(root)
-            self.f_c_B.fixed = init_(nn.Conv2d(self.n_channels, self.n_channels,
-            3, 1, 1))
+            self.join_masks = {'body': True, 'skip': True}
         else:
-            self.f_c_B = f_c
+            self.join_masks = {'body': False, 'skip': True}
         self.active_column = root.active_column
-        self.join_masks = root.join_masks
-        dropout_rate = 0.2
-        if root.SHARED:
-            j = 0
+        if not root.intracol_share:
+            self.fixed = init_(nn.Conv2d(self.n_chan, self.n_chan, 3, 1, 1))
+            if self.join_layer and n_rec > 0:
+                self.join = init_(nn.Conv2d(self.n_chan * 2, self.n_chan, 3, 1, 1))
         else:
-            j = n_layer
-        self.fixed = init_(nn.Conv2d(self.n_channels, self.n_channels, 3, 1, 1))
-       #self.fixed = getattr(root, 'fixed_{}'.format(j))
-       #self.dropout_fixed = nn.Dropout2d(dropout_rate)
-        if self.join_layer and n_layer > 0:
-            self.join = init_(nn.Conv2d(self.n_channels * 2, self.n_channels,
-                3, 1, 1))
-           #self.dropout_join = nn.Dropout2d(dropout_rate)
+            if root.intercol_share:
+                j = 0
+            else:
+                j = n_rec
+            self.fixed = getattr(root, 'fixed_{}'.format(j))
+           #if self.join_layer and n_rec > 0:
+           #    self.join = getattr(root, 'join_{}'.format(j))
+
+
     def mutate_copy(self, root):
-        if self.f_c_A is not None:
+        if self.n_rec > 0:
             f_c = self.f_c_A.mutate_copy(root)
-            twin = SubFractal(root, f_c, self.n_layer)
-            return twin
+            twin = SubFractal(root, f_c, self.n_rec)
         else:
             twin = SubFractal(root, None, 0)
-           ##win.body = nn.Sequential(twin.body, twin.body)
-            return twin
+        twin.fixed = copy.deepcopy(self.fixed)
+        return twin
+
+    def reset_join_masks(self, val=True):
+        self.join_masks['skip'] = val
+        if self.n_rec > 0:
+            self.join_masks['body'] = val
+            self.f_c_A.reset_join_masks(val)
+            self.f_c_B.reset_join_masks(val)
+        else:
+            self.join_masks['body'] = False # not needed
+
+
+    def set_local_drop(self, force):
+        ''' Returns True if path from source to target is yielded to self.join_masks.
+                - force: a boolean, whether or not to force one path through.'''
+        reach = False
+        if self.n_rec == 0:
+            self.set_child_drops(False, [0, 1])
+            reach = True
+        else:
+            # try for natural path to target
+            prob_body = 0.15
+            prob_skip = 0.15
+            mask = (np.random.random_sample(2) > [prob_body, prob_skip]).astype(int)
+            reach = self.set_child_drops(False, mask)
+            if not reach and force: # then force one path down
+                mask = [0, 0]
+                mask[np.random.randint(0, 2)] = 1
+                assert self.set_child_drops(True, mask) == True
+                reach = True
+        return reach
+
+
+    def set_child_drops(self, force, mask):
+        reach = False
+        if force:
+            assert 1 in mask
+        if mask[1] == 1:
+            self.join_masks['skip'] = True
+            reach = True
+        else:
+            self.join_masks['skip'] = False
+        if mask[0] == 1:
+            reach_a = self.f_c_A.set_local_drop(force)
+            if reach_a:
+                reach_b = self.f_c_B.set_local_drop(force)
+                if reach_b:
+                    self.join_masks['body'] = True
+                    reach = True
+            else:
+                self.join_masks['body'] = False
+                assert not force
+        else:
+            self.join_masks['body'] = False
+        if force:
+            assert reach
+        return reach
+
+
+    def set_active_column(self, col_n):
+        if col_n == self.n_rec:
+            self.join_masks['skip'] = True
+            self.join_masks['body'] = False
+        else:
+            self.join_masks['skip'] = False
+            self.join_masks['body'] = True
+            self.f_c_A.set_active_column(col_n)
+            self.f_c_B.set_active_column(col_n)
+
+
+    def copy_weights(self):
+        ''' Steal our child's weights to use as our own.'''
+        # not deep!
+        if self.n_rec > 0:
+            self.fixed = self.f_c_A.fixed
+        if self.join_layer:
+            self.join = self.f_c_B.join
+        # TODO: deep copy to allow for diversifying neuroevolution
+        #self.load_state_dict(self.f_c_A)
+
+
+    def get_join_masks(self):
+        ''' for printing! '''
+        stri = ''
+        indent = ''
+        for i in range(self.n_recs - self.n_rec):
+            indent += '    '
+        stri = stri + indent + str(self.join_masks)
+        if self.n_rec != 0:
+            stri = stri + '\n' + str(self.f_c_A.get_join_masks()) + '\n' + str(self.f_c_B.get_join_masks())
+        return stri
 
 
 
-    def forward(self, x, net_coords=None):
+    def forward(self, x):
         if x is None: return None
         x_c, x_c1 = x, x
-        col = net_coords[0]
-        depth = net_coords[1]
 
        #print(self.active_column, col)
-        if self.join_masks[depth][col]:
+        if self.join_masks['skip']:
             for i in range(1):
                 x_c1 = F.relu(
                         #self.dropout_fixed
                         (self.fixed(x_c1)))
-        if col == 0:
+        if self.n_rec == 0:
             return x_c1
-        x_c = self.f_c_A(x_c, (col - 1, depth - (2 ** (col - 1))))
-        x_c =self.f_c_B(x_c, (col - 1, depth))
+        if self.join_masks['body']:
+            x_c = self.f_c_A(x_c)
+            x_c =self.f_c_B(x_c)
         if x_c1 is None:
             return x_c
         if x_c is None:
@@ -740,65 +750,66 @@ class SubFractal(nn.Module):
                     #self.dropout_join
                     (self.join(torch.cat((x_c, x_c1), dim=1))))
         else:
-            x = (x_c1 + x_c * (self.n_layer)) / (self.n_layer + 1)
+            x = (x_c1 + x_c * (self.n_rec)) / (self.n_rec + 1)
         return x
 
 
 
 class SubFractal_squeeze(nn.Module):
-    def __init__(self, root, f_c, n_layer, map_width=16, net_coords=None):
+    def __init__(self, root, f_c, n_rec, net_coords=None):
         super(SubFractal_squeeze, self).__init__()
-        self.map_width = map_width
-        self.n_layer = n_layer
-        self.n_channels = root.n_channels
+        self.map_width = root.map_width
+        self.n_rec = n_rec
+        root.n_recs += 1
+        self.n_chan = root.n_chan
         self.join_masks = root.join_masks
         self.active_column = root.active_column
-        self.num_down = min(int(math.log(self.map_width, 2)) - 1, n_layer)
+        self.num_down = min(int(math.log(self.map_width, 2)) - 1, n_rec)
         self.dense_nug = (self.num_down > 1)
         self.join_layer = False
-        self.unique = root.unique
-        init_ = lambda m: init(m,
+        self.intracol_share = root.intracol_share
+        self.init_ = init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
 
-        if root.SHARED:
+        if root.intercol_share:
             j = 0
         else:
-            j = n_layer
-        if self.unique:
+            j = n_rec
+        if self.intracol_share:
            #for i in range(self.num_down):
             for i in range(1):
                 setattr(self, 'dwn_{}'.format(i),
-                init_(nn.Conv2d(self.n_channels, self.n_channels,
+                init_(nn.Conv2d(self.n_chan, self.n_chan,
                 2, 2, 0)))
                 setattr(self, 'up_{}'.format(i),
-                    init_(nn.ConvTranspose2d(self.n_channels,
-                        self.n_channels, 2, 2, 0)))
-            self.fixed = init_(nn.Conv2d(self.n_channels,
-                self.n_channels, 3, 1, 1))
-        elif not self.unique:
-            if n_layer > 0:
+                    init_(nn.ConvTranspose2d(self.n_chan,
+                        self.n_chan, 2, 2, 0)))
+            self.fixed = init_(nn.Conv2d(self.n_chan,
+                self.n_chan, 3, 1, 1))
+        elif not self.intracol_share:
+            if n_rec > 0:
                 self.up = getattr(root, 'up_{}'.format(j))
                 self.dwn = getattr(root, 'dwn_{}'.format(j))
                 if self.join_layer:
                     self.join = getattr(root, 'join_{}'.format(j))
       # if self.dense_nug:
       #     squish_width = self.map_width / (2 ** self.num_down)
-      #     hidden_size = int(squish_width * squish_width * self.n_channels)
+      #     hidden_size = int(squish_width * squish_width * self.n_chan)
       #     linit_ = lambda m: init(m,
       #         nn.init.orthogonal_,
       #         lambda x: nn.init.constant_(x, 0))
       #     self.dense = linit_(nn.Linear(hidden_size, hidden_size))
             self.fixed = getattr(root, 'fixed_{}'.format(j))
             if root.batch_norm:
-                self.bn_join = nn.BatchNorm2d(self.n_channels)
+                self.bn_join = nn.BatchNorm2d(self.n_chan)
                 if self.num_down == 0:
-                    setattr(self, 'bn_fixed_{}'.format(0), nn.BatchNorm2d(self.n_channels))
+                    setattr(self, 'bn_fixed_{}'.format(0), nn.BatchNorm2d(self.n_chan))
                 for i in range(self.num_down):
-                    setattr(self, 'bn_dwn_{}'.format(i), nn.BatchNorm2d(self.n_channels))
-                    setattr(self, 'bn_fixed_{}'.format(i), nn.BatchNorm2d(self.n_channels))
-                    setattr(self, 'bn_up_{}'.format(i),nn.BatchNorm2d(self.n_channels))
+                    setattr(self, 'bn_dwn_{}'.format(i), nn.BatchNorm2d(self.n_chan))
+                    setattr(self, 'bn_fixed_{}'.format(i), nn.BatchNorm2d(self.n_chan))
+                    setattr(self, 'bn_up_{}'.format(i),nn.BatchNorm2d(self.n_chan))
         self.f_c_A = f_c
         if f_c is not None:
             self.f_c_B = f_c.mutate_copy(root)
@@ -806,6 +817,7 @@ class SubFractal_squeeze(nn.Module):
             self.f_c_B = f_c
 
     def mutate_copy(self, root):
+        ''' '''
         if self.f_c_A is not None:
             f_c = self.f_c_A.mutate_copy(root)
             twin = SubFractal_squeeze(root, f_c, self.n_layer)
@@ -820,7 +832,7 @@ class SubFractal_squeeze(nn.Module):
         x_c, x_c1 = x, x
         col = net_coords[0]
         depth = net_coords[1]
-        if self.n_layer > 0:
+        if self.n_rec > 0:
             x_c = self.f_c_A(x_c, (col - 1, depth - 2 ** (col - 1 )))
             x_c = self.f_c_B(x_c, (col - 1, depth))
             if  self.join_masks[depth][col]:
@@ -852,19 +864,8 @@ class SubFractal_squeeze(nn.Module):
             x = F.relu(#self.bn_join
                     (self.join(torch.cat((x_c, x_c1), dim=1))))
         else:
-            x = (x_c1 + x_c * self.n_layer) / (self.n_layer + 1)
+            x = (x_c1 + x_c * self.n_rec) / (self.n_rec + 1)
         return x
-#           class MicropolisBase_fixed(NNBase):
-#                   def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=19):
-#                       super(MicropolisBase_fixed, self).__init__(recurrent, hidden_size, hidden_size)
-#                       self.map_width = map_width
-#                       self.RAND = False
-#                       self.eval_recs = [1] + [i * 8 for i in range(1, int(map_width * 2 / 8) + 1)]
-#                       self.num_recursions = map_width
-#                       init_ = lambda m: init(m,
-#                               nn.init.dirac_,
-#                               lambda x: nn.init.constant_(x, 0.1),
-#                               nn.init.calculate_gain('relu'))
 
 class SkipFractal(nn.Module):
     ''' Like fractal net, but where the longer columns compress more,
@@ -877,40 +878,41 @@ class SkipFractal(nn.Module):
         - n_rec: the depth of this fractal, 0 when base case
         '''
         super(SkipFractal, self).__init__()
-        self.unique = root.unique
+        self.intracol_share = root.intracol_share
         self.n_rec = n_rec
-        self.n_channels = 32
+        root.n_recs += 1
+        root.n_recs += 1
+        root.n_col = 2* root.n_col
+        self.n_chan = 32
         self.f_c = f_c
         self.active_column = root.active_column
         self.join_masks = root.join_masks
         self.global_drop = root.global_drop
-        if root.SHARED:
-            j = 0 # default index for shared layers
-        else:
-            j = n_rec # layer index = recursion index
-        if n_rec == 0:
-            self.fixed = getattr(root, 'fixed_{}'.format(j))
-            self.body = nn.Sequential(self.fixed, nn.ReLU())
-        else: # mutate 
-            self.skip = f_c.mutate_copy(root)
-            self.body = f_c
-        if self.unique:
-            self.fixed = init_(nn.Conv2D(self.n_channels, self.n_channels,
+
+        if not self.intracol_share:
+            self.fixed = init_(nn.Conv2D(self.n_chan, self.n_chan,
                 3, 1, 1))
             if n_rec > 0:
-                self.join = init_(nn.Conv2D(self.n_channels * 2, self.n_channels,
+                self.join = init_(nn.Conv2D(self.n_chan * 2, self.n_chan,
                     3, 1, 1))
-                self.up = init_(nn.ConvTranspose2D(self.n_channels, self.n_channels,
+                self.up = init_(nn.ConvTranspose2D(self.n_chan, self.n_chan,
                     2, 2, 0))
-                self.dwn = init_(nn.ConvTranspose2D(self.n_channels, self.n_channels,
+                self.dwn = init_(nn.ConvTranspose2D(self.n_chan, self.n_chan,
                     2, 2, 0))
         else:
+            if root.SHARED:
+                j = 0 # default index for shared layers
+            else:
+                j = n_rec # layer index = recursion index
             if n_rec == 0:
                 self.fixed = getattr(root, 'fixed_{}'.format(j))
             if n_rec > 0:
                 self.join = getattr(root, 'join_{}'.format(j))
                 self.up = getattr(root, 'up_{}'.format(j))
                 self.dwn = getattr(root, 'dwn_{}'.format(j))
+        if f_c is not None:
+            self.skip = f_c.mutate_copy(root)
+            self.body = f_c
 
     def forward(self, x, net_coords=None):
        #print('entering {}'.format(net_coords))
@@ -962,4 +964,540 @@ class SkipFractal(nn.Module):
            ##win.body = nn.Sequential(twin.body, twin.body)
             return twin
 
-#                            self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))        self.conv_0 = init_(nn.Conv2d(num_inputs, 64, 1, 1, 0))       #self.conv_1 = init_(nn.Conv2d(64, 64, 5, 1, 2))        for i in range(1):            setattr(self, 'conv_2_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))        self.critic_compress = init_(nn.Conv2d(79, 64, 3, 1, 1))        for i in range(1):            setattr(self, 'critic_downsize_{}'.format(i), init_(nn.Conv2d(64, 64, 2, 2, 0)))        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0))        self.actor_compress = init_(nn.Conv2d(79, 19, 3, 1, 1))        self.critic_conv = init_(nn.Conv2d(64, 1, 1, 1, 0))        self.train()    def forward(self, inputs, rnn_hxs, masks):        x = inputs        x = F.relu(self.conv_0(x))        skip_input = F.relu(self.skip_compress(inputs))       #x = F.relu(self.conv_1(x))        conv_2 = getattr(self, 'conv_2_{}'.format(0))        for i in range(self.num_recursions):            x = F.relu(conv_2(x))        x = torch.cat((x, skip_input), 1)        values = F.relu(self.critic_compress(x))        for i in range(4):            critic_downsize = getattr(self, 'critic_downsize_{}'.format(0))            values = F.relu(critic_downsize(values))        values = self.critic_conv(values)        values = values.view(values.size(0), -1)        actions = self.actor_compress(x)        return values, actions, rnn_hxsclass MicropolisBase_squeeze(NNBase):    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=19):        super(MicropolisBase_squeeze, self).__init__(recurrent, hidden_size, hidden_size)        self.chunk_size = 2 # factor by which map dimensions are shrunk        self.map_width = map_width       #self.num_maps = 4        self.num_maps = int(math.log(self.map_width, self.chunk_size)) - 1 # how many different sizes        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, -10),            nn.init.calculate_gain('relu'))        self.cmp_in = init_(nn.Conv2d(num_inputs, 64, 1, stride=1, padding=0))        for i in range(self.num_maps):            setattr(self, 'prj_life_obs_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))            setattr(self, 'cmp_life_obs_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))       #self.shrink_life = init_(nn.Conv2d(64, 64, 3, 3, 0))       #self.conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))       #self.lin_0 = linit_(nn.Linear(1024, 1024))        for i in range(self.num_maps):            if i == 0:                setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))            setattr(self, 'expand_life_{}'.format(i), init_(nn.ConvTranspose2d(64 + 64, 64, 2, stride=2, padding=0)))            setattr(self, 'prj_life_act_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))            setattr(self, 'cmp_life_act_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))            setattr(self, 'cmp_life_val_in_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))            setattr(self, 'dwn_val_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))            if i == self.num_maps - 1:                setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))            else:                setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))        self.cmp_act = init_(nn.Conv2d(128, 64, 3, stride=1, padding=1))        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0.1))        self.act_tomap = init_(nn.Conv2d(64, 19, 5, stride=1, padding=2))        self.cmp_val_out = init_(nn.Conv2d(64, 1, 1, stride=1, padding=0))        self.train()    def forward(self, inputs, rnn_hxs, masks):        x = inputs        x = F.relu(self.cmp_in(x))        x_obs = []         for i in range(self.num_maps): # shrink if not first, then run life sim            if i != 0:                shrink_life = getattr(self, 'dwn_{}'.format(0))                x = F.relu(shrink_life(x))            x_0 = x            if i > -1:                prj_life_obs = getattr(self, 'prj_life_obs_{}'.format(i))                for c in range(3):                    x = F.relu(prj_life_obs(x))                x = torch.cat((x, x_0), 1)                cmp_life_obs = getattr(self,'cmp_life_obs_{}'.format(i))                x = F.relu(cmp_life_obs(x))            x_obs += [x]        for j in range(self.num_maps): # run life sim, then expand if not last            if j != 0:                x_i = x_obs[self.num_maps-1-j]                x = torch.cat((x, x_i), 1)                cmp_life_act = getattr(self, 'cmp_life_act_{}'.format(j))                x =  F.relu(cmp_life_act(x))            x_0 = x            if j > -1:                prj_life_act = getattr(self, 'prj_life_act_{}'.format(j))                for c in range(1):                    x = F.relu(prj_life_act(x))                x = torch.cat((x, x_0), 1)            if j < self.num_maps - 1:                expand_life = getattr(self, 'expand_life_{}'.format(j))                x = F.relu(expand_life(x))        x = F.relu(self.cmp_act(x))        acts = F.relu(self.act_tomap(x))        for i in range(self.num_maps):            dwn_val = getattr(self, 'dwn_val_{}'.format(0))            prj_life_val = getattr(self, 'prj_life_val_{}'.format(i))            cmp_life_val_in = getattr(self, 'cmp_life_val_in_{}'.format(i))            x_i = x_obs[i]            x = torch.cat((x, x_i), 1)            x = F.relu(cmp_life_val_in(x))            x = F.relu(dwn_val(x))            x = F.relu(prj_life_val(x))        vals = self.cmp_val_out(x)         vals = vals.view(vals.size(0), -1)        return  vals, acts, rnn_hxsclass MicropolisBase_ICM(MicropolisBase_fixed):    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):        super(MicropolisBase_ICM, self).__init__(num_inputs, recurrent, hidden_size)        ### ICM feature encoder        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0),            nn.init.calculate_gain('relu'))        num_skip_inputs=15        self.num_action_channels=19        self.icm_state_in = init_(nn.Conv2d(num_inputs, 64, 3, 1, 1))        self.icm_state_conv_0 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_state_out = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_a_in = init_(nn.Conv2d((num_inputs) * 2, 128, 3, 1, 1))        self.icm_pred_a_conv_0 = init_(nn.Conv2d(128, 128, 3, 1, 1))        self.icm_pred_s_in = init_(nn.Conv2d((num_inputs) + self.num_action_channels, 64, 1, 1, 0))        self.icm_pred_s_conv_0 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_2 = init_(nn.Conv2d(64, 64, 3, 1, 1))              self.icm_pred_s_conv_3 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_4 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_5 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_6 = init_(nn.Conv2d(64, 64, 3, 1, 1))              self.icm_pred_s_conv_7 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_8 = init_(nn.Conv2d(64, 64, 3, 1, 1))        self.icm_pred_s_conv_9 = init_(nn.Conv2d(64, 64, 3, 1, 1))              self.icm_pred_s_conv_10 = init_(nn.Conv2d(64, 64, 3, 1, 1))       #self.icm_skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0))        self.icm_pred_a_out = init_(nn.Conv2d(128, self.num_action_channels, 7, 1, 3))        self.icm_pred_s_out = init_(nn.Conv2d(64 + 64, num_inputs, 1, 1, 0))        self.train()    def forward(self, inputs, rnn_hxs, masks, icm=False):        if icm == False:            return super().forward(inputs, rnn_hxs, masks)                    else:            # Encode state feature-maps            s0_in, s1_in, a1 = inputs            a1 = a1.view(a1.size(0), self.num_action_channels, 20, 20)            s0 = s0_in          # s0 = F.relu(self.icm_state_in(s0))          # for i in range(1):          #     s0 = F.relu(self.icm_state_conv_0(s0))          # s0 = F.relu(self.icm_state_out(s0))          ##s0_skip = F.relu(self.icm_skip_compress(s0))            s1 = s1_in          # s1 = F.relu(self.icm_state_in(s1))          # for i in range(1):          #     s1 = F.relu(self.icm_state_conv_0(s1))          # s1 = F.relu(self.icm_state_out(s1))          ##s1_skip = F.relu(self.icm_skip_compress(s1_in))            # Predict outcome state feature-map and action dist.            if True:                a1 = a1.cuda()                s0 = s0.cuda()            pred_s1 = pred_s1_0 = F.relu(self.icm_pred_s_in(torch.cat((s0, a1), 1)))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_0(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_1(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_2(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_3(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_4(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_5(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_6(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_7(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_8(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_9(pred_s1))            for i in range(2):                pred_s1 = F.relu(self.icm_pred_s_conv_10(pred_s1))            pred_s1 = torch.cat((pred_s1, pred_s1_0), 1)            pred_s1 = self.icm_pred_s_out(pred_s1)            pred_a = F.relu(self.icm_pred_a_in(torch.cat((s0, s1), 1)))            for i in range(1):                pred_a = F.relu(self.icm_pred_a_conv_0(pred_a))            pred_a = self.icm_pred_a_out(pred_a)            pred_a = pred_a.view(pred_a.size(0), -1)            return s1, pred_s1, pred_a    def feature_state_size(self):        return (32, 20, 20)class MicropolisBase_acktr(NNBase):    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0),            nn.init.calculate_gain('relu'))        import sys       #self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))        self.conv_0 = nn.Conv2d(num_inputs, 64, 1, 1, 0)        init_(self.conv_0)        self.conv_1 = nn.Conv2d(64, 64, 5, 1, 2)        init_(self.conv_1)       #self.conv_2 = nn.Conv2d(64, 64, 3, 1, 0)       #init_(self.conv_2)       #self.conv_3 = nn.ConvTranspose2d(64, 64, 3, 1, 0)       #init_(self.conv_3)        self.actor_compress = init_(nn.Conv2d(64, 20, 3, 1, 1))        self.critic_compress = init_(nn.Conv2d(64, 8, 1, 1, 1))        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0))        self.critic_conv_1 = init_(nn.Conv2d(8, 1, 20, 20, 0))        self.train()    def forward(self, inputs, rnn_hxs, masks):        x = inputs        x = F.relu(self.conv_0(x))       #skip_input = F.relu(self.skip_compress(inputs))        x = F.relu(self.conv_1(x))       #for i in range(5):       #    x = F.relu(self.conv_2(x))       #for j in range(5):       #    x = F.relu(self.conv_3(x))       #x = torch.cat((x, skip_input), 1)        values = F.relu(self.critic_compress(x))        values = self.critic_conv_1(values)        values = values.view(values.size(0), -1)        actions = F.relu(self.actor_compress(x))        return values, actions, rnn_hxsclass MicropolisBase_1d(NNBase):    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0),            nn.init.calculate_gain('relu'))        import sys        self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))        self.conv_0 = nn.Conv2d(num_inputs, 64, 1, 1, 0)        init_(self.conv_0)        self.conv_1 = nn.Conv2d(64, 64, 5, 1, 2)        init_(self.conv_1)        self.conv_2 = nn.Conv2d(1, 1, 3, 1, 0)        init_(self.conv_2)        self.conv_2_chan = nn.ConvTranspose2d(1, 1, (1, 3), 1, 0)        init_(self.conv_2_chan)        self.conv_3 = nn.ConvTranspose2d(1, 1, 3, 1, 0)        init_(self.conv_3)        self.conv_3_chan = nn.Conv2d(1, 1, (1, 3), 1, 0)        init_(self.conv_3_chan)        self.actor_compress = init_(nn.Conv2d(79, 20, 3, 1, 1))        self.critic_compress = init_(nn.Conv2d(79, 8, 1, 1, 1))        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0))        self.critic_conv_1 = init_(nn.Conv2d(8, 1, 20, 20, 0))        self.train()    def forward(self, inputs, rnn_hxs, masks):        x = inputs        x = F.relu(self.conv_0(x))        skip_input = F.relu(self.skip_compress(inputs))        x = F.relu(self.conv_1(x))        num_batch = x.size(0)        for i in range(5):            w, h = x.size(2), x.size(3)            num_chan = x.size(1)            x = x.view(num_batch * num_chan, 1, w, h)            x = F.relu(self.conv_2(x))            w, h = x.size(2), x.size(3)            x = x.view(num_batch, num_chan, w, h)            x = x.permute(0, 2, 3, 1)            x = x.view(num_batch, 1, w * h, num_chan)            x = F.relu(self.conv_2_chan(x))            num_chan = x.size(3)            x = x.view(num_batch, num_chan, w, h)        for j in range(5):            w, h = x.size(2), x.size(3)            num_chan = x.size(1)            x = x.view(num_batch * num_chan, 1, w, h)            x = F.relu(self.conv_3(x))            w, h = x.size(2), x.size(3)            x = x.view(num_batch, num_chan, w, h)            x = x.permute(0, 2, 3, 1)            x = x.view(num_batch, 1, w * h, num_chan)            x = F.relu(self.conv_3_chan(x))            num_chan = x.size(3)            x = x.view(num_batch, num_chan, w, h)        x = torch.cat((x, skip_input), 1)        values = F.relu(self.critic_compress(x))        values = self.critic_conv_1(values)        values = values.view(values.size(0), -1)        actions = F.relu(self.actor_compress(x))        return values, actions, rnn_hxsclass MicropolisBase_0(NNBase):    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0),            nn.init.calculate_gain('relu'))        import sys        if sys.version[0] == '2':            num_inputs=104      # assert num_inputs / 4 == 25        self.conv_A_0 = nn.Conv2d(num_inputs, 64, 5, 1, 2)        init_(self.conv_A_0)        self.conv_B_0 = nn.Conv2d(num_inputs, 64, 3, 1, 2)        init_(self.conv_B_0)        self.conv_A_1 = nn.Conv2d(64, 64, 5, 1, 2)        init_(self.conv_A_1)        self.conv_B_1 = nn.Conv2d(64, 64, 3, 1, 1)        init_(self.conv_B_1)        self.input_compress = nn.Conv2d(num_inputs, 15, 1, stride=1)        init_(self.input_compress)        self.actor_compress = nn.Conv2d(79, 18, 3, 1, 1)        init_(self.actor_compress)        self.critic_compress = init_(nn.Conv2d(79, 8, 1, 1, 0))      # self.critic_conv_0 = init_(nn.Conv2d(16, 1, 20, 1, 0))        init_ = lambda m: init(m,            nn.init.dirac_,            lambda x: nn.init.constant_(x, 0))        self.critic_conv_1 = init_(nn.Conv2d(8, 1, 20, 1, 0))        self.train()    def forward(self, inputs, rnn_hxs, masks):#       inputs = torch.Tensor(inputs)#       inputs =inputs.view((1,) + inputs.shape)        x = inputs        x_A = self.conv_A_0(x)        x_A = F.relu(x_A)        x_B = self.conv_B_0(x)        x_B = F.relu(x_B)        for i in range(2):#           x = torch.cat((x, inputs[:,-26:]), 1)            x_A = F.relu(self.conv_A_1(x_A))        for i in range(5):            x_B = F.relu(self.conv_B_1(x_B))        x = torch.mul(x_A, x_B)        skip_input = F.relu(self.input_compress(inputs))        x = torch.cat ((x, skip_input), 1)        values = F.relu(self.critic_compress(x))#       values = F.relu(self.critic_conv_0(values))        values = self.critic_conv_1(values).view(values.size(0), -1)        actions = F.relu(self.actor_compress(x))        return values, actions, rnn_hxsclass CNNBase(NNBase):    def __init__(self, num_inputs, recurrent=False, hidden_size=512):        super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)        init_ = lambda m: init(m,            nn.init.orthogonal_,            lambda x: nn.init.constant_(x, 0),            nn.init.calculate_gain('relu'))        self.main = nn.Sequential(            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),            nn.ReLU(),            init_(nn.Conv2d(32, 64, 4, stride=2)),            nn.ReLU(),            init_(nn.Conv2d(64, 32, 3, stride=1)),            nn.ReLU(),            Flatten(),            init_(nn.Linear(32 * 7 * 7, hidden_size)),            nn.ReLU()        )        init_ = lambda m: init(m,            nn.init.orthogonal_,            lambda x: nn.init.constant_(x, 0))        self.critic_linear = init_(nn.Linear(hidden_size, 1))        self.train()    def forward(self, inputs, rnn_hxs, masks):        x = self.main(inputs / 255.0)        if self.is_recurrent:            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)        return self.critic_linear(x), x, rnn_hxsclass MicropolisBase_mlp(NNBase):    def __init__(self, num_inputs, recurrent=False, hidden_size=256, map_width=20, num_actions=19):        super(MicropolisBase_mlp, self).__init__(recurrent, num_inputs, hidden_size)        num_inputs = map_width * map_width * num_inputs        if recurrent:            num_inputs = hidden_size        init_ = lambda m: init(m,            init_normc_,            lambda x: nn.init.constant_(x, 0))        self.actor = nn.Sequential(            init_(nn.Linear(num_inputs, hidden_size)),            nn.Tanh(),            init_(nn.Linear(hidden_size, hidden_size)),            nn.Tanh(),            init_(nn.Linear(hidden_size, map_width*map_width*num_actions)),            nn.Tanh()        )        self.critic = nn.Sequential(            init_(nn.Linear(num_inputs, hidden_size)),            nn.Tanh(),            init_(nn.Linear(hidden_size, hidden_size)),            nn.Tanh()        )        self.critic_linear = init_(nn.Linear(hidden_size, 1))        self.train()    def forward(self, inputs, rnn_hxs, masks):        x = inputs        x=x.view(x.size(0), -1)        if self.is_recurrent:            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)        hidden_critic = self.critic(x)        hidden_actor = self.actor(x)        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+
+class MicropolisBase_fixed(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=19):
+        super(MicropolisBase_fixed, self).__init__(recurrent, hidden_size, hidden_size)
+
+        self.map_width = map_width
+        self.RAND = False
+        self.eval_recs = [1] + [i * 8 for i in range(1, int(map_width * 2 / 8) + 1)]
+
+        self.num_recursions = map_width
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
+            nn.init.calculate_gain('relu'))
+
+        self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))
+
+        self.conv_0 = init_(nn.Conv2d(num_inputs, 64, 1, 1, 0))
+       #self.conv_1 = init_(nn.Conv2d(64, 64, 5, 1, 2))
+        for i in range(1):
+            setattr(self, 'conv_2_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
+        self.critic_compress = init_(nn.Conv2d(79, 64, 3, 1, 1))
+        for i in range(1):
+            setattr(self, 'critic_downsize_{}'.format(i), init_(nn.Conv2d(64, 64, 2, 2, 0)))
+
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.actor_compress = init_(nn.Conv2d(79, num_actions, 3, 1, 1))
+        self.critic_conv = init_(nn.Conv2d(64, 1, 1, 1, 0))
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = inputs
+        x = F.relu(self.conv_0(x))
+        skip_input = F.relu(self.skip_compress(inputs))
+       #x = F.relu(self.conv_1(x))
+        conv_2 = getattr(self, 'conv_2_{}'.format(0))
+        for i in range(self.num_recursions):
+            x = F.relu(conv_2(x))
+        x = torch.cat((x, skip_input), 1)
+        values = F.relu(self.critic_compress(x))
+        for i in range(4):
+            critic_downsize = getattr(self, 'critic_downsize_{}'.format(0))
+            values = F.relu(critic_downsize(values))
+        values = self.critic_conv(values)
+        values = values.view(values.size(0), -1)
+        actions = self.actor_compress(x)
+
+        return values, actions, rnn_hxs
+
+class MicropolisBase_squeeze(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, map_width=20, num_actions=19):
+        super(MicropolisBase_squeeze, self).__init__(recurrent, hidden_size, hidden_size)
+        self.chunk_size = 2 # factor by which map dimensions are shrunk
+        self.map_width = map_width
+       #self.num_maps = 4
+        self.num_maps = int(math.log(self.map_width, self.chunk_size)) - 1 # how many different sizes
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, -10),
+            nn.init.calculate_gain('relu'))
+
+        self.cmp_in = init_(nn.Conv2d(num_inputs, 64, 1, stride=1, padding=0))
+        for i in range(self.num_maps):
+            setattr(self, 'prj_life_obs_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+            setattr(self, 'cmp_life_obs_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
+       #self.shrink_life = init_(nn.Conv2d(64, 64, 3, 3, 0))
+
+       #self.conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+       #self.lin_0 = linit_(nn.Linear(1024, 1024))
+
+        for i in range(self.num_maps):
+            if i == 0:
+                setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))
+            setattr(self, 'expand_life_{}'.format(i), init_(nn.ConvTranspose2d(64 + 64, 64, 2, stride=2, padding=0)))
+            setattr(self, 'prj_life_act_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+            setattr(self, 'cmp_life_act_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
+            setattr(self, 'cmp_life_val_in_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
+            setattr(self, 'dwn_val_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))
+            if i == self.num_maps - 1:
+                setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+            else:
+                setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
+
+        self.cmp_act = init_(nn.Conv2d(128, 64, 3, stride=1, padding=1))
+
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1))
+
+        self.act_tomap = init_(nn.Conv2d(64, 19, 5, stride=1, padding=2))
+        self.cmp_val_out = init_(nn.Conv2d(64, 1, 1, stride=1, padding=0))
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = inputs
+        x = F.relu(self.cmp_in(x))
+        x_obs = [] 
+        for i in range(self.num_maps): # shrink if not first, then run life sim
+            if i != 0:
+                shrink_life = getattr(self, 'dwn_{}'.format(0))
+                x = F.relu(shrink_life(x))
+            x_0 = x
+            if i > -1:
+                prj_life_obs = getattr(self, 'prj_life_obs_{}'.format(i))
+                for c in range(3):
+                    x = F.relu(prj_life_obs(x))
+                x = torch.cat((x, x_0), 1)
+                cmp_life_obs = getattr(self,'cmp_life_obs_{}'.format(i))
+                x = F.relu(cmp_life_obs(x))
+            x_obs += [x]
+
+
+        for j in range(self.num_maps): # run life sim, then expand if not last
+            if j != 0:
+                x_i = x_obs[self.num_maps-1-j]
+                x = torch.cat((x, x_i), 1)
+                cmp_life_act = getattr(self, 'cmp_life_act_{}'.format(j))
+                x =  F.relu(cmp_life_act(x))
+            x_0 = x
+            if j > -1:
+                prj_life_act = getattr(self, 'prj_life_act_{}'.format(j))
+                for c in range(1):
+                    x = F.relu(prj_life_act(x))
+                x = torch.cat((x, x_0), 1)
+            if j < self.num_maps - 1:
+                expand_life = getattr(self, 'expand_life_{}'.format(j))
+                x = F.relu(expand_life(x))
+        x = F.relu(self.cmp_act(x))
+        acts = F.relu(self.act_tomap(x))
+
+        for i in range(self.num_maps):
+            dwn_val = getattr(self, 'dwn_val_{}'.format(0))
+            prj_life_val = getattr(self, 'prj_life_val_{}'.format(i))
+            cmp_life_val_in = getattr(self, 'cmp_life_val_in_{}'.format(i))
+            x_i = x_obs[i]
+            x = torch.cat((x, x_i), 1)
+            x = F.relu(cmp_life_val_in(x))
+            x = F.relu(dwn_val(x))
+            x = F.relu(prj_life_val(x))
+        vals = self.cmp_val_out(x) 
+        vals = vals.view(vals.size(0), -1)
+        return  vals, acts, rnn_hxs
+
+class MicropolisBase_ICM(MicropolisBase_fixed):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
+        super(MicropolisBase_ICM, self).__init__(num_inputs, recurrent, hidden_size)
+
+        ### ICM feature encoder
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        num_skip_inputs=15
+        self.num_action_channels=19
+
+        self.icm_state_in = init_(nn.Conv2d(num_inputs, 64, 3, 1, 1))
+        self.icm_state_conv_0 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_state_out = init_(nn.Conv2d(64, 64, 3, 1, 1))
+
+        self.icm_pred_a_in = init_(nn.Conv2d((num_inputs) * 2, 128, 3, 1, 1))
+        self.icm_pred_a_conv_0 = init_(nn.Conv2d(128, 128, 3, 1, 1))
+
+        self.icm_pred_s_in = init_(nn.Conv2d((num_inputs) + self.num_action_channels, 64, 1, 1, 0))
+        self.icm_pred_s_conv_0 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_2 = init_(nn.Conv2d(64, 64, 3, 1, 1))      
+        self.icm_pred_s_conv_3 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_4 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_5 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_6 = init_(nn.Conv2d(64, 64, 3, 1, 1))      
+        self.icm_pred_s_conv_7 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_8 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+        self.icm_pred_s_conv_9 = init_(nn.Conv2d(64, 64, 3, 1, 1))      
+        self.icm_pred_s_conv_10 = init_(nn.Conv2d(64, 64, 3, 1, 1))
+
+       #self.icm_skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))
+
+
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.icm_pred_a_out = init_(nn.Conv2d(128, self.num_action_channels, 7, 1, 3))
+        self.icm_pred_s_out = init_(nn.Conv2d(64 + 64, num_inputs, 1, 1, 0))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks, icm=False):
+        if icm == False:
+            return super().forward(inputs, rnn_hxs, masks)
+            
+        else:
+
+            # Encode state feature-maps
+
+            s0_in, s1_in, a1 = inputs
+            a1 = a1.view(a1.size(0), self.num_action_channels, 20, 20)
+
+            s0 = s0_in
+          # s0 = F.relu(self.icm_state_in(s0))
+          # for i in range(1):
+          #     s0 = F.relu(self.icm_state_conv_0(s0))
+          # s0 = F.relu(self.icm_state_out(s0))
+          ##s0_skip = F.relu(self.icm_skip_compress(s0))
+
+            s1 = s1_in
+          # s1 = F.relu(self.icm_state_in(s1))
+          # for i in range(1):
+          #     s1 = F.relu(self.icm_state_conv_0(s1))
+          # s1 = F.relu(self.icm_state_out(s1))
+          ##s1_skip = F.relu(self.icm_skip_compress(s1_in))
+
+            # Predict outcome state feature-map and action dist.
+            if True:
+                a1 = a1.cuda()
+                s0 = s0.cuda()
+
+            pred_s1 = pred_s1_0 = F.relu(self.icm_pred_s_in(torch.cat((s0, a1), 1)))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_0(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_1(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_2(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_3(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_4(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_5(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_6(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_7(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_8(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_9(pred_s1))
+            for i in range(2):
+                pred_s1 = F.relu(self.icm_pred_s_conv_10(pred_s1))
+
+            pred_s1 = torch.cat((pred_s1, pred_s1_0), 1)
+            pred_s1 = self.icm_pred_s_out(pred_s1)
+
+            pred_a = F.relu(self.icm_pred_a_in(torch.cat((s0, s1), 1)))
+            for i in range(1):
+                pred_a = F.relu(self.icm_pred_a_conv_0(pred_a))
+            pred_a = self.icm_pred_a_out(pred_a)
+            pred_a = pred_a.view(pred_a.size(0), -1)
+
+            return s1, pred_s1, pred_a
+
+    def feature_state_size(self):
+        return (32, 20, 20)
+
+
+class MicropolisBase_acktr(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
+        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        import sys
+
+       #self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))
+
+        self.conv_0 = nn.Conv2d(num_inputs, 64, 1, 1, 0)
+        init_(self.conv_0)
+        self.conv_1 = nn.Conv2d(64, 64, 5, 1, 2)
+        init_(self.conv_1)
+       #self.conv_2 = nn.Conv2d(64, 64, 3, 1, 0)
+       #init_(self.conv_2)
+       #self.conv_3 = nn.ConvTranspose2d(64, 64, 3, 1, 0)
+       #init_(self.conv_3)
+        self.actor_compress = init_(nn.Conv2d(64, 20, 3, 1, 1))
+
+        self.critic_compress = init_(nn.Conv2d(64, 8, 1, 1, 1))
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.critic_conv_1 = init_(nn.Conv2d(8, 1, 20, 20, 0))
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = inputs
+        x = F.relu(self.conv_0(x))
+       #skip_input = F.relu(self.skip_compress(inputs))
+        x = F.relu(self.conv_1(x))
+       #for i in range(5):
+       #    x = F.relu(self.conv_2(x))
+       #for j in range(5):
+       #    x = F.relu(self.conv_3(x))
+       #x = torch.cat((x, skip_input), 1)
+        values = F.relu(self.critic_compress(x))
+        values = self.critic_conv_1(values)
+        values = values.view(values.size(0), -1)
+        actions = F.relu(self.actor_compress(x))
+
+        return values, actions, rnn_hxs
+
+
+class MicropolisBase_1d(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
+        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        import sys
+
+        self.skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))
+
+        self.conv_0 = nn.Conv2d(num_inputs, 64, 1, 1, 0)
+        init_(self.conv_0)
+        self.conv_1 = nn.Conv2d(64, 64, 5, 1, 2)
+        init_(self.conv_1)
+        self.conv_2 = nn.Conv2d(1, 1, 3, 1, 0)
+        init_(self.conv_2)
+        self.conv_2_chan = nn.ConvTranspose2d(1, 1, (1, 3), 1, 0)
+        init_(self.conv_2_chan)
+        self.conv_3 = nn.ConvTranspose2d(1, 1, 3, 1, 0)
+        init_(self.conv_3)
+        self.conv_3_chan = nn.Conv2d(1, 1, (1, 3), 1, 0)
+        init_(self.conv_3_chan)
+
+        self.actor_compress = init_(nn.Conv2d(79, 20, 3, 1, 1))
+
+        self.critic_compress = init_(nn.Conv2d(79, 8, 1, 1, 1))
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.critic_conv_1 = init_(nn.Conv2d(8, 1, 20, 20, 0))
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = inputs
+        x = F.relu(self.conv_0(x))
+        skip_input = F.relu(self.skip_compress(inputs))
+        x = F.relu(self.conv_1(x))
+        num_batch = x.size(0)
+        for i in range(5):
+            w, h = x.size(2), x.size(3)
+            num_chan = x.size(1)
+            x = x.view(num_batch * num_chan, 1, w, h)
+            x = F.relu(self.conv_2(x))
+            w, h = x.size(2), x.size(3)
+            x = x.view(num_batch, num_chan, w, h)
+            x = x.permute(0, 2, 3, 1)
+            x = x.view(num_batch, 1, w * h, num_chan)
+            x = F.relu(self.conv_2_chan(x))
+            num_chan = x.size(3)
+            x = x.view(num_batch, num_chan, w, h)
+        for j in range(5):
+            w, h = x.size(2), x.size(3)
+            num_chan = x.size(1)
+            x = x.view(num_batch * num_chan, 1, w, h)
+            x = F.relu(self.conv_3(x))
+            w, h = x.size(2), x.size(3)
+            x = x.view(num_batch, num_chan, w, h)
+            x = x.permute(0, 2, 3, 1)
+            x = x.view(num_batch, 1, w * h, num_chan)
+            x = F.relu(self.conv_3_chan(x))
+            num_chan = x.size(3)
+            x = x.view(num_batch, num_chan, w, h)
+        x = torch.cat((x, skip_input), 1)
+        values = F.relu(self.critic_compress(x))
+        values = self.critic_conv_1(values)
+        values = values.view(values.size(0), -1)
+        actions = F.relu(self.actor_compress(x))
+
+        return values, actions, rnn_hxs
+
+
+class MicropolisBase_0(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, num_actions=19):
+        super(MicropolisBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        import sys
+        if sys.version[0] == '2':
+            num_inputs=104
+      # assert num_inputs / 4 == 25
+
+        self.conv_A_0 = nn.Conv2d(num_inputs, 64, 5, 1, 2)
+        init_(self.conv_A_0)
+        self.conv_B_0 = nn.Conv2d(num_inputs, 64, 3, 1, 2)
+        init_(self.conv_B_0)
+
+        self.conv_A_1 = nn.Conv2d(64, 64, 5, 1, 2)
+        init_(self.conv_A_1)
+        self.conv_B_1 = nn.Conv2d(64, 64, 3, 1, 1)
+        init_(self.conv_B_1)
+
+
+        self.input_compress = nn.Conv2d(num_inputs, 15, 1, stride=1)
+        init_(self.input_compress)
+        self.actor_compress = nn.Conv2d(79, 18, 3, 1, 1)
+        init_(self.actor_compress)
+
+
+        self.critic_compress = init_(nn.Conv2d(79, 8, 1, 1, 0))
+      # self.critic_conv_0 = init_(nn.Conv2d(16, 1, 20, 1, 0))
+
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.critic_conv_1 = init_(nn.Conv2d(8, 1, 20, 1, 0))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+#       inputs = torch.Tensor(inputs)
+#       inputs =inputs.view((1,) + inputs.shape)
+        x = inputs
+        x_A = self.conv_A_0(x)
+        x_A = F.relu(x_A)
+        x_B = self.conv_B_0(x)
+        x_B = F.relu(x_B)
+        for i in range(2):
+#           x = torch.cat((x, inputs[:,-26:]), 1)
+            x_A = F.relu(self.conv_A_1(x_A))
+        for i in range(5):
+            x_B = F.relu(self.conv_B_1(x_B))
+        x = torch.mul(x_A, x_B)
+        skip_input = F.relu(self.input_compress(inputs))
+        x = torch.cat ((x, skip_input), 1)
+        values = F.relu(self.critic_compress(x))
+#       values = F.relu(self.critic_conv_0(values))
+        values = self.critic_conv_1(values).view(values.size(0), -1)
+        actions = F.relu(self.actor_compress(x))
+
+        return values, actions, rnn_hxs
+
+class CNNBase(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+        super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        self.main = nn.Sequential(
+            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            nn.ReLU(),
+            init_(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.ReLU(),
+            init_(nn.Conv2d(64, 32, 3, stride=1)),
+            nn.ReLU(),
+            Flatten(),
+            init_(nn.Linear(32 * 7 * 7, hidden_size)),
+            nn.ReLU()
+        )
+
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = self.main(inputs / 255.0)
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(x), x, rnn_hxs
+
+
+class MicropolisBase_mlp(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256, map_width=20, num_actions=19):
+        super(MicropolisBase_mlp, self).__init__(recurrent, num_inputs, hidden_size)
+        num_inputs = map_width * map_width * num_inputs
+        if recurrent:
+            num_inputs = hidden_size
+
+        init_ = lambda m: init(m,
+            init_normc_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.actor = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)),
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)),
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, map_width*map_width*num_actions)),
+            nn.Tanh()
+        )
+
+        self.critic = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)),
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)),
+            nn.Tanh()
+        )
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = inputs
+        x=x.view(x.size(0), -1)
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        hidden_critic = self.critic(x)
+        hidden_actor = self.actor(x)
+
+        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
