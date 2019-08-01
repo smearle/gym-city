@@ -23,6 +23,7 @@ import csv
 
 import random
 import gym_micropolis
+import game_of_life
 
 args = get_args()
 args.log_dir = args.save_dir + '/logs'
@@ -61,16 +62,20 @@ def main():
         viz = Visdom(port=args.port)
         win = None
         win_eval = None
-
+    if 'GameOfLife' in args.env_name:
+        print('env name: {}'.format(args.env_name))
+        num_actions = 1
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, None,
 
                         args=args)
 
-    if args.power_puzzle:
-        num_actions = 1
-    else:
-        num_actions = 19
+
+    if 'Micropolis' in args.env_name:
+        if args.power_puzzle:
+            num_actions = 1
+        else:
+            num_actions = 19
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
         base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
                      'recurrent': args.recurrent_policy},
@@ -293,22 +298,25 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                     col_step = 3
                 else:
                     col_step = 1
-                col_idx = [-1, *range(0, n_cols, col_step)]
-                for i in col_idx:
-                    evaluator.evaluate(column=i)
-               #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
-               # making sure the evaluator plots the '-1'st column (the overall net)
-                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
-                              args.algo, args.num_frames, n_graphs= col_idx)
-            elif args.model == 'fixed' and model.RAND:
-                for i in model.eval_recs:
-                    evaluator.evaluate(num_recursions=i)
-                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
-                                       args.algo, args.num_frames, n_graphs=model.eval_recs)
             else:
-                evaluator.evaluate(column=None)
-                win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
-                              args.algo, args.num_frames * 20 / (args.eval_interval * args.num_steps))
+                n_cols = 0
+                col_step = 1
+            col_idx = [-1, *range(0, n_cols, col_step)]
+            for i in col_idx:
+                evaluator.evaluate(column=i)
+           #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
+           # making sure the evaluator plots the '-1'st column (the overall net)
+            win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
+                          args.algo, args.num_frames, n_graphs= col_idx)
+           #elif args.model == 'fixed' and model.RAND:
+           #    for i in model.eval_recs:
+           #        evaluator.evaluate(num_recursions=i)
+           #    win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
+           #                           args.algo, args.num_frames, n_graphs=model.eval_recs)
+           #else:
+           #    evaluator.evaluate(column=-1)
+           #    win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
+           #                  args.algo, args.num_frames)
 
 
 
@@ -364,11 +372,11 @@ class Evaluator(object):
         model = actor_critic.base
         if args.model == 'fractal':
             n_cols = model.n_cols
-            eval_cols = range(-1, n_cols)
-        elif args.model == 'fixed' and model.RAND:
-            eval_cols = model.eval_recs
         else:
-            eval_cols = None
+            n_cols = 0
+        eval_cols = range(-1, n_cols)
+        if args.model == 'fixed' and model.RAND:
+            eval_cols = model.eval_recs
         if eval_cols is not None:
             for i in eval_cols:
                 log_file = '{}/col_{}_eval.csv'.format(self.eval_log_dir, i)
@@ -401,7 +409,7 @@ class Evaluator(object):
         model = self.actor_critic.base
         if num_recursions is not None:
             model.num_recursions = num_recursions
-        if column is not None:
+        if column is not None and self.args.model == 'fractal':
             model.set_active_column(column)
 
         eval_episode_rewards = []

@@ -35,7 +35,7 @@ class Policy(nn.Module):
                 if args.model == 'fractal':
                     print(base_kwargs)
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
-                        'squeeze':args.squeeze, 'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
+                        'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
                         'rule':args.rule, 'map_width':obs_shape[1],
                         }}
                 self.base = base_model(obs_shape[0], **base_kwargs)
@@ -219,7 +219,7 @@ class MicropolisBase_FullyConv(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=1):
         super(MicropolisBase_FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
-        num_chan = 128
+        num_chan = 64
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
@@ -255,16 +255,17 @@ class MicropolisBase_FullyConv_linVal(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=1):
         super(MicropolisBase_FullyConv_linVal, self).__init__(recurrent, hidden_size, hidden_size)
+        num_chan = 64
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
-        self.embed = init_(nn.Conv2d(num_inputs, 32, 1, 1, 0))
-        self.k5 = init_(nn.Conv2d(32, 32, 5, 1, 2))
-        self.k3 = init_(nn.Conv2d(32, 32, 3, 1, 1))
-        state_size = map_width * map_width * 32
+        self.embed = init_(nn.Conv2d(num_inputs, num_chan, 1, 1, 0))
+        self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
+        self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
+        state_size = map_width * map_width * num_chan
         linit_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
@@ -273,16 +274,16 @@ class MicropolisBase_FullyConv_linVal(NNBase):
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
-        self.act = init_(nn.Conv2d(32, num_actions, 1, 1, 0))
+        self.act = init_(nn.Conv2d(num_chan, num_actions, 1, 1, 0))
 
     def forward(self, x, rhxs=None, masks=None):
 
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
         x = F.relu(self.k3(x))
+        act = self.act(x)
         x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
         val = self.val(x_lin)
-        act = self.act(x)
         return val.view(val.shape[0], -1), act, rhxs
 
 class MicropolisBase_FullyConvLSTM(NNBase):
@@ -385,7 +386,7 @@ class MicropolisBase_FullyConvRec(NNBase):
 
 class MicropolisBase_fractal(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
-                 map_width=16, n_conv_recs=2, n_recs=3, squeeze=False,
+                 map_width=16, n_conv_recs=2, n_recs=3,
                  intra_shr=False, inter_shr=False,
                  num_actions=19, rule='extend'):
         super(MicropolisBase_fractal, self).__init__(recurrent, hidden_size, hidden_size)
@@ -403,7 +404,7 @@ class MicropolisBase_fractal(NNBase):
                     FractalBlock(n_chan_in=block_chans[i-1], n_chan=block_chans[i],
                                  num_inputs=num_inputs, intra_shr=intra_shr,
                                  inter_shr=inter_shr, recurrent=recurrent,
-                                 n_recs=n_recs, squeeze=squeeze,
+                                 n_recs=n_recs,
                                  num_actions=num_actions, rule=rule, base=self))
         # An assumption. Run drop path globally on all blocks of stack if applicable
         self.n_cols = self.block_0.n_cols
@@ -444,7 +445,7 @@ class MicropolisBase_fractal(NNBase):
 
 class FractalBlock(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512,
-                 map_width=16, n_recs=3, squeeze=False, intra_shr=False,
+                 map_width=16, n_recs=3, intra_shr=False,
                  inter_shr=False, num_actions=19, rule='extend', n_chan=32,
                  n_chan_in=32, base=None):
 
@@ -453,14 +454,13 @@ class FractalBlock(NNBase):
 
         self.map_width = map_width
         self.n_chan = n_chan
-        self.squeeze = squeeze
         self.intracol_share = intra_shr # share weights between layers in a col.
         self.intercol_share = inter_shr # share weights between columns
         self.rule = rule # which fractal expansion rule to use
         # each rec is a call to a subfractal constructor, 1 rec = single-layered body
         self.n_recs = n_recs
-        print("Fractal Block: expansion type: {}, {} recursions, {} squeeze".format(
-            self.rule, self.n_recs, squeeze))
+        print("Fractal Block: expansion type: {}, {} recursions".format(
+            self.rule, self.n_recs))
 
         self.SKIPSQUEEZE = rule == 'wide1' # actually we mean a fractal rule that grows linearly in max depth but exponentially in number of columns, rather than vice versa, with number of recursions #TODO: combine the two rules
         if self.rule == 'wide1':
@@ -480,10 +480,8 @@ class FractalBlock(NNBase):
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
         self.embed_chan = nn.Conv2d(num_inputs, n_chan, 1, 1, 0)
-        if not self.intracol_share:
-            pass
-
-        elif self.intracol_share:
+        # TODO: right now, we initialize these only as placeholders to successfully load older models, get rid of these asap
+        if False and self.intracol_share:
             # how many columns with distinct sets of layers?
             if self.intercol_share:
                 n_unique_cols = 1
@@ -500,7 +498,7 @@ class FractalBlock(NNBase):
 
                     setattr(self, 'join_{}'.format(i), init_(nn.Conv2d(
                         self.n_chan * 2, self.n_chan, 3, 1, 1)))
-                    if squeeze or self.rule == 'wide1':
+                    if self.rule == 'wide1' or self.rule == 'extend_sqz':
                         setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(
                             self.n_chan, self.n_chan, 2, 2, 0)))
                         setattr(self, 'up_{}'.format(i), init_(nn.ConvTranspose2d(
@@ -509,7 +507,7 @@ class FractalBlock(NNBase):
         if self.rule == 'wide1':
             subfractal = SkipFractal
         elif self.rule == 'extend':
-            if self.rule == 'squeeze':
+            if self.rule == 'extend_sqz':
                 subfractal = SubFractal_squeeze
             else:
                 subfractal = SubFractal
@@ -527,8 +525,9 @@ class FractalBlock(NNBase):
         self.intracol_share = False
         self.f_c = self.subfractal(self, self.f_c, n_rec=self.n_recs)
         setattr(self, 'fixed_{}'.format(self.n_recs), None)
-        if not  self.intercol_share:
-            self.f_c.copy_weights()
+        self.f_c.copy_child_weights()
+        if not self.intercol_share:
+            self.f_c.fixed = copy.deepcopy(self.f_c.fixed)
         self.n_recs += 1
         self.n_cols += 1
 
@@ -606,33 +605,42 @@ class SubFractal(nn.Module):
         init_ = root.c_init_
         if f_c is not None:
             self.f_c_A = f_c
+            if root.intercol_share:
+                self.copy_child_weights()
             self.f_c_B = f_c.mutate_copy(root)
             self.join_masks = {'body': True, 'skip': True}
         else:
             self.join_masks = {'body': False, 'skip': True}
         self.active_column = root.active_column
-        if not root.intracol_share:
+        if (not root.intercol_share) or self.n_rec == 0:
             self.fixed = init_(nn.Conv2d(self.n_chan, self.n_chan, 3, 1, 1))
             if self.join_layer and n_rec > 0:
                 self.join = init_(nn.Conv2d(self.n_chan * 2, self.n_chan, 3, 1, 1))
-        else:
-            if root.intercol_share:
-                j = 0
-            else:
-                j = n_rec
-            self.fixed = getattr(root, 'fixed_{}'.format(j))
-           #if self.join_layer and n_rec > 0:
-           #    self.join = getattr(root, 'join_{}'.format(j))
+
+                #if self.join_layer and n_rec > 0:
+               #    self.join = getattr(root, 'join_{}'.format(j))
 
 
     def mutate_copy(self, root):
+        ''' Return a copy of myself to be used as my twin.'''
         if self.n_rec > 0:
             f_c = self.f_c_A.mutate_copy(root)
             twin = SubFractal(root, f_c, self.n_rec)
         else:
             twin = SubFractal(root, None, 0)
-        twin.fixed = copy.deepcopy(self.fixed)
+        if root.intracol_share:
+            twin.fixed = self.fixed
         return twin
+
+
+    def copy_child_weights(self):
+        ''' Steal our child's weights to use as our own. Not deep (just refers to existing weights).'''
+        if self.n_rec > 0:
+            self.fixed = self.f_c_A.fixed
+            if self.join_layer:
+                self.join = self.f_c_A.join
+
+
 
     def reset_join_masks(self, val=True):
         self.join_masks['skip'] = val
@@ -701,16 +709,6 @@ class SubFractal(nn.Module):
             self.f_c_A.set_active_column(col_n)
             self.f_c_B.set_active_column(col_n)
 
-
-    def copy_weights(self):
-        ''' Steal our child's weights to use as our own.'''
-        # not deep!
-        if self.n_rec > 0:
-            self.fixed = self.f_c_A.fixed
-        if self.join_layer:
-            self.join = self.f_c_B.join
-        # TODO: deep copy to allow for diversifying neuroevolution
-        #self.load_state_dict(self.f_c_A)
 
 
     def get_join_masks(self):

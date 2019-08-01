@@ -128,7 +128,7 @@ def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1,
                #return win
 
             else:
-                plt.plot(tx, ty, label="{}_col_{}".format(name, i), color=color_defaults[color])
+                plt.plot(tx, ty, label="col_{}".format(i), color=color_defaults[color])
                 color += 1
     else:
         tx, ty = load_data(folder, smooth, bin_size)

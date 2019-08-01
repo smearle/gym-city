@@ -58,6 +58,17 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         else:
             env = gym.make(env_id)
+            if 'gameoflife' in env_id.lower():
+               #print("ENV RANK: ", rank)
+                power_puzzle = False
+               #if args.power_puzzle:
+               #    power_puzzle = True
+                if rank == 0:
+                    render = render_gui
+                else:render = False
+                env.configure(map_width=map_width, render=render,
+                        prob_life = args.prob_life)
+
             if 'micropolis' in env_id.lower():
                 print("ENV RANK: ", rank)
                 power_puzzle = False

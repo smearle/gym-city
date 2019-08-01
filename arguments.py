@@ -14,11 +14,11 @@ def get_args():
     model_name = args.model
     if args.model == 'fractal':
         model_name += '-{}-{}recs'.format(args.rule, args.n_recs)
-        if args.squeeze: model_name += '_sqz'
         if args.intra_shr: model_name += '_intra_shr'
         if args.inter_shr: model_name += '_inter_shr'
         if args.drop_path: model_name += '_drop'
-    args.save_dir = "trained_models/{}_{}_w{}/{}".format(args.algo, model_name, args.map_width, args.experiment_name)
+    args.save_dir = "trained_models/{}_{}_w{}/{}_{}".format(args.algo, model_name, args.map_width, args.env_name, args.experiment_name)
+    args.save_interval = args.eval_interval # otherwise we can cut eval graph short by reloading too much
     return args
 
 def get_parser():
@@ -57,8 +57,8 @@ def get_parser():
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument('--log-interval', type=int, default=10,
                         help='log interval, one log per n updates (default: 10)')
-    parser.add_argument('--save-interval', type=int, default=100,
-                        help='save interval, one save per n updates (default: 100)')
+#   parser.add_argument('--save-interval', type=int, default=100,
+#                       help='save interval, one save per n updates (default: 100)')
     parser.add_argument('--eval-interval', type=int, default=None,
                         help='eval interval, one eval per n updates (default: None)')
     parser.add_argument('--vis-interval', type=int, default=100,
@@ -66,7 +66,7 @@ def get_parser():
     parser.add_argument('--num-frames', type=int, default=10e6,
                         help='number of frames to train (default: 10e6)')
     parser.add_argument('--env-name', default='MicropolisEnv-v0',
-                        help='environment to train on (default: PongNoFrameskip-v4)')
+                        help='environment to train on (default: MicropolisEnv-v0)')
 #   parser.add_argument('--log-dir', default='trained_models',
 #                       help='directory to save agent logs (default: /tmp/gym)')
 #   parser.add_argument('--save-dir', default='./trained_models',
@@ -86,35 +86,39 @@ def get_parser():
                         help='port to run the server on (default: 8097)')
     parser.add_argument('--map-width', type=int, default=20,
                         help="width of micropolis map")
-    parser.add_argument('--empty-start', action='store_true', default=False)
-    parser.add_argument('--model', default='fixed')
+    parser.add_argument('--model', default='fractal')
     parser.add_argument('--curiosity', action='store_true', default=False)
     parser.add_argument('--no-reward', action='store_true', default=False)
     parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
-    parser.add_argument('--random-terrain', action='store_true',
-            help='episode begins on randomly generated micropolis terrain map')
-    parser.add_argument('--random-builds', action='store_true',
-            help='episode begins with random static (unbulldozable) builds on the map')
     parser.add_argument('--overwrite', action='store_true', help='overwrite log files and saved model, optimizer')
     parser.add_argument('--max-step', type=int, default=200)
     # Fractal Net
-    parser.add_argument('--squeeze', action='store_true',
-            help= 'squeeze outward columns of fractal by recurrent up and down convolution')
-    parser.add_argument('--n-recs', default=3, type=int,
-            help='number of times the expansion rule is applied in the construction of a fractal net')
-    parser.add_argument('--n-conv-recs', default=2,
-            help='number of recurrences of convolution at base level of fractal net')
+#   parser.add_argument('--squeeze', action='store_true',
+#           help= 'squeeze outward columns of fractal by recurrent up and down convolution')
+#   parser.add_argument('--n-conv-recs', default=2,
+#           help='number of recurrences of convolution at base level of fractal net')
     parser.add_argument('--drop-path', action='store_true', help='enable global and local drop path on fractal model (ignored otherwise)')
     parser.add_argument('--inter-shr', action='store_true',
             help='layers shared between columns')
     parser.add_argument('--intra-shr', action='store_true',
             help='layers shared within columns')
-    parser.add_argument('--simple-reward', action='store_true',
-            help='reward only for overall population according to game')
+########################################### Fractal Nets
     parser.add_argument('--rule', default = 'extend',
             help='which fractal expansion rule to apply if using a fractal network architecture')
+    parser.add_argument('--n-recs', default=3, type=int,
+            help='number of times the expansion rule is applied in the construction of a fractal net')
+########################################### Micropolis
     parser.add_argument('--power-puzzle', action='store_true',
             help='a minigame: the agent uses wire to efficiently connect zones.')
+    parser.add_argument('--simple-reward', action='store_true',
+            help='reward only for overall population according to game')
+    parser.add_argument('--random-builds', action='store_true',
+            help='episode begins with random static (unbulldozable) builds on the map')
+    parser.add_argument('--random-terrain', action='store_true',
+            help='episode begins on randomly generated micropolis terrain map')
+########################################### Game of Life
+    parser.add_argument('--prob-life', default=20,
+            help='percent chance each tile is alive on reset')
 ########################################### ICM
     parser.add_argument(
         '--eta',
