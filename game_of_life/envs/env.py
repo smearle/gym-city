@@ -28,15 +28,16 @@ class GameOfLifeEnv(core.Env):
         self.observation_space = spaces.Box(low=np.zeros((1, size, size)),
                 high=np.ones((1, size, size)), dtype=int)
         self.action_space = spaces.Discrete(self.num_tools * size * size)
-
+        self.view_agent = render
+        if self.view_agent:
+            self.agent_builds = np.zeros(shape=(map_width, map_width), dtype=np.uint8)
         self.step_count = 0
-        self.prob_life = prob_life
         self.record_entropy = True
-        self.world = World(self.size, self.size, prob_life=20)
+        self.world = World(self.size, self.size, prob_life=prob_life, env=self) # Note that this object 
         self.state = None
        #self.device = device = torch.device("cpu")
-        self.device = device = torch.device(
-                 "cuda" if torch.cuda.is_available() else "cpu")
+       #self.device = device = torch.device(
+       #         "cuda" if torch.cuda.is_available() else "cpu")
         self.render = render
         self.max_step = 100
 
@@ -74,23 +75,32 @@ class GameOfLifeEnv(core.Env):
         self.step_count = 0
         self.world.repopulate_cells()
         self.world.prepopulate_neighbours()
+        if self.view_agent:
+            self.agent_builds.fill(0)
         return self.world.state
+
+    def display(self):
+        rend_arr = np.array(self.world.state, dtype=np.uint8)
+        rend_arr = np.vstack((rend_arr * 255, rend_arr * 255, rend_arr * 255))
+        if self.view_agent:
+            rend_arr[1] = rend_arr[0] = rend_arr[1] - self.agent_builds * 255
+        rend_arr = rend_arr.transpose(1, 2, 0)
+        cv2.imshow("Game of Life", rend_arr)
+        cv2.waitKey(100)
 
     def step(self, a):
         z, act_x, act_y = self.intsToActions[a]
         self.world.build_cell(act_x, act_y, alive=True)
+        if self.view_agent:
+            self.agent_builds[act_x, act_y] = 1
         if self.render:
+            self.display()
            #print(self.world.render())
-            cv2.imshow("Game of Life", np.array(self.world.state.transpose(1, 2, 0) * 255, dtype=np.uint8))
-            cv2.waitKey(1)
         self.world._tick()
         terminal = self.step_count == self.max_step
         self.step_count += 1
         if self.render:
-           #print(self.world.render())
-            cv2.imshow("Game of Life", np.array(self.world.state.transpose(1, 2, 0) * 255, dtype=np.uint8))
-            cv2.waitKey(1)
-
+            self.display()
         reward = self.world.state.sum() / self.max_step
         infos = {}
         return (self.world.state, reward, terminal, infos)
@@ -104,6 +114,7 @@ class GameOfLifeEnv(core.Env):
         # 2**31.
         seed2 = seeding.hash_seed(seed1 + 1) % 2**31
         np.random.seed(seed)
+        self.world.seed(seed)
         return [seed1, seed2]
 
 cv2.destroyAllWindows()

@@ -1,4 +1,3 @@
-from random import randint
 import numpy as np
 
 class World:
@@ -7,7 +6,8 @@ class World:
 
     # Python doesn't have a concept of public/private variables
 
-    def __init__(self, width, height, prob_life=20):
+    def __init__(self, width, height, prob_life=20, env=None):
+        self.env = env
         self.width = width
         self.height = height
         self.prob_life = prob_life
@@ -23,6 +23,9 @@ class World:
         self.populate_cells()
         self.prepopulate_neighbours()
 
+    def seed(self, seed=None):
+        np.random.seed(seed)
+
     def _tick(self):
         # First determine the action for all cells
         for key,cell in self.cells.items():
@@ -31,6 +34,8 @@ class World:
                 cell.next_state = 1
             elif alive_neighbours < 2 or alive_neighbours > 3:
                 cell.next_state = 0
+                if self.env.view_agent:
+                    self.env.agent_builds[cell.x, cell.y] = 0
 
         # Then execute the determined action for all cells
         for key,cell in self.cells.items():
@@ -68,14 +73,14 @@ class World:
     def populate_cells(self):
         for y in list(range(self.height)):
             for x in list(range(self.width)):
-                alive = (randint(0, 100) <= self.prob_life)
+                alive = (np.random.randint(0, 100) <= self.prob_life)
                 self.add_cell(x, y, alive)
 
     def repopulate_cells(self):
         ''' When resetting the env.'''
         for y in list(range(self.height)):
             for x in list(range(self.width)):
-                alive = (randint(0, 100) <= self.prob_life)
+                alive = (np.random.randint(0, 100) <= self.prob_life)
                 self.build_cell(x, y, alive)
 
     def prepopulate_neighbours(self):

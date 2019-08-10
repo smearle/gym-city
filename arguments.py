@@ -117,7 +117,7 @@ def get_parser():
     parser.add_argument('--random-terrain', action='store_true',
             help='episode begins on randomly generated micropolis terrain map')
 ########################################### Game of Life
-    parser.add_argument('--prob-life', default=20,
+    parser.add_argument('--prob-life', type=int, default=20,
             help='percent chance each tile is alive on reset')
 ########################################### ICM
     parser.add_argument(

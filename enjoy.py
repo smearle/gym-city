@@ -23,7 +23,19 @@ args.det = not args.non_det
 
 import gym
 import gym_micropolis
-env = make_vec_envs(args.env_name, args.seed + 1000, 1,
+import game_of_life
+
+env_name = args.load_dir.split('/')[-1].split('_')[0]
+try:
+    checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'))
+except FileNotFoundError:
+    print('load-dir does not start with valid gym environment id, using command line args')
+    env_name = args.env_name
+checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'))
+saved_args = checkpoint['args']
+env_name = saved_args.env_name
+
+env = make_vec_envs(env_name, args.seed + 1000, 1,
                             None, None, args.add_timestep, device='cpu',
                             allow_early_resets=False,
                             args=args)
@@ -35,12 +47,13 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
 
 #actor_critic, ob_rms = \
 #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
-checkpoint = torch.load(os.path.join(args.load_dir, args.env_name + '.tar'))
-saved_args = checkpoint['args']
-if saved_args.power_puzzle:
+if 'GameOfLife' in saved_args.env_name:
     num_actions = 1
-else:
-    num_actions = 19
+elif 'Micropolis' in saved_args.env_name:
+    if saved_args.power_puzzle:
+        num_actions = 1
+    else:
+        num_actions = 19
 # We need to use the same statistics for normalization as used in training
 actor_critic = Policy(env.observation_space.shape, env.action_space,
         base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,

@@ -230,39 +230,7 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
 
-            # A really ugly way to save a model to CPU
-            save_model = actor_critic
-            ob_rms = getattr(get_vec_normalize(envs), 'ob_rms', None)
-            save_model = copy.deepcopy(actor_critic)
-            save_agent = copy.deepcopy(agent)
-            if args.cuda:
-                save_model.cpu()
-            optim_save = save_agent.optimizer.state_dict()
-
-            # experimental:
-            torch.save({
-                'past_steps': step,
-                'model_state_dict': save_model.state_dict(),
-                'optimizer_state_dict': optim_save,
-                'ob_rms': ob_rms,
-                'args': args
-                }, os.path.join(save_path, args.env_name + ".tar"))
-
-           #save_model = [save_model,
-           #              getattr(get_vec_normalize(envs), 'ob_rms', None)]
-
-           #torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
-           #save_agent = copy.deepcopy(agent)
-
-           #torch.save(save_agent, os.path.join(save_path, args.env_name + '_agent.pt'))
-           #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
 
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
 
@@ -306,8 +274,14 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 evaluator.evaluate(column=i)
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
            # making sure the evaluator plots the '-1'st column (the overall net)
-            win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
-                          args.algo, args.num_frames, n_graphs= col_idx)
+
+            if args.vis and j % args.vis_interval == 0:
+                try:
+                    # Sometimes monitor doesn't properly flush the outputs
+                    win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
+                                  args.algo, args.num_frames, n_graphs= col_idx)
+                except IOError:
+                    pass
            #elif args.model == 'fixed' and model.RAND:
            #    for i in model.eval_recs:
            #        evaluator.evaluate(num_recursions=i)
@@ -318,7 +292,39 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
            #    win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
            #                  args.algo, args.num_frames)
 
+        if j % args.save_interval == 0 and args.save_dir != "":
+            save_path = os.path.join(args.save_dir)
+            try:
+                os.makedirs(save_path)
+            except OSError:
+                pass
 
+            # A really ugly way to save a model to CPU
+            save_model = actor_critic
+            ob_rms = getattr(get_vec_normalize(envs), 'ob_rms', None)
+            save_model = copy.deepcopy(actor_critic)
+            save_agent = copy.deepcopy(agent)
+            if args.cuda:
+                save_model.cpu()
+            optim_save = save_agent.optimizer.state_dict()
+
+            # experimental:
+            torch.save({
+                'past_steps': step,
+                'model_state_dict': save_model.state_dict(),
+                'optimizer_state_dict': optim_save,
+                'ob_rms': ob_rms,
+                'args': args
+                }, os.path.join(save_path, args.env_name + ".tar"))
+
+           #save_model = [save_model,
+           #              getattr(get_vec_normalize(envs), 'ob_rms', None)]
+
+           #torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+           #save_agent = copy.deepcopy(agent)
+
+           #torch.save(save_agent, os.path.join(save_path, args.env_name + '_agent.pt'))
+           #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
 
         if args.vis and j % args.vis_interval == 0:
             try:
@@ -391,11 +397,19 @@ class Evaluator(object):
                     with open(old_log, newline='') as old:
                         reader = csv.DictReader(old, fieldnames=('r', 'l', 't'))
                         h = 0
-                        for row in reader:
-                            if h > 1:
-                                row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
-                                writer_col.writerow(row)
-                            h += 1
+                        try: # in case of null bytes resulting from interrupted logging
+                            for row in reader:
+                                if h > 1:
+                                    row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
+                                    writer_col.writerow(row)
+                                h += 1
+                        except csv.Error:
+                            h_i = 0
+                            for row in reader:
+                                if h_i > h:
+                                    row['t'] = 0.0001 * h_i # HACK: false times for past logs to maintain order
+                                    writer_col.writerow(row)
+                                h_i += 1
                     os.remove(old_log)
 
                 else:
