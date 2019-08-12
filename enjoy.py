@@ -27,7 +27,7 @@ import game_of_life
 
 env_name = args.load_dir.split('/')[-1].split('_')[0]
 if torch.cuda.is_available():
-    map_location = torch.device('gpu')
+    map_location = torch.device('cuda')
 else:
     map_location = torch.device('cpu')
 try:
