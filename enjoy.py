@@ -35,6 +35,7 @@ checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'))
 saved_args = checkpoint['args']
 env_name = saved_args.env_name
 
+args.power_puzzle = saved_args.power_puzzle
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                             None, None, args.add_timestep, device='cpu',
                             allow_early_resets=False,
