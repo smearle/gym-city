@@ -24,7 +24,6 @@ class MicropolisEnv(core.Env):
         self.start_time = time.time()
         self.print_map = False
         self.num_episode = 0
-        self.max_step = 1000
         self.max_static = 0
         self.player_step = False
         self.last_reward = 0
@@ -39,11 +38,13 @@ class MicropolisEnv(core.Env):
         np.random.seed(seed)
         return [seed1, seed2]
 
-    def setMapSize(self, size, max_step=None, rank=None, print_map=False, PADDING=0, static_builds=True, 
-            parallel_gui=False, render_gui=False,
+    def setMapSize(self, size, max_step=None, rank=None, print_map=False,
+            PADDING=0, static_builds=True, parallel_gui=False, render_gui=False,
             empty_start=True, simple_reward=False, power_puzzle=False):
         if max_step is not None:
             self.max_step = max_step
+        else:
+            self.max_step = 1000
         self.empty_start = empty_start
         self.simple_reward = simple_reward
         self.power_puzzle = power_puzzle
