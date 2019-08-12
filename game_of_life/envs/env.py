@@ -86,7 +86,7 @@ class GameOfLifeEnv(core.Env):
             rend_arr[1] = rend_arr[0] = rend_arr[1] - self.agent_builds * 255
         rend_arr = rend_arr.transpose(1, 2, 0)
         cv2.imshow("Game of Life", rend_arr)
-        cv2.waitKey(100)
+        cv2.waitKey(1)
 
     def step(self, a):
         z, act_x, act_y = self.intsToActions[a]

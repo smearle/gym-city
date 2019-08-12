@@ -40,7 +40,10 @@ class Policy(nn.Module):
                         }}
                 self.base = base_model(obs_shape[0], **base_kwargs)
             print('BASE NETWORK: n', self.base)
-            print('device', torch.cuda.current_device())
+            # if torch.cuda.is_available:
+            #    print('device', torch.cuda.current_device())
+            # else:
+            #    print('device: cpu')
 
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
