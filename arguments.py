@@ -17,7 +17,9 @@ def get_args():
         if args.intra_shr: model_name += '_intra_shr'
         if args.inter_shr: model_name += '_inter_shr'
         if args.drop_path: model_name += '_drop'
-    args.save_dir = "trained_models/{}_{}_w{}/{}_{}".format(args.algo, model_name, args.map_width, args.env_name, args.experiment_name)
+    args.save_dir = "trained_models/{}_{}_w{}/{}_{}s_{}".format(args.algo,
+            model_name, args.map_width, args.env_name, args.max_step,
+            args.experiment_name)
     args.save_interval = args.eval_interval # otherwise we can cut eval graph short by reloading too much
     return args
 
