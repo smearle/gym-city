@@ -70,17 +70,37 @@ def main():
 
                         args=args)
 
-
-    if 'Micropolis' in args.env_name:
-        if args.power_puzzle:
-            num_actions = 1
+    if isinstance(envs.observation_space, gym.spaces.Discrete):
+        num_inputs = envs.observation_space.n
+    elif isinstance(envs.observation_space, gym.spaces.Box):
+        if len(envs.observation_space.shape) == 3:
+            in_w = envs.observation_space.shape[1]
+            in_h = envs.observation_space.shape[2]
         else:
-            num_actions = 19
+            in_w = 1
+            in_h = 1
+        num_inputs = envs.observation_space.shape[0]
+    if isinstance(envs.action_space, gym.spaces.Discrete):
+        out_w = 1
+        out_h = 1
+        num_actions = envs.action_space.n
+    elif isinstance(envs.action_space, gym.spaces.Box):
+        if len(envs.action_space.shape) == 3:
+            out_w = envs.action_space.shape[1]
+            out_h = envs.action_space.shape[2]
+        elif len(envs.action_space.shape) == 1:
+            out_w = 1
+            out_h = 1
+        num_actions = envs.action_space.shape[-1]
+
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
         base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
-                     'recurrent': args.recurrent_policy},
+            'recurrent': args.recurrent_policy,
+            'in_w': in_w, 'in_h': in_h, 'num_inputs': num_inputs,
+            'out_w': out_w, 'out_h': out_h},
                      curiosity=args.curiosity, algo=args.algo,
                      model=args.model, args=args)
+   #args.n_recs = args.n_recs + 1
 
     evaluator = None
 
@@ -92,8 +112,7 @@ def main():
                                    max_grad_norm=args.max_grad_norm,
                                    curiosity=args.curiosity, args=args)
         elif args.algo == 'ppo':
-            agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch,
-                             args.value_loss_coef, args.entropy_coef, lr=args.lr,
+            agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch, args.value_loss_coef, args.entropy_coef, lr=args.lr,
                                    eps=args.eps,
                                    max_grad_norm=args.max_grad_norm)
         elif args.algo == 'acktr':
@@ -170,7 +189,8 @@ def main():
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-
+                if args.render:
+                    envs.venv.venv.remotes[0].send(('render', None))
                 value, action, action_log_probs, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
@@ -184,7 +204,6 @@ def main():
 
             player_act = None
             if args.render:
-
                 if infos[0]:
                     if 'player_move' in infos[0].keys():
                         player_act = infos[0]['player_move']
@@ -439,13 +458,15 @@ class Evaluator(object):
                             recurrent_hidden_state_size, device=self.device)
             eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
-        while len(eval_episode_rewards) < 2:
+        while len(eval_episode_rewards) < self.num_eval_processes:
             with torch.no_grad():
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
                     obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
 
             # Observe reward and next obs
             obs, reward, done, infos = self.eval_envs.step(action)
+            if self.args.render:
+                self.eval_envs.venv.venv.remotes[0].send(('render', None))
 
             eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                             for done_ in done])
@@ -453,6 +474,7 @@ class Evaluator(object):
                 if 'episode' in info.keys():
                     eval_episode_rewards.append(info['episode']['r'])
 
+        self.eval_envs.reset() 
        #eval_envs.close()
         eprew = np.mean(eval_episode_rewards)
         args = self.args
@@ -470,7 +492,6 @@ class Evaluator(object):
             print(" Evaluation using {} episodes: mean reward {:.5f}\n".
                 format(len(eval_episode_rewards),
                    eprew))
-        
 
 
 if __name__ == "__main__":

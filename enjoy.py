@@ -51,10 +51,31 @@ env = make_vec_envs(env_name, args.seed + 1000, 1,
 # Get a render function
 # render_func = get_render_func(env)
 
+if isinstance(env.observation_space, gym.spaces.Discrete):
+    in_width = 1
+    num_inputs = env.observation_space.n
+elif isinstance(env.observation_space, gym.spaces.Box):
+    if len(env.observation_space.shape) == 3:
+        in_w = env.observation_space.shape[1]
+        in_h = env.observation_space.shape[2]
+    else:
+        in_w = 1
+        in_h = 1
+    num_inputs = env.observation_space.shape[0]
+if isinstance(env.action_space, gym.spaces.Discrete):
+    out_w = 1
+    out_h = 1
+    num_actions = env.action_space.n
+elif isinstance(env.action_space, gym.spaces.Box):
+    out_w = env.action_space.shape[1]
+    out_h = env.action_space.shape[2]
+    num_actions = env.action_space.shape[-1]
 
 
 #actor_critic, ob_rms = \
 #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+
+
 if 'GameOfLife' in saved_args.env_name:
     num_actions = 1
 elif 'Micropolis' in saved_args.env_name:
@@ -65,7 +86,9 @@ elif 'Micropolis' in saved_args.env_name:
 # We need to use the same statistics for normalization as used in training
 actor_critic = Policy(env.observation_space.shape, env.action_space,
         base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
-                     'recurrent': args.recurrent_policy},
+                     'recurrent': args.recurrent_policy,
+                    'in_w': in_w, 'in_h': in_h, 'num_inputs': num_inputs,
+            'out_w': out_w, 'out_h': out_h },
                      curiosity=args.curiosity, algo=saved_args.algo,
                      model=saved_args.model, args=saved_args)
 torch.nn.Module.dump_patches = True
@@ -111,6 +134,8 @@ while True:
         num_step = 0
     # Obser reward and next obs
     obs, reward, done, infos = env.step(action)
+    env.venv.venv.envs[0].render()
+    print((env.venv.venv.envs))
 
     player_act = None
     if infos[0]:

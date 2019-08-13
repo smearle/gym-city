@@ -7,7 +7,7 @@ import torch
 from gym.spaces.box import Box
 
 from baselines import bench
-#from baselines.common.atari_wrappers import make_atari, wrap_deepmind
+from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -15,7 +15,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 import csv
 class MicropolisMonitor(bench.Monitor):
-    def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
+    def __init__(self, env, filename, allow_early_resets=True, reset_keywords=(), info_keywords=()):
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
         if os.path.exists(logfile):
@@ -93,7 +93,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
         if log_dir is not None:
             env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
-                                allow_early_resets=allow_early_resets)
+                                allow_early_resets=True)
             
            #print(log_dir)
            # 
@@ -101,7 +101,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
            #print(dir(env))
            #raise Exception
 
-        if is_atari:
+        if is_atari and len(env.observation_space.shape) == 3:
             env = wrap_deepmind(env)
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
@@ -138,7 +138,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
     envs = VecPyTorch(envs, device)
 
     if num_frame_stack is not None:
-        print(num_frame_stack)
+        print('stacking {} frames'.format(num_frame_stack))
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
     elif len(envs.observation_space.shape) == 3:
         envs = VecPyTorchFrameStack(envs, 1, device)
@@ -174,7 +174,7 @@ class TransposeImage(gym.ObservationWrapper):
         self.observation_space = Box(
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
-            [obs_shape[2], obs_shape[1], obs_shape[0]],
+            [obs_shape[2], obs_shape[0], obs_shape[1]],
             dtype=self.observation_space.dtype)
 
     def observation(self, observation):
@@ -267,6 +267,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
     def reset(self):
         obs = self.venv.reset()
         self.stacked_obs.zero_()
+       #print(self.stacked_obs.shape, obs.shape)
         self.stacked_obs[:, -self.shape_dim0:] = obs
         return self.stacked_obs
 

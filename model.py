@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from distributions import Categorical, Categorical2D
+from distributions import Categorical, Categorical2D, DiagGaussian
 from utils import init, init_normc_
 from torchsummary import summary
 import math
@@ -31,14 +31,16 @@ class Policy(nn.Module):
             else:
                 if not args.model:
                     args.model = 'fixed'
-                base_model = globals()['MicropolisBase_{}'.format(args.model)]
+                if 'Micropolis' in args.env_name:
+                    base_model = globals()['MicropolisBase_{}'.format(args.model)]
+                else:
+                    base_model = globals()[args.model]
                 if args.model == 'fractal':
-                    print(base_kwargs)
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
                         'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
-                        'rule':args.rule, 'map_width':obs_shape[1],
+                        'rule':args.rule
                         }}
-                self.base = base_model(obs_shape[0], **base_kwargs)
+                self.base = base_model(**base_kwargs)
             print('BASE NETWORK: n', self.base)
             # if torch.cuda.is_available:
             #    print('device', torch.cuda.current_device())
@@ -46,8 +48,9 @@ class Policy(nn.Module):
             #    print('device: cpu')
 
         elif len(obs_shape) == 1:
-            self.base = MLPBase(obs_shape[0], **base_kwargs)
+            self.base = MLPBase(**base_kwargs)
         else:
+            print('unsupported environment observation shape')
             raise NotImplementedError
 
         if action_space.__class__.__name__ == "Discrete":
@@ -59,12 +62,12 @@ class Policy(nn.Module):
                 self.dist = Categorical2D(self.base.output_size, num_outputs)
 
         elif action_space.__class__.__name__ == "Box":
-            num_outputs = action_space.shape[0]
+            num_outputs = action_space.shape
             if self.args.env_name == 'MicropolisPaintEnv-v0':
                 self.dist = None
             else:
-    #           self.dist = DiagGaussian(self.base.output_size, num_outputs)
-                self.dist = Categorical2D(self.base.output_size, num_outputs)
+                self.dist = DiagGaussian(self.base.output_size, num_outputs)
+    #           self.dist = Categorical2D(self.base.output_size, num_outputs)
 
         else:
             raise NotImplementedError
@@ -218,11 +221,11 @@ class NNBase(nn.Module):
 
         return x, hxs
 
-class MicropolisBase_FullyConv(NNBase):
+class FullyConv(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=1):
-        super(MicropolisBase_FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
-        num_chan = 64
+            map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1):
+        super(FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
+        num_chan = 32
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
@@ -230,9 +233,11 @@ class MicropolisBase_FullyConv(NNBase):
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
         self.embed = init_(nn.Conv2d(num_inputs, num_chan, 1, 1, 0))
-        self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
-        self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
-        self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, 3, 2, 1))
+       #self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
+       #self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
+        if in_w > out_w or in_h > out_h:
+            self.n_sqz = int(math.log(max(in_w, in_h), 2) + 1)
+            self.sqz = init_(nn.Conv2d(num_chan, num_chan, 3, 2, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
@@ -242,15 +247,18 @@ class MicropolisBase_FullyConv(NNBase):
     def forward(self, x, rhxs=None, masks=None):
 
         x = F.relu(self.embed(x))
-        x = F.relu(self.k5(x))
-        x = F.relu(self.k3(x))
+       #x = F.relu(self.k5(x))
+       #x = F.relu(self.k3(x))
        #x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
        #val = self.val(x_lin)
+       #print(x.shape, self.n_sqz)
+        for i in range(self.n_sqz):
+            x = F.hardtanh(self.sqz(x))
+           #print(x.shape)
         act = self.act(x)
-        for i in range(int(math.log(self.map_width, 2))):
-            x = F.relu(self.val_shrink(x))
        #val = x
         val = self.val(x)
+       #print(act.shape)
         return val.view(val.shape[0], -1), act, rhxs
 
 
@@ -391,7 +399,8 @@ class MicropolisBase_fractal(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
                  map_width=16, n_conv_recs=2, n_recs=3,
                  intra_shr=False, inter_shr=False,
-                 num_actions=19, rule='extend'):
+                 num_actions=19, rule='extend',
+                 in_w=1, in_h=1, out_w=1, out_h=1):
         super(MicropolisBase_fractal, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
         # We can stack multiple Fractal Blocks
@@ -529,8 +538,7 @@ class FractalBlock(NNBase):
         self.f_c = self.subfractal(self, self.f_c, n_rec=self.n_recs)
         setattr(self, 'fixed_{}'.format(self.n_recs), None)
         self.f_c.copy_child_weights()
-        if not self.intercol_share:
-            self.f_c.fixed = copy.deepcopy(self.f_c.fixed)
+        self.f_c.fixed = copy.deepcopy(self.f_c.fixed)
         self.n_recs += 1
         self.n_cols += 1
 
@@ -1492,6 +1500,55 @@ class MicropolisBase_mlp(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
+        x = inputs
+        x=x.view(x.size(0), -1)
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        hidden_critic = self.critic(x)
+        hidden_actor = self.actor(x)
+
+        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+
+
+class MLPBase(NNBase):
+    def __init__(self, recurrent=False, hidden_size=64,
+                 map_width=16, num_inputs=1, num_actions=1,
+                 in_w=1, in_h=1, out_w=1, out_h=1):
+        super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
+        self.n_cols = 1
+        num_inputs = in_w * in_h * num_inputs
+        if recurrent:
+            num_inputs = hidden_size
+        print('num_inputs: {}, hidden_size: {}'.format(num_inputs, hidden_size))
+
+        init_ = lambda m: init(m,
+            init_normc_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.actor = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)),
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)),
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, out_w * out_h * num_actions)),
+            nn.Tanh()
+        )
+
+        self.critic = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)),
+            nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)),
+            nn.Tanh()
+        )
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        inputs = inputs.float()
         x = inputs
         x=x.view(x.size(0), -1)
 
