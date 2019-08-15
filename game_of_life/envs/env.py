@@ -38,11 +38,12 @@ class GameOfLifeEnv(core.Env):
        #self.device = device = torch.device("cpu")
        #self.device = device = torch.device(
        #         "cuda" if torch.cuda.is_available() else "cpu")
-        self.render = render
+        self.render_gui = render
         self.max_step = 100
 
         self.entropies = []
-        if self.render:
+        if self.render_gui:
+            #TODO: render function should deal with this somehow
             cv2.namedWindow("Game of Life", cv2.WINDOW_NORMAL)
 
        #with torch.no_grad():
@@ -55,7 +56,6 @@ class GameOfLifeEnv(core.Env):
        #    self.i = 0
 
 
-        self.render = render
         self.size = map_width
         self.intsToActions = [[] for pixel in range(self.num_tools * self.size **2)]
         self.actionsToInts = np.zeros((self.num_tools, self.size, self.size))
@@ -79,7 +79,7 @@ class GameOfLifeEnv(core.Env):
             self.agent_builds.fill(0)
         return self.world.state
 
-    def display(self):
+    def render(self, mode=None):
         rend_arr = np.array(self.world.state, dtype=np.uint8)
         rend_arr = np.vstack((rend_arr * 255, rend_arr * 255, rend_arr * 255))
         if self.view_agent:
@@ -93,15 +93,17 @@ class GameOfLifeEnv(core.Env):
         self.world.build_cell(act_x, act_y, alive=True)
         if self.view_agent:
             self.agent_builds[act_x, act_y] = 1
-        if self.render:
-            self.display()
-           #print(self.world.render())
+        if self.render_gui:
+            self.render() # we need to render after moving in case the cell is lost immediately
         self.world._tick()
-        terminal = self.step_count == self.max_step
+        reward = self.world.state.sum()
+        terminal = (self.step_count == self.max_step) or\
+                    reward < 2 # impossible situation
+        reward = reward / self.max_step
         self.step_count += 1
-        if self.render:
-            self.display()
-        reward = self.world.state.sum() / self.max_step
+        if self.render_gui:
+            pass
+           #self.render() # leave this one to main loop
         infos = {}
         return (self.world.state, reward, terminal, infos)
 

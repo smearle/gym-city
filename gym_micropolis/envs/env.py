@@ -268,15 +268,20 @@ class MicropolisEnv(core.Env):
         self.curr_mayor_rating = self.getRating()
         self.state = self.getState()
         if not self.simple_reward:
-            reward = self.curr_pop #+ (self.micro.total_traffic / 100)
+            reward = self.curr_pop  + (self.micro.total_traffic / 100)
             if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
-                max_net = 0
+                max_net_1 = 0
+                max_net_2 = 0
                 for n in  self.micro.map.road_net_sizes.values():
-                    if n > max_net:
-                        max_net = n
-               #reward  += (max_net / self.micro.map.num_roads) * min(100, reward) #the avg reward when roads are introduced to boost res
-           #reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-           #             self.curr_pop / 2)
+                    if n > max_net_1:
+                        max_net_1 = n
+                        max_net_2 = max_net_1
+                    elif n > max_net_2:
+                        max_net_2 = n
+                reward  += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
+                                                # proportion of max net to tal roads * 
+            reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
+                         self.curr_pop / 2)
         else:
             reward = self.curr_pop
         reward = reward / self.max_step
@@ -294,7 +299,8 @@ class MicropolisEnv(core.Env):
            #    print('STATIC BUILD')
             self.printMap()
         if self.render_gui:
-            self.micro.render()
+            pass
+           #self.micro.render()
         infos = {}
         if self.micro.player_builds:
             b = self.micro.player_builds[0]
@@ -323,7 +329,6 @@ class MicropolisEnv(core.Env):
            #print(self.micro.map.centers)
 
 
-    
     def render(self, mode='human'):
         self.micro.render()
 
