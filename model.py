@@ -31,11 +31,9 @@ class Policy(nn.Module):
             else:
                 if not args.model:
                     args.model = 'fixed'
-                if 'Micropolis' in args.env_name:
-                    base_model = globals()['MicropolisBase_{}'.format(args.model)]
                 else:
                     base_model = globals()[args.model]
-                if args.model == 'fractal':
+                if args.model == 'FractalNet':
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
                         'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
                         'rule':args.rule
@@ -395,13 +393,13 @@ class MicropolisBase_FullyConvRec(NNBase):
 
 
 
-class MicropolisBase_fractal(NNBase):
+class FractalNet(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
                  map_width=16, n_conv_recs=2, n_recs=3,
                  intra_shr=False, inter_shr=False,
                  num_actions=19, rule='extend',
                  in_w=1, in_h=1, out_w=1, out_h=1):
-        super(MicropolisBase_fractal, self).__init__(recurrent, hidden_size, hidden_size)
+        super(FractalNet, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
         # We can stack multiple Fractal Blocks
        #self.block_chans = block_chans = [32, 32, 16]

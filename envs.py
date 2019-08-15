@@ -15,7 +15,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 import csv
 class MicropolisMonitor(bench.Monitor):
-    def __init__(self, env, filename, allow_early_resets=True, reset_keywords=(), info_keywords=()):
+    def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
         if os.path.exists(logfile):
@@ -174,7 +174,7 @@ class TransposeImage(gym.ObservationWrapper):
         self.observation_space = Box(
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
-            [obs_shape[2], obs_shape[0], obs_shape[1]],
+            [obs_shape[2], obs_shape[1], obs_shape[0]],
             dtype=self.observation_space.dtype)
 
     def observation(self, observation):
@@ -191,7 +191,7 @@ class VecPyTorch(VecEnvWrapper):
     def reset(self):
         obs = self.venv.reset()
         ### micropolis ###
-        obs = np.array(obs)
+       #obs = np.array(obs)
         ### ########## ###
         obs = torch.from_numpy(obs).int().to(self.device)
         return obs
@@ -203,7 +203,7 @@ class VecPyTorch(VecEnvWrapper):
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
         ### micropolis ###
-        obs = np.array(obs)
+       #obs = np.array(obs)
         ### ########## ###
         obs = torch.from_numpy(obs).int().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()

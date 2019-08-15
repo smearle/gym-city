@@ -83,7 +83,15 @@ def main():
     if isinstance(envs.action_space, gym.spaces.Discrete):
         out_w = 1
         out_h = 1
-        num_actions = envs.action_space.n
+        if 'Micropolis' in args.env_name: #otherwise it's set
+            if args.power_puzzle:
+                num_actions = 1
+            else:
+                num_actions = 19 # TODO: have this already from env
+        elif 'GameOfLife' in args.env_name:
+            num_actions = 1
+        else:
+            num_actions = envs.action_space.n
     elif isinstance(envs.action_space, gym.spaces.Box):
         if len(envs.action_space.shape) == 3:
             out_w = envs.action_space.shape[1]
@@ -125,6 +133,7 @@ def main():
 
    #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
     saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
+    vec_norm = get_vec_normalize(envs)
     if os.path.exists(saved_model) and not args.overwrite:
         checkpoint = torch.load(saved_model)
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
@@ -152,7 +161,6 @@ def main():
 
        #    raise Exception
 
-        vec_norm = get_vec_normalize(envs)
         if vec_norm is not None:
             vec_norm.eval()
             vec_norm.ob_rms = ob_rms
@@ -179,8 +187,15 @@ def main():
 
     start = time.time()
     model = actor_critic.base
+    reset_eval = False
     for j in range(past_steps, num_updates):
-        if args.model == 'fractal' and args.drop_path:
+        if reset_eval:
+            print('post eval reset')
+            obs = envs.reset()
+            rollouts.obs[0].copy_(obs)
+            rollouts.to(device)
+            reset_eval = False
+        if args.model == 'FractalNet' and args.drop_path:
             model.set_drop_path()
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
@@ -190,7 +205,15 @@ def main():
             # Sample actions
             with torch.no_grad():
                 if args.render:
-                    envs.venv.venv.remotes[0].send(('render', None))
+                    if args.num_processes == 1:
+                        envs.venv.venv.render()
+                    else:
+                        if not ('Micropolis' in args.env_name or 'GameOfLive' in args.env_name):
+                            envs.render()
+                            envs.venv.venv.render()
+                        else:
+                            envs.venv.venv.remotes[0].send(('render', None))
+                            envs.venv.venv.remotes[0].recv()
                 value, action, action_log_probs, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
@@ -207,8 +230,6 @@ def main():
                 if infos[0]:
                     if 'player_move' in infos[0].keys():
                         player_act = infos[0]['player_move']
-            
-
             if args.curiosity:
                 # run icm
                 with torch.no_grad():
@@ -275,11 +296,11 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
             if evaluator is None:
-                evaluator = Evaluator(args, actor_critic, device)
+                evaluator = Evaluator(args, actor_critic, device, envs=envs, vec_norm=vec_norm)
 
 
             model = evaluator.actor_critic.base
-            if args.model == 'fractal':
+            if args.model == 'FractalNet':
                 n_cols = model.n_cols
                 if args.rule == 'wide1' and args.n_recs > 3:
                     col_step = 3
@@ -310,6 +331,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
            #    evaluator.evaluate(column=-1)
            #    win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
            #                  args.algo, args.num_frames)
+            reset_eval = True
 
         if j % args.save_interval == 0 and args.save_dir != "":
             save_path = os.path.join(args.save_dir)
@@ -356,7 +378,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
 
 class Evaluator(object):
     ''' Manages environments used for evaluation during main training loop.'''
-    def __init__(self, args, actor_critic, device):
+    def __init__(self, args, actor_critic, device, envs=None, vec_norm=None):
         eval_args = args
        #eval_args.render = True
         self.device = device
@@ -384,18 +406,21 @@ class Evaluator(object):
                 merge_col_logs = True
 
         self.num_eval_processes = 20
-        self.eval_envs = make_vec_envs(
-                    eval_args.env_name, eval_args.seed + self.num_eval_processes, self.num_eval_processes,
-                    eval_args.gamma, self.eval_log_dir, eval_args.add_timestep, self.device, True, args=eval_args)
-        self.vec_norm = get_vec_normalize(self.eval_envs)
+        self.args = eval_args
+        self.actor_critic = actor_critic
+        self.eval_envs = envs
+        self.vec_norm = vec_norm
+       #self.eval_envs = make_vec_envs(
+       #            self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
+       #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, args=self.args)
+       #self.vec_norm = get_vec_normalize(self.eval_envs)
         if self.vec_norm is not None:
             self.vec_norm.eval()
             self.vec_norm.ob_rms = get_vec_normalize(self.eval_envs).ob_rms
-        self.actor_critic = actor_critic
         self.tstart = time.time()
         fieldnames = ['r', 'l', 't']
         model = actor_critic.base
-        if args.model == 'fractal':
+        if args.model == 'FractalNet':
             n_cols = model.n_cols
         else:
             n_cols = 0
@@ -434,19 +459,19 @@ class Evaluator(object):
                 else:
                     writer_col.writeheader()
                     log_file_col.flush()
-        self.args = eval_args
+
 
 
     def evaluate(self, column=None, num_recursions=None):
 
+
         model = self.actor_critic.base
         if num_recursions is not None:
             model.num_recursions = num_recursions
-        if column is not None and self.args.model == 'fractal':
+        if column is not None and self.args.model == 'FractalNet':
             model.set_active_column(column)
 
         eval_episode_rewards = []
-
         obs = self.eval_envs.reset()
         if 'LSTM' in self.args.model:
             recurrent_hidden_state_size = self.actor_critic.base.get_recurrent_state_size()
@@ -466,7 +491,14 @@ class Evaluator(object):
             # Observe reward and next obs
             obs, reward, done, infos = self.eval_envs.step(action)
             if self.args.render:
-                self.eval_envs.venv.venv.remotes[0].send(('render', None))
+                if self.args.num_processes == 1:
+                    self.eval_envs.venv.venv.render()
+                else:
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLive' in self.args.env_name):
+                        self.eval_envs.venv.venv.render()
+                    else:
+                        self.eval_envs.venv.venv.remotes[0].send(('render', None))
+                        self.eval_envs.venv.venv.remotes[0].recv()
 
             eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                             for done_ in done])
@@ -474,8 +506,8 @@ class Evaluator(object):
                 if 'episode' in info.keys():
                     eval_episode_rewards.append(info['episode']['r'])
 
-        self.eval_envs.reset() 
-       #eval_envs.close()
+        self.eval_envs.reset()
+       #self.eval_envs.close()
         eprew = np.mean(eval_episode_rewards)
         args = self.args
         n_frame = args.num_steps * args.num_processes * args.eval_interval # relative to training session
