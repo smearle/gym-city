@@ -108,6 +108,60 @@ color_defaults = [
     '#17becf'   # blue-teal
 ]
 
+def get_col_avg(indir, col=None, width=None):
+    datas = []
+    if col is not None:
+        infiles = glob.glob(os.path.join(indir, 'col_{}_eval.csv'.format(col)))
+    else:
+        infiles = glob.glob(os.path.join(indir, '*.monitor.csv'))
+    if len(infiles) == 0:
+        print('no files found at {}'.format(indir))
+
+    i = 0
+    net_reward = 0
+    for inf in infiles:
+        with open(inf, 'r') as f:
+            f.readline()
+            f.readline()
+            for line in f:
+                tmp = line.split(',')
+                r = float(tmp[0])
+                net_reward += r
+                i += 1
+    if i != 0:
+        avg_reward = net_reward / i
+    else:
+        avg_reward = 0
+    return avg_reward
+
+
+def bar_plot(viz, win, folder, game, name, num_steps, n_cols=None):
+    fig = plt.figure()
+    x = [i + 1 for i in range(n_cols)]
+
+    h = [get_col_avg(folder, col = i) for i in range(n_cols)]
+    plt.bar(x, h)
+
+    plt.xlabel('Columns')
+    plt.ylabel('Rewards')
+
+    plt.title(game)
+    plt.legend(loc=4)
+    figfolder = folder.replace('/logs_eval_', '/eval_')
+   #figfolder = folder.replace('/logs', '/train_')
+    print('should be saving graph now as {}'.format(figfolder))
+    plt.savefig('{}fig.png'.format(figfolder), format='png')
+    plt.show()
+    plt.draw()
+
+    image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
+    plt.close(fig)
+
+    # Show it in visdom
+    image = np.transpose(image, (2, 0, 1))
+    return viz.image(image, win=win)
+
 def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
     if folder.endswith('logs'):
         evl = False

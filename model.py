@@ -25,6 +25,18 @@ class Policy(nn.Module):
         if base_kwargs is None:
             base_kwargs = {}
 
+
+
+        if 'GameOfLife' in args.env_name:
+            num_actions = 1
+        elif 'Micropolis' in args.env_name:
+            if args.power_puzzle:
+                num_actions = 1
+            else:
+                num_actions = 19
+        base_kwargs = {**base_kwargs, **{'num_actions': num_actions}}
+
+
         if len(obs_shape) == 3:
             if curiosity:
                 self.base = MicropolisBase_ICM(obs_shape[0], **base_kwargs)

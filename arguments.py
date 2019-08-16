@@ -12,14 +12,18 @@ def get_args():
         args.experiment_name += '{}'.format(datetime.datetime.now())
   # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
     model_name = args.model
-    if args.model == 'fractal':
+    if args.model == 'FractalNet':
         model_name += '-{}-{}recs'.format(args.rule, args.n_recs)
         if args.intra_shr: model_name += '_intra_shr'
         if args.inter_shr: model_name += '_inter_shr'
         if args.drop_path: model_name += '_drop'
-    args.save_dir = "trained_models/{}_{}_w{}/{}_{}s_{}".format(args.algo,
-            model_name, args.map_width, args.env_name, args.max_step,
-            args.experiment_name)
+    if args.load_dir:
+        args.save_dir = args.load_dir
+    else:
+        args.save_dir = "trained_models/{}_{}/{}_w{}_{}s_{}".format(args.algo,
+                model_name, args.env_name, args.map_width,
+                args.max_step,
+                args.experiment_name)
     args.save_interval = args.eval_interval # otherwise we can cut eval graph short by reloading too much
     return args
 
@@ -104,6 +108,10 @@ def get_parser():
             help='layers shared between columns')
     parser.add_argument('--intra-shr', action='store_true',
             help='layers shared within columns')
+    parser.add_argument('--load-dir', default=None,
+            help='directory to save agent logs (default: ./trained_models/)')
+    parser.add_argument('--auto-expand', default=False, action = 'store_true',
+            help='increment fractal recursion of loaded network')
 ########################################### Fractal Nets
     parser.add_argument('--rule', default = 'extend',
             help='which fractal expansion rule to apply if using a fractal network architecture')

@@ -9,26 +9,29 @@ from envs import VecPyTorch, make_vec_envs
 from utils import get_render_func, get_vec_normalize
 
 from arguments import get_parser
+from main import Evaluator
 
 
 parser = get_parser()
-parser.add_argument('--load-dir', default='./trained_models/a2c',
-                    help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument('--non-det', action='store_true', default=False,
                     help='whether to use a non-deterministic policy')
 parser.add_argument('--active-column', default=None, type=int, help='Run only one vertical column of a fractal model to see what it has learnt independently')
+parser.add_argument('--evaluate', action='store_true', default=False, help= 'record trained network\'s performance')
 args = parser.parse_args()
 
 args.det = not args.non_det
+
 
 import gym
 import gym_micropolis
 import game_of_life
 
 env_name = args.load_dir.split('/')[-1].split('_')[0]
-if torch.cuda.is_available():
+if torch.cuda.is_available() and not args.no_cuda:
+    device = torch.device('cuda')
     map_location = torch.device('cuda')
 else:
+    device = torch.device('cpu')
     map_location = torch.device('cpu')
 try:
     checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
@@ -39,14 +42,18 @@ except FileNotFoundError:
 checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
                         map_location=map_location)
 saved_args = checkpoint['args']
+past_steps = checkpoint['past_steps']
+
+saved_args.past_steps = past_steps
 env_name = saved_args.env_name
 
 if 'Micropolis' in env_name:
     args.power_puzzle = saved_args.power_puzzle
+
 env = make_vec_envs(env_name, args.seed + 1000, 1,
-                            None, None, args.add_timestep, device='cpu',
-                            allow_early_resets=False,
-                            args=args)
+                    None, None, args.add_timestep, device='cpu',
+                    allow_early_resets=False,
+                    args=args)
 
 # Get a render function
 # render_func = get_render_func(env)
@@ -65,32 +72,33 @@ elif isinstance(env.observation_space, gym.spaces.Box):
 if isinstance(env.action_space, gym.spaces.Discrete):
     out_w = 1
     out_h = 1
-    num_actions = env.action_space.n
+    if 'Micropolis' in args.env_name:
+        print(dir(env.venv.venv.envs[0]))
+        num_actions = env.venv.venv.envs[0].num_tools
+    elif 'GameOfLife' in args.env_name:
+        num_actions = 1
+    else:
+        num_actions = env.action_space.n
 elif isinstance(env.action_space, gym.spaces.Box):
     out_w = env.action_space.shape[1]
     out_h = env.action_space.shape[2]
     num_actions = env.action_space.shape[-1]
 
-
 #actor_critic, ob_rms = \
 #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 
-
-if 'GameOfLife' in saved_args.env_name:
-    num_actions = 1
-elif 'Micropolis' in saved_args.env_name:
-    if saved_args.power_puzzle:
-        num_actions = 1
-    else:
-        num_actions = 19
+if saved_args.model == 'fractal':
+    saved_args.model = 'FractalNet'
 # We need to use the same statistics for normalization as used in training
 actor_critic = Policy(env.observation_space.shape, env.action_space,
-        base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
+        base_kwargs={'map_width': args.map_width,
                      'recurrent': args.recurrent_policy,
                     'in_w': in_w, 'in_h': in_h, 'num_inputs': num_inputs,
             'out_w': out_w, 'out_h': out_h },
                      curiosity=args.curiosity, algo=saved_args.algo,
                      model=saved_args.model, args=saved_args)
+if args.evaluate:
+    actor_critic.to(device)
 torch.nn.Module.dump_patches = True
 new_recs = args.n_recs - saved_args.n_recs
 actor_critic.load_state_dict(checkpoint['model_state_dict'])
@@ -111,8 +119,7 @@ masks = torch.zeros(1, 1)
 #if render_func is not None:
 #    render_func('human')
 
-obs = env.reset()
-obs = torch.Tensor(obs)
+
 
 if args.env_name.find('Bullet') > -1:
     import pybullet as p
@@ -121,6 +128,20 @@ if args.env_name.find('Bullet') > -1:
     for i in range(p.getNumBodies()):
         if (p.getBodyInfo(i)[0].decode() == "torso"):
             torsoId = i
+
+if args.evaluate:
+    env.close() # only needed it to probe obs/act space shape
+    saved_args.num_processes = args.num_processes
+    saved_args.vis_interval = args.vis_interval
+    saved_args.render = args.render
+    saved_args.prob_life = args.prob_life
+    evaluator = Evaluator(saved_args, actor_critic, device, frozen=True)
+    while True:
+        for i in range(actor_critic.base.n_cols):
+            evaluator.evaluate(column=i)
+
+obs = env.reset()
+obs = torch.Tensor(obs)
 num_step = 0
 player_act = None
 while True:
@@ -135,7 +156,6 @@ while True:
     # Obser reward and next obs
     obs, reward, done, infos = env.step(action)
     env.venv.venv.envs[0].render()
-    print((env.venv.venv.envs))
 
     player_act = None
     if infos[0]:
@@ -152,5 +172,8 @@ while True:
             yaw = 0
             humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
             p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
+
+
+
 
 

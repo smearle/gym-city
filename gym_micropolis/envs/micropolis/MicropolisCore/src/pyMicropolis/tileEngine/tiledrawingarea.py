@@ -127,10 +127,11 @@ class TileDrawingArea(gtk.DrawingArea):
         gtk.DrawingArea.__init__(self, **args)
 
         # Compute path to tiles.png file relative to this module
+        print(tilesFileName)
         if tilesFileName is None:
             tilesFileName = os.path.join(
                                 os.path.join(os.path.basename(__file__), os.pardir),
-                                'images/tileEngine/tiles.png')
+                                'gym_micropolis/envs/micropolis/MicropolisCore/src/images/tileEngine/tiles.png')
             tilesFileName = os.path.abspath(tilesFileName)
 
         self.tengine = tengine

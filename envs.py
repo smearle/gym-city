@@ -191,7 +191,7 @@ class VecPyTorch(VecEnvWrapper):
     def reset(self):
         obs = self.venv.reset()
         ### micropolis ###
-       #obs = np.array(obs)
+        obs = np.array(obs)
         ### ########## ###
         obs = torch.from_numpy(obs).int().to(self.device)
         return obs
@@ -203,7 +203,7 @@ class VecPyTorch(VecEnvWrapper):
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
         ### micropolis ###
-       #obs = np.array(obs)
+        obs = np.array(obs)
         ### ########## ###
         obs = torch.from_numpy(obs).int().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()

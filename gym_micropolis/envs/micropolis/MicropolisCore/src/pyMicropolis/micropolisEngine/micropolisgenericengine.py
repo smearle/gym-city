@@ -99,22 +99,23 @@ __version__ = "0.9"
 
 class MicropolisGenericEngine(micropolisengine.Micropolis):
 
+    print(os.getcwd())
 
     dataColorMap = \
         cairo.ImageSurface.create_from_png(
-            'images/micropolisEngine/dataColorMap.png')
+            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/dataColorMap.png')
 
     rateColorMap = \
         cairo.ImageSurface.create_from_png(
-            'images/micropolisEngine/rateColorMap.png')
+            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/rateColorMap.png')
 
     powerGridColorMap = \
         cairo.ImageSurface.create_from_png(
-            'images/micropolisEngine/powerGridColorMap.png')
+            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/powerGridColorMap.png')
 
     terrainColorMap = \
         cairo.ImageSurface.create_from_png(
-            'images/micropolisEngine/terrainColorMap.png')
+            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/terrainColorMap.png')
 
 
     def __init__(

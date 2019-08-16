@@ -4,6 +4,7 @@ import random
 import numpy as np
 if sys.version_info[0] >= 3:
     from gi.repository import Gtk as gtk
+    from .tilemap import TileMap, zoneFromInt
 else:
     import gtk
 import time
@@ -11,26 +12,26 @@ import time
 ## assumes you've downloaded the micropolis-4bots repo into the same directory as this (the gym-micropolis) repo.
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
-if sys.version_info[0] >= 3:
-    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
-    sys.path.append(MICROPOLISCORE_DIR)
-    from .tilemap import TileMap, zoneFromInt
-else:
-    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
-    sys.path.append(MICROPOLISCORE_DIR)
-    from tilemap import TileMap
-
-CURR_DIR = os.getcwd()
-# we need to do this so the micropolisgenericengine can access images/micropolisEngine/dataColorMap.png
-
-
-os.chdir(MICROPOLISCORE_DIR)   
-
-#import micropolis
+#if sys.version_info[0] >= 3:
+#    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
+#    sys.path.append(MICROPOLISCORE_DIR)
+#    from .tilemap import TileMap, zoneFromInt
+#else:
+#    MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
+#    sys.path.append(MICROPOLISCORE_DIR)
+#    from tilemap import TileMap
+#
+#CURR_DIR = os.getcwd()
+## we need to do this so the micropolisgenericengine can access images/micropolisEngine/dataColorMap.png
+#
+#
+#os.chdir(MICROPOLISCORE_DIR)   
+sys.path.append(os.path.abspath(os.path.join(FILE_DIR, './micropolis/MicropolisCore/src')))
+print(sys.path)
 from pyMicropolis.gtkFrontend import main
 
 
-os.chdir(CURR_DIR)
+#os.chdir(CURR_DIR)
 
 class MicropolisControl():
 
@@ -38,7 +39,7 @@ class MicropolisControl():
             power_puzzle=False):
         self.SHOW_GUI=False
         engine, win1 = main.train(bot=self, rank=rank, map_x=MAP_W, map_y=MAP_H)
-        os.chdir(CURR_DIR)
+       #os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
         self.MAP_X = MAP_W

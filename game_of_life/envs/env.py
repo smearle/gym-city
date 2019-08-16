@@ -102,8 +102,8 @@ class GameOfLifeEnv(core.Env):
         reward = reward / self.max_step
         self.step_count += 1
         if self.render_gui:
-            pass
-           #self.render() # leave this one to main loop
+           #pass
+            self.render() # leave this one to main loop
         infos = {}
         return (self.world.state, reward, terminal, infos)
 

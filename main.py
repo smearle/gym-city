@@ -17,30 +17,31 @@ from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage, CuriosityRolloutStorage
 from utils import get_vec_normalize
-from visualize import visdom_plot
+from visualize import visdom_plot, bar_plot
 
 import csv
 
-import random
-import gym_micropolis
-import game_of_life
 
-args = get_args()
-args.log_dir = args.save_dir + '/logs'
-assert args.algo in ['a2c', 'ppo', 'acktr']
-if args.recurrent_policy:
-    assert args.algo in ['a2c', 'ppo'], \
-        'Recurrent policy is not implemented for ACKTR'
-
-num_updates = int(args.num_frames) // args.num_steps // args.num_processes
-
-torch.manual_seed(args.seed)
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
-
-graph_name = args.save_dir.replace('trained_models/', '').replace('/', ' ')
 
 def main():
+    import random
+    import gym_micropolis
+    import game_of_life
+
+    args = get_args()
+    args.log_dir = args.save_dir + '/logs'
+    assert args.algo in ['a2c', 'ppo', 'acktr']
+    if args.recurrent_policy:
+        assert args.algo in ['a2c', 'ppo'], \
+            'Recurrent policy is not implemented for ACKTR'
+
+    num_updates = int(args.num_frames) // args.num_steps // args.num_processes
+
+    torch.manual_seed(args.seed)
+    if args.cuda:
+        torch.cuda.manual_seed(args.seed)
+
+    graph_name = args.save_dir.replace('trained_models/', '').replace('/', ' ')
 
     actor_critic = False
     agent = False
@@ -101,6 +102,8 @@ def main():
             out_h = 1
         num_actions = envs.action_space.shape[-1]
 
+    if args.auto_expand:
+        args.n_recs -= 1
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
         base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
             'recurrent': args.recurrent_policy,
@@ -108,7 +111,8 @@ def main():
             'out_w': out_w, 'out_h': out_h},
                      curiosity=args.curiosity, algo=args.algo,
                      model=args.model, args=args)
-   #args.n_recs = args.n_recs + 1
+    if args.auto_expand:
+        args.n_recs += 1
 
     evaluator = None
 
@@ -132,22 +136,27 @@ def main():
                                    curiosity=args.curiosity, args=args)
 
    #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
-    saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
+    if args.load_dir != './trained_models/a2c':
+        saved_model = os.path.join(args.load_dir, args.env_name + '.tar')
+    else:
+        saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
     vec_norm = get_vec_normalize(envs)
     if os.path.exists(saved_model) and not args.overwrite:
         checkpoint = torch.load(saved_model)
+        saved_args = checkpoint['args']
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
         actor_critic.to(device)
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        if args.auto_expand:
+            if not args.n_recs - saved_args.n_recs == 1:
+                print('can expand by 1 rec only from saved model')
+                raise Exception
+            actor_critic.base.auto_expand()
+            print('expanded net: \n{}'.format(actor_critic.base))
         past_steps = checkpoint['past_steps']
         ob_rms = checkpoint['ob_rms']
-        saved_args = checkpoint['args']
-        new_recs = args.n_recs - saved_args.n_recs
-        for nr in range(new_recs):
-            actor_critic.base.auto_expand()
+
         past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
-        if saved_args.n_recs > args.n_recs:
-            print('applying {} fractal expansions to network'.format(saved_args.n_recs - args.n_recs))
         print('Resuming from step {}'.format(past_steps))
 
        #print(type(next(iter((torch.load(saved_model))))))
@@ -164,6 +173,9 @@ def main():
         if vec_norm is not None:
             vec_norm.eval()
             vec_norm.ob_rms = ob_rms
+    else:
+        for i in range(n_recs - 1):
+            actor_critic.base.auto_expand()
     actor_critic.to(device)
 
     if 'LSTM' in args.model:
@@ -212,8 +224,9 @@ def main():
                             envs.render()
                             envs.venv.venv.render()
                         else:
-                            envs.venv.venv.remotes[0].send(('render', None))
-                            envs.venv.venv.remotes[0].recv()
+                            pass
+                           #envs.venv.venv.remotes[0].send(('render', None))
+                           #envs.venv.venv.remotes[0].recv()
                 value, action, action_log_probs, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
@@ -351,7 +364,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
 
             # experimental:
             torch.save({
-                'past_steps': step,
+                'past_steps': next(iter(agent.optimizer.state_dict()['state'].values()))['step'],
                 'model_state_dict': save_model.state_dict(),
                 'optimizer_state_dict': optim_save,
                 'ob_rms': ob_rms,
@@ -378,8 +391,11 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
 
 class Evaluator(object):
     ''' Manages environments used for evaluation during main training loop.'''
-    def __init__(self, args, actor_critic, device, envs=None, vec_norm=None):
-        eval_args = args
+    def __init__(self, args, actor_critic, device, envs=None, vec_norm=None,
+            frozen=False):
+        ''' frozen: we are not in the main training loop, but evaluating frozen model separately'''
+
+        self.frozen = frozen
        #eval_args.render = True
         self.device = device
        #if args.model == 'fractal':
@@ -392,8 +408,10 @@ class Evaluator(object):
        #            for f in files:
        #                os.remove(f)
        #        setattr(self, 'eval_log_dir_col_{}'.format(i), eval_log_dir)
-                
-        self.eval_log_dir = args.log_dir + "_eval"
+        if frozen:
+            self.eval_log_dir = args.log_dir + "_eval_{}-steps_".format(args.past_steps, '.1f')
+        else:
+            self.eval_log_dir = args.log_dir + "_eval"
         merge_col_logs = False
         try:
             os.makedirs(self.eval_log_dir)
@@ -406,14 +424,20 @@ class Evaluator(object):
                 merge_col_logs = True
 
         self.num_eval_processes = 20
-        self.args = eval_args
+        self.args = args
         self.actor_critic = actor_critic
-        self.eval_envs = envs
-        self.vec_norm = vec_norm
-       #self.eval_envs = make_vec_envs(
-       #            self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
-       #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, args=self.args)
-       #self.vec_norm = get_vec_normalize(self.eval_envs)
+        if envs:
+            self.eval_envs = envs
+            self.vec_norm = vec_norm
+        else:
+            self.num_eval_processes = args.num_processes
+
+            print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
+                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
+            self.eval_envs = make_vec_envs(
+                        self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
+                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=self.args)
+            self.vec_norm = get_vec_normalize(self.eval_envs)
         if self.vec_norm is not None:
             self.vec_norm.eval()
             self.vec_norm.ob_rms = get_vec_normalize(self.eval_envs).ob_rms
@@ -463,8 +487,6 @@ class Evaluator(object):
 
 
     def evaluate(self, column=None, num_recursions=None):
-
-
         model = self.actor_critic.base
         if num_recursions is not None:
             model.num_recursions = num_recursions
@@ -483,6 +505,7 @@ class Evaluator(object):
                             recurrent_hidden_state_size, device=self.device)
             eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
+        i = 0
         while len(eval_episode_rewards) < self.num_eval_processes:
             with torch.no_grad():
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
@@ -492,19 +515,27 @@ class Evaluator(object):
             obs, reward, done, infos = self.eval_envs.step(action)
             if self.args.render:
                 if self.args.num_processes == 1:
-                    self.eval_envs.venv.venv.render()
-                else:
-                    if not ('Micropolis' in self.args.env_name or 'GameOfLive' in self.args.env_name):
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
                         self.eval_envs.venv.venv.render()
                     else:
-                        self.eval_envs.venv.venv.remotes[0].send(('render', None))
-                        self.eval_envs.venv.venv.remotes[0].recv()
+                        pass
+                       #self.eval_envs.venv.venv.envs[0].render()
+                else:
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
+                        self.eval_envs.venv.venv.render()
+                    else:
+                        pass
+                       #self.eval_envs.venv.venv.remotes[0].send(('render', None))
+                       #self.eval_envs.venv.venv.remotes[0].recv()
 
             eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                             for done_ in done])
             for info in infos:
                 if 'episode' in info.keys():
                     eval_episode_rewards.append(info['episode']['r'])
+            i += 1
+           #if i > 3:
+           #    raise Exception
 
         self.eval_envs.reset()
        #self.eval_envs.close()
@@ -525,6 +556,10 @@ class Evaluator(object):
                 format(len(eval_episode_rewards),
                    eprew))
 
-
-if __name__ == "__main__":
-    main()
+        if self.frozen:
+            if args.vis:
+                from visdom import Visdom
+                viz = Visdom(port=args.port)
+                win_eval = None
+                win_eval = bar_plot(viz, win_eval, self.eval_log_dir, 'Frozen Eval',
+                                  args.algo, args.num_frames, n_cols=model.n_cols)

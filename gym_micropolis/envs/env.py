@@ -299,8 +299,8 @@ class MicropolisEnv(core.Env):
            #    print('STATIC BUILD')
             self.printMap()
         if self.render_gui:
-            pass
-           #self.micro.render()
+           #pass
+            self.micro.render()
         infos = {}
         if self.micro.player_builds:
             b = self.micro.player_builds[0]
