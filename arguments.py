@@ -13,12 +13,15 @@ def get_args():
   # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
     model_name = args.model
     if args.model == 'FractalNet':
-        model_name += '-{}-{}recs'.format(args.rule, args.n_recs)
-        if args.intra_shr: model_name += '_intra_shr'
-        if args.inter_shr: model_name += '_inter_shr'
+        if args.rule != 'extend':
+            model_name += '-{}'.format(args.rule)
+        model_name += '-{}recs'.format(args.n_recs)
+        if args.intra_shr: model_name += '_intra_'
+        if args.inter_shr: model_name += '_inter_'
         if args.drop_path: model_name += '_drop'
     if args.load_dir:
         args.save_dir = args.load_dir
+        args.log_dir = args.load_dir
     else:
         args.save_dir = "trained_models/{}_{}/{}_w{}_{}s_{}".format(args.algo,
                 model_name, args.env_name, args.map_width,
@@ -103,16 +106,18 @@ def get_parser():
 #           help= 'squeeze outward columns of fractal by recurrent up and down convolution')
 #   parser.add_argument('--n-conv-recs', default=2,
 #           help='number of recurrences of convolution at base level of fractal net')
+    parser.add_argument('--load-dir', default=None,
+            help='directory to save agent logs (default: ./trained_models/)')
+    parser.add_argument('--record', default=False, action='store_true',
+            help='film videos of inference')
+########################################### Fractal Nets
     parser.add_argument('--drop-path', action='store_true', help='enable global and local drop path on fractal model (ignored otherwise)')
     parser.add_argument('--inter-shr', action='store_true',
             help='layers shared between columns')
     parser.add_argument('--intra-shr', action='store_true',
             help='layers shared within columns')
-    parser.add_argument('--load-dir', default=None,
-            help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument('--auto-expand', default=False, action = 'store_true',
             help='increment fractal recursion of loaded network')
-########################################### Fractal Nets
     parser.add_argument('--rule', default = 'extend',
             help='which fractal expansion rule to apply if using a fractal network architecture')
     parser.add_argument('--n-recs', default=3, type=int,

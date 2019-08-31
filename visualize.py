@@ -13,7 +13,23 @@ plt.switch_backend('agg')
 import numpy as np
 from scipy.signal import medfilt
 matplotlib.rcParams.update({'font.size': 8})
+import numpy as np
 
+from imutils import paths
+
+def create_gif(inputPath, outputPath, delay, finalDelay, loop):
+	# grab all image paths in the input directory
+	imagePaths = sorted(list(paths.list_images(inputPath)))
+	# remove the last image path in the list
+	lastPath = imagePaths[-1]
+	imagePaths = imagePaths[:-1]
+	# construct the image magick 'convert' command that will be used
+	# generate our output GIF, giving a larger delay to the final
+	# frame (if so desired)
+	cmd = "convert -delay {} {} -delay {} {} -loop {} {}".format(
+		delay, " ".join(imagePaths), finalDelay, lastPath, loop,
+		outputPath)
+	os.system(cmd)
 
 def smooth_reward_curve(x, y):
     # Halfwidth of our smoothing convolution
@@ -108,117 +124,156 @@ color_defaults = [
     '#17becf'   # blue-teal
 ]
 
-def get_col_avg(indir, col=None, width=None):
-    datas = []
-    if col is not None:
-        infiles = glob.glob(os.path.join(indir, 'col_{}_eval.csv'.format(col)))
-    else:
-        infiles = glob.glob(os.path.join(indir, '*.monitor.csv'))
-    if len(infiles) == 0:
-        print('no files found at {}'.format(indir))
-
-    i = 0
-    net_reward = 0
-    for inf in infiles:
-        with open(inf, 'r') as f:
-            f.readline()
-            f.readline()
-            for line in f:
-                tmp = line.split(',')
-                r = float(tmp[0])
-                net_reward += r
-                i += 1
-    if i != 0:
-        avg_reward = net_reward / i
-    else:
-        avg_reward = 0
-    return avg_reward
+class Plotter(object):
+    def __init__(self, n_cols, indir, n_proc):
+        self.n_cols = n_cols + 1
+        self.avgs = np.zeros((n_cols + 1))
+        self.n_samples = np.zeros((n_cols + 1)) # how many episodes per process, 
+        # this may be different for each column due to interrupted evaluation
+        self.n_proc = n_proc # how many processes
+        self.indir = indir
 
 
-def bar_plot(viz, win, folder, game, name, num_steps, n_cols=None):
-    fig = plt.figure()
-    x = [i + 1 for i in range(n_cols)]
-
-    h = [get_col_avg(folder, col = i) for i in range(n_cols)]
-    plt.bar(x, h)
-
-    plt.xlabel('Columns')
-    plt.ylabel('Rewards')
-
-    plt.title(game)
-    plt.legend(loc=4)
-    figfolder = folder.replace('/logs_eval_', '/eval_')
-   #figfolder = folder.replace('/logs', '/train_')
-    print('should be saving graph now as {}'.format(figfolder))
-    plt.savefig('{}fig.png'.format(figfolder), format='png')
-    plt.show()
-    plt.draw()
-
-    image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
-    plt.close(fig)
-
-    # Show it in visdom
-    image = np.transpose(image, (2, 0, 1))
-    return viz.image(image, win=win)
-
-def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
-    if folder.endswith('logs'):
-        evl = False
-    elif folder.endswith('logs_eval'):
-        evl = True
-    tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
-    ticks = tick_fractions * num_steps
-    tick_names = ["{:.0e}".format(tick) for tick in ticks]
-    fig = plt.figure()
-    if n_graphs is not None:
-        #print('indaplotter')
-        color = 0
-        for i in n_graphs:
-            tx, ty = load_data(folder, smooth, bin_size, col=i)
-            if tx is None or ty is None:
-                #print('could not find x y data columns in csv')
-                pass
-               #return win
-
-            else:
-                plt.plot(tx, ty, label="col_{}".format(i), color=color_defaults[color])
-                color += 1
-    else:
-        tx, ty = load_data(folder, smooth, bin_size)
-        if tx is None or ty is None:
-            return win
-        if evl:
-            color = 3
-            plt.plot(tx, ty, label='det-eval', color=color_defaults[color])
+    def get_col_avg(self, col=None):
+        if col is not None:
+            infiles = glob.glob(os.path.join(self.indir, 'col_{}_eval.csv'.format(col)))
         else:
-            plt.plot(tx, ty, label="non-det")
+            infiles = glob.glob(os.path.join(self.indir, '*.monitor.csv'))
+        if len(infiles) == 0:
+            print('no files found at {}'.format(self.indir))
+
+        i = 0
+        net_reward = 0
+        for inf in infiles:
+            with open(inf, 'r') as f:
+                f.readline()
+                f.readline()
+                for line in f:
+                    tmp = line.split(',')
+                    r = float(tmp[0])
+                    net_reward += r
+                    i += 1
+        if i != 0:
+            avg_reward = net_reward / i
+        else:
+            avg_reward = 0
+        self.avgs[col] = avg_reward
+        return avg_reward
+
+    def get_col_std(self, col=None):
+        if col is not None:
+            infiles = glob.glob(os.path.join(self.indir, 'col_{}_eval.csv'.format(col)))
+        else:
+            infiles = glob.glob(os.path.join(self.indir, '*.monitor.csv'))
+        if len(infiles) == 0:
+            print('no files found at {}'.format(self.indir))
+
+        mean = self.avgs[col]
+        i = 0
+        net_deviation = 0
+        for inf in infiles:
+            with open(inf, 'r') as f:
+                f.readline()
+                f.readline()
+                for line in f:
+                    tmp = line.split(',')
+                    r = float(tmp[0])
+                    net_deviation += np.abs(mean - r)
+                    i += 1
+        if i != 0:
+            avg_deviation = net_deviation / i
+        else:
+            avg_deviation = 0
+        self.avgs[col] = avg_deviation
+        return avg_deviation
 
 
-    plt.xticks(ticks, tick_names)
-    plt.xlim(0, num_steps * 1.01)
 
-    plt.xlabel('Number of Timesteps')
-    plt.ylabel('Rewards')
+    def bar_plot(self, viz, win, folder, game, name, num_steps, n_cols=None):
+        fig = plt.figure()
+        x = [i for i in range(-1, n_cols)]
 
-    plt.title(game)
-    plt.legend(loc=4)
-    if evl:
-        figfolder = folder.replace('/logs_eval', '/eval_')
-    else:
-        figfolder = folder.replace('/logs', '/train_')
-    print('should be saving graph now as {}'.format(figfolder))
-    plt.savefig('./{}fig.png'.format(figfolder), format='png')
-    plt.show()
-    plt.draw()
+        h = [self.get_col_avg(col = i) for i in range(-1, n_cols)]
+        e = [self.get_col_std(col = i) for i in range(-1, n_cols)]
+        plt.bar(x, h, yerr=e, color=color_defaults[:n_cols + 1])
 
-    image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
-    plt.close(fig)
+        plt.xlabel('Columns')
+        plt.ylabel('Rewards')
 
-    # Show it in visdom
-    image = np.transpose(image, (2, 0, 1))
-    return viz.image(image, win=win)
+        plt.title(game)
+        plt.legend(loc=4)
+        figfolder = folder.replace('/logs_eval_', '/eval_')
+       #figfolder = folder.replace('/logs', '/train_')
+        print('should be saving graph now as {}'.format(figfolder))
+        plt.savefig('{}/bar_fig.png'.format(figfolder), format='png')
+        plt.show()
+        plt.draw()
+
+        image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
+        plt.close(fig)
+
+        # Show it in visdom
+        image = np.transpose(image, (2, 0, 1))
+        return viz.image(image, win=win)
+
+    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
+        if folder.endswith('logs'):
+            evl = False
+        elif folder.endswith('logs_eval'):
+            evl = True
+        tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
+        ticks = tick_fractions * num_steps
+        tick_names = ["{:.0e}".format(tick) for tick in ticks]
+        fig = plt.figure()
+        if n_graphs is not None:
+            #print('indaplotter')
+            color = 0
+            for i in n_graphs:
+                tx, ty = load_data(folder, smooth, bin_size, col=i)
+                if tx is None or ty is None:
+                    #print('could not find x y data columns in csv')
+                    pass
+                   #return win
+
+                else:
+                    plt.plot(tx, ty, label="col_{}".format(i), color=color_defaults[color])
+                    color += 1
+        else:
+            tx, ty = load_data(folder, smooth, bin_size)
+            if tx is None or ty is None:
+                return win
+            if evl:
+                color = 3
+                plt.plot(tx, ty, label='det-eval', color=color_defaults[color])
+            else:
+                plt.plot(tx, ty, label="non-det")
+
+
+        plt.xticks(ticks, tick_names)
+        plt.xlim(0, num_steps * 1.01)
+
+        plt.xlabel('Number of Timesteps')
+        plt.ylabel('Rewards')
+
+        plt.title(game)
+        plt.legend(loc=4)
+        if evl:
+            figfolder = folder.replace('/logs_eval', '/eval_')
+        else:
+            figfolder = folder.replace('/logs', '/train_')
+        print('should be saving graph now as {}'.format(figfolder))
+        plt.savefig('./{}fig.png'.format(figfolder), format='png')
+        plt.show()
+        plt.draw()
+
+        image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
+        plt.close(fig)
+
+        # Show it in visdom
+        image = np.transpose(image, (2, 0, 1))
+        return viz.image(image, win=win)
 
 
 if __name__ == "__main__":

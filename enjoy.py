@@ -44,16 +44,18 @@ checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
 saved_args = checkpoint['args']
 past_steps = checkpoint['past_steps']
 
-saved_args.past_steps = past_steps
+args.past_steps = past_steps
 env_name = saved_args.env_name
 
 if 'Micropolis' in env_name:
     args.power_puzzle = saved_args.power_puzzle
 
+dummy_args = args
+dummy_args.render = False
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, None, args.add_timestep, device='cpu',
                     allow_early_resets=False,
-                    args=args)
+                    args=dummy_args)
 
 # Get a render function
 # render_func = get_render_func(env)
@@ -97,8 +99,6 @@ actor_critic = Policy(env.observation_space.shape, env.action_space,
             'out_w': out_w, 'out_h': out_h },
                      curiosity=args.curiosity, algo=saved_args.algo,
                      model=saved_args.model, args=saved_args)
-if args.evaluate:
-    actor_critic.to(device)
 torch.nn.Module.dump_patches = True
 new_recs = args.n_recs - saved_args.n_recs
 actor_critic.load_state_dict(checkpoint['model_state_dict'])
@@ -115,6 +115,8 @@ if vec_norm is not None:
 
 recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)
+if args.evaluate:
+    actor_critic.to(device)
 
 #if render_func is not None:
 #    render_func('human')
@@ -131,13 +133,21 @@ if args.env_name.find('Bullet') > -1:
 
 if args.evaluate:
     env.close() # only needed it to probe obs/act space shape
-    saved_args.num_processes = args.num_processes
-    saved_args.vis_interval = args.vis_interval
-    saved_args.render = args.render
-    saved_args.prob_life = args.prob_life
-    evaluator = Evaluator(saved_args, actor_critic, device, frozen=True)
+   #saved_args.num_processes = args.num_processes
+   #saved_args.vis_interval = args.vis_interval
+   #saved_args.render = args.render
+   #saved_args.prob_life = args.prob_life
+   #saved_args.record = args.record
+    args.env_name = saved_args.env_name
+    args.log_dir = args.load_dir
+    args.model = saved_args.model
+    args.rule = saved_args.rule
+   #args.n_recs = saved_args.n_recs
+    args.intra_shr = saved_args.intra_shr
+    args.inter_shr = saved_args.inter_shr
+    evaluator = Evaluator(args, actor_critic, device, frozen=True)
     while True:
-        for i in range(actor_critic.base.n_cols):
+        for i in range(-1, actor_critic.base.n_cols):
             evaluator.evaluate(column=i)
 
 obs = env.reset()

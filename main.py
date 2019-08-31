@@ -17,7 +17,7 @@ from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage, CuriosityRolloutStorage
 from utils import get_vec_normalize
-from visualize import visdom_plot, bar_plot
+from visualize import Plotter
 
 import csv
 
@@ -136,7 +136,7 @@ def main():
                                    curiosity=args.curiosity, args=args)
 
    #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
-    if args.load_dir != './trained_models/a2c':
+    if args.load_dir:
         saved_model = os.path.join(args.load_dir, args.env_name + '.tar')
     else:
         saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
@@ -146,6 +146,7 @@ def main():
         saved_args = checkpoint['args']
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
         actor_critic.to(device)
+        actor_critic.cuda()
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         if args.auto_expand:
             if not args.n_recs - saved_args.n_recs == 1:
@@ -173,9 +174,6 @@ def main():
         if vec_norm is not None:
             vec_norm.eval()
             vec_norm.ob_rms = ob_rms
-    else:
-        for i in range(n_recs - 1):
-            actor_critic.base.auto_expand()
     actor_critic.to(device)
 
     if 'LSTM' in args.model:
@@ -200,6 +198,7 @@ def main():
     start = time.time()
     model = actor_critic.base
     reset_eval = False
+    plotter = None
     for j in range(past_steps, num_updates):
         if reset_eval:
             print('post eval reset')
@@ -211,16 +210,27 @@ def main():
             model.set_drop_path()
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
-
+        if args.model == 'FractalNet':
+            n_cols = model.n_cols
+            if args.rule == 'wide1' and args.n_recs > 3:
+                col_step = 3
+            else:
+                col_step = 1
+        else:
+            n_cols = 0
+            col_step = 1
         player_act = None
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 if args.render:
                     if args.num_processes == 1:
-                        envs.venv.venv.render()
+                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name):
+                            envs.venv.venv.render()
+                        else:
+                            pass
                     else:
-                        if not ('Micropolis' in args.env_name or 'GameOfLive' in args.env_name):
+                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name):
                             envs.render()
                             envs.venv.venv.render()
                         else:
@@ -313,15 +323,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
 
 
             model = evaluator.actor_critic.base
-            if args.model == 'FractalNet':
-                n_cols = model.n_cols
-                if args.rule == 'wide1' and args.n_recs > 3:
-                    col_step = 3
-                else:
-                    col_step = 1
-            else:
-                n_cols = 0
-                col_step = 1
+
             col_idx = [-1, *range(0, n_cols, col_step)]
             for i in col_idx:
                 evaluator.evaluate(column=i)
@@ -331,7 +333,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
             if args.vis and j % args.vis_interval == 0:
                 try:
                     # Sometimes monitor doesn't properly flush the outputs
-                    win_eval = visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
+                    win_eval = evaluator.plotter.visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
                                   args.algo, args.num_frames, n_graphs= col_idx)
                 except IOError:
                     pass
@@ -381,9 +383,11 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
            #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
 
         if args.vis and j % args.vis_interval == 0:
+            if plotter is None:
+                plotter = Plotter(n_cols, args.log_dir, args.num_processes)
             try:
                 # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, graph_name,
+                win = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
                                   args.algo, args.num_frames)
             except IOError:
                 pass
@@ -394,7 +398,9 @@ class Evaluator(object):
     def __init__(self, args, actor_critic, device, envs=None, vec_norm=None,
             frozen=False):
         ''' frozen: we are not in the main training loop, but evaluating frozen model separately'''
-
+        if frozen:
+            self.win_eval = None
+            past_steps = args.past_steps
         self.frozen = frozen
        #eval_args.render = True
         self.device = device
@@ -409,7 +415,12 @@ class Evaluator(object):
        #                os.remove(f)
        #        setattr(self, 'eval_log_dir_col_{}'.format(i), eval_log_dir)
         if frozen:
-            self.eval_log_dir = args.log_dir + "_eval_{}-steps_".format(args.past_steps, '.1f')
+            if 'GameOfLife' in args.env_name:
+                self.eval_log_dir = args.log_dir + "/eval_{}-steps_w{}_{}rec_{}s_{}pl".format(past_steps,
+                        args.map_width, args.n_recs, args.max_step, args.prob_life, '.1f')
+            else:
+                self.eval_log_dir = args.log_dir + "/eval_{}-steps_w{}_{}rec_{}s".format(past_steps,
+                        args.map_width, args.n_recs, args.max_step, '.1f')
         else:
             self.eval_log_dir = args.log_dir + "_eval"
         merge_col_logs = False
@@ -423,17 +434,16 @@ class Evaluator(object):
             elif files:
                 merge_col_logs = True
 
-        self.num_eval_processes = 20
         self.args = args
         self.actor_critic = actor_critic
+        self.num_eval_processes = args.num_processes
         if envs:
             self.eval_envs = envs
             self.vec_norm = vec_norm
         else:
-            self.num_eval_processes = args.num_processes
 
-            print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
-                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
+           #print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
+           #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
             self.eval_envs = make_vec_envs(
                         self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
                         self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=self.args)
@@ -448,6 +458,7 @@ class Evaluator(object):
             n_cols = model.n_cols
         else:
             n_cols = 0
+        self.plotter = Plotter(n_cols, self.eval_log_dir, self.num_eval_processes)
         eval_cols = range(-1, n_cols)
         if args.model == 'fixed' and model.RAND:
             eval_cols = model.eval_recs
@@ -492,7 +503,7 @@ class Evaluator(object):
             model.num_recursions = num_recursions
         if column is not None and self.args.model == 'FractalNet':
             model.set_active_column(column)
-
+        self.actor_critic.visualize_net()
         eval_episode_rewards = []
         obs = self.eval_envs.reset()
         if 'LSTM' in self.args.model:
@@ -507,6 +518,7 @@ class Evaluator(object):
 
         i = 0
         while len(eval_episode_rewards) < self.num_eval_processes:
+       #while i < self.args.max_step:
             with torch.no_grad():
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
                     obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
@@ -534,14 +546,16 @@ class Evaluator(object):
                 if 'episode' in info.keys():
                     eval_episode_rewards.append(info['episode']['r'])
             i += 1
-           #if i > 3:
-           #    raise Exception
 
         self.eval_envs.reset()
        #self.eval_envs.close()
         eprew = np.mean(eval_episode_rewards)
         args = self.args
-        n_frame = args.num_steps * args.num_processes * args.eval_interval # relative to training session
+        if not self.frozen:
+            # note: eval interval given in terms of updates consisting of num_steps each
+            n_frame = args.num_steps * args.num_processes * args.eval_interval # relative to training session
+        else:
+            n_frame = args.max_step * args.num_processes
 
         if num_recursions is not None:
             column = num_recursions
@@ -560,6 +574,8 @@ class Evaluator(object):
             if args.vis:
                 from visdom import Visdom
                 viz = Visdom(port=args.port)
-                win_eval = None
-                win_eval = bar_plot(viz, win_eval, self.eval_log_dir, 'Frozen Eval',
+                self.win_eval = self.plotter.bar_plot(viz, self.win_eval, self.eval_log_dir, self.eval_log_dir.split('/')[-1],
                                   args.algo, args.num_frames, n_cols=model.n_cols)
+
+if __name__ == "__main__":
+    main()

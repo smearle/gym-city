@@ -12,7 +12,9 @@ from torch import ByteTensor, Tensor
 from torch.nn import Conv2d, Parameter
 from torch.nn.init import zeros_
 from .world import World
-
+from .im2gif import GifWriter
+import os
+import shutil
 
 
 
@@ -23,23 +25,38 @@ class GameOfLifeEnv(core.Env):
     def __init__(self):
         self.num_tools = 1 # bring cell to life
 
-    def configure(self, render=False, map_width=16, prob_life=20):
+    def configure(self, render=False, map_width=16, prob_life=20,
+            record=None, max_step=None):
         self.size = size = map_width
+        self.record = record
+        if render and record:
+            self.gif_writer = GifWriter()
+            try:
+                os.mkdir('{}/gifs/im/'.format(record)) # in case we are continuing eval
+            except FileNotFoundError: pass
+            except FileExistsError: pass
+            try:
+                os.mkdir('{}/gifs/'.format(record)) # in case we are starting a new eval
+                os.mkdir('{}/gifs/im/'.format(record))
+                print('madedatfoldo \n')
+            except FileExistsError:
+                pass
         self.observation_space = spaces.Box(low=np.zeros((1, size, size)),
                 high=np.ones((1, size, size)), dtype=int)
         self.action_space = spaces.Discrete(self.num_tools * size * size)
         self.view_agent = render
         if self.view_agent:
             self.agent_builds = np.zeros(shape=(map_width, map_width), dtype=np.uint8)
+        self.gif_ep_count = 0
         self.step_count = 0
         self.record_entropy = True
-        self.world = World(self.size, self.size, prob_life=prob_life, env=self) # Note that this object 
+        self.world = World(self.size, self.size, prob_life=prob_life, env=self) 
         self.state = None
        #self.device = device = torch.device("cpu")
        #self.device = device = torch.device(
        #         "cuda" if torch.cuda.is_available() else "cpu")
         self.render_gui = render
-        self.max_step = 100
+        self.max_step = max_step
 
         self.entropies = []
         if self.render_gui:
@@ -86,9 +103,21 @@ class GameOfLifeEnv(core.Env):
             rend_arr[1] = rend_arr[0] = rend_arr[1] - self.agent_builds * 255
         rend_arr = rend_arr.transpose(1, 2, 0)
         cv2.imshow("Game of Life", rend_arr)
+        if self.record and not self.gif_writer.done:
+            gif_dir = ('{}/gifs/'.format(self.record))
+            im_dir = os.path.join(gif_dir, 'im')
+            im_path = os.path.join(im_dir, 'e{:02d}_s{:04d}.png'.format(self.gif_ep_count, self.step_count))
+           #print('saving frame at {}'.format(im_path))
+            cv2.imwrite(im_path, rend_arr)
+            if self.gif_ep_count == 0 and self.step_count == self.max_step:
+                print('DATBOI \n \n')
+                self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
+                self.gif_ep_count = 0
         cv2.waitKey(1)
 
     def step(self, a):
+        if self.step_count == self.max_step:
+            self.gif_ep_count += 1
         z, act_x, act_y = self.intsToActions[a]
         self.world.build_cell(act_x, act_y, alive=True)
         if self.view_agent:
@@ -97,13 +126,13 @@ class GameOfLifeEnv(core.Env):
             self.render() # we need to render after moving in case the cell is lost immediately
         self.world._tick()
         reward = self.world.state.sum()
-        terminal = (self.step_count == self.max_step) or\
-                    reward < 2 # impossible situation
+        terminal = (self.step_count == self.max_step) #or\
+                    #reward < 2 # impossible situation for agent
         reward = reward / self.max_step
         self.step_count += 1
         if self.render_gui:
-           #pass
-            self.render() # leave this one to main loop
+           #pass # leave this one to main loop
+            self.render() # deal with rendering now
         infos = {}
         return (self.world.state, reward, terminal, infos)
 

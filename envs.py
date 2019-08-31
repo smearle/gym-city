@@ -52,12 +52,18 @@ except ImportError:
 
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None, simple_reward=False, args=None):
+    ''' return a function which starts the environment'''
     def _thunk():
+        record = args.record
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         else:
             env = gym.make(env_id)
+            if record:
+                record_dir = log_dir
+            else:
+                record_dir = None
             if 'gameoflife' in env_id.lower():
                #print("ENV RANK: ", rank)
                 power_puzzle = False
@@ -67,7 +73,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     render = render_gui
                 else:render = False
                 env.configure(map_width=map_width, render=render,
-                        prob_life = args.prob_life)
+                        prob_life = args.prob_life, record=record_dir,
+                        max_step=max_step)
 
             if 'micropolis' in env_id.lower():
                 print("ENV RANK: ", rank)
@@ -77,7 +84,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 if rank == 0:
                     render = render_gui
                 else:render = False
-                env.setMapSize(map_width, print_map=print_map, render_gui=render, empty_start=not args.random_terrain, max_step=max_step, rank=rank, simple_reward=simple_reward, power_puzzle=power_puzzle)
+                env.setMapSize(map_width, print_map=print_map, render_gui=render, empty_start=not args.random_terrain, max_step=max_step, rank=rank, simple_reward=simple_reward, power_puzzle=power_puzzle, record=record)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)

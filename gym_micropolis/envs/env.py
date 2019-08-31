@@ -39,8 +39,10 @@ class MicropolisEnv(core.Env):
         return [seed1, seed2]
 
     def setMapSize(self, size, max_step=None, rank=None, print_map=False,
-            PADDING=0, static_builds=True, parallel_gui=False, render_gui=False,
-            empty_start=True, simple_reward=False, power_puzzle=False):
+            PADDING=0, static_builds=True, parallel_gui=False,
+            render_gui=False, empty_start=True, simple_reward=False,
+            power_puzzle=False, record=False):
+        if record: raise NotImplementedError
         if max_step is not None:
             self.max_step = max_step
         else:

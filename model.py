@@ -12,6 +12,7 @@ import copy
 
 # from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
 from ConvLSTMCell import ConvLSTMCell
+from torchviz import make_dot
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -20,6 +21,7 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, base_kwargs=None, curiosity=False, algo='A2C', model='MicropolisBase', args=None):
         super(Policy, self).__init__()
+        self.obs_shape = obs_shape
         self.curiosity = curiosity
         self.args = args
         if base_kwargs is None:
@@ -86,7 +88,13 @@ class Policy(nn.Module):
        #summary(self.base, obs_shape)
        #self.base.cpu()
 
-
+    def visualize_net(self):
+        return
+        x = torch.zeros(size=(self.args.num_processes, *self.obs_shape))
+        if True:
+            x.cuda()
+        out = self.base(x)
+        make_dot(out)
 
     @property
     def is_recurrent(self):
@@ -442,6 +450,7 @@ class FractalNet(NNBase):
 
     def auto_expand(self):
         self.block_0.auto_expand() # assumption
+        self.n_cols += 1
 
     def forward(self, x, rnn_hxs=None, masks=None):
         for i in range(self.num_blocks):
@@ -462,7 +471,6 @@ class FractalNet(NNBase):
     def set_active_column(self, a):
         for i in range(self.num_blocks):
             getattr(self, 'block_{}'.format(i)).set_active_column(a)
-
 
 
 class FractalBlock(NNBase):
