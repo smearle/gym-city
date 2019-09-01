@@ -217,7 +217,8 @@ class Plotter(object):
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
-    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None):
+    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=5, n_graphs=None,
+            x_lim=None, y_lim=None):
         if folder.endswith('logs'):
             evl = False
         elif folder.endswith('logs_eval'):
@@ -251,7 +252,12 @@ class Plotter(object):
 
 
         plt.xticks(ticks, tick_names)
-        plt.xlim(0, num_steps * 1.01)
+        if x_lim:
+            plt.xlim(*x_lim)
+        else:
+            plt.xlim(0, num_steps * 1.01)
+        if y_lim:
+            plt.ylim(*y_lim)
 
         plt.xlabel('Number of Timesteps')
         plt.ylabel('Rewards')
@@ -275,8 +281,21 @@ class Plotter(object):
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
+def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=96, x_lim=None, y_lim=None):
+    plotter = Plotter(n_cols=n_cols, indir=indir, n_proc=n_proc)
+    from visdom import Visdom
+    viz = Visdom()
+    win = None
+    win = plotter.visdom_plot(viz, win, "{}/logs_eval".format(indir), "",  "Fractal Net", num_steps=num_steps, 
+        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim)
+    return win
 
 if __name__ == "__main__":
     from visdom import Visdom
+    import argparse
     viz = Visdom()
+    win = None
+    parser = argparse.ArgumentParser(description='viz')
+    parser.add_argument('--load-dir', default=None,
+            help='directory from which to load agent logs (default: ./trained_models/)')
     visdom_plot(viz, None, '/tmp/gym/', 'BreakOut', 'a2c', bin_size=100, smooth=1)
