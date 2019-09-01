@@ -24,6 +24,8 @@ import shutil
 class GameOfLifeEnv(core.Env):
     def __init__(self):
         self.num_tools = 1 # bring cell to life
+        self.player_step = False
+        self.player_builds = []
 
     def configure(self, render=False, map_width=16, prob_life=20,
             record=None, max_step=None):
@@ -62,6 +64,7 @@ class GameOfLifeEnv(core.Env):
         if self.render_gui:
             #TODO: render function should deal with this somehow
             cv2.namedWindow("Game of Life", cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback("Game of Life", self.player_build)
 
        #with torch.no_grad():
        #    self.combinations = combinations = 2 ** (3 * 3)
@@ -77,6 +80,7 @@ class GameOfLifeEnv(core.Env):
         self.intsToActions = [[] for pixel in range(self.num_tools * self.size **2)]
         self.actionsToInts = np.zeros((self.num_tools, self.size, self.size))
 
+
         ''' Unrolls the action vector in the same order as the pytorch model
         on its forward pass.'''
         i = 0
@@ -87,6 +91,8 @@ class GameOfLifeEnv(core.Env):
                         self.actionsToInts[z, x, y] = i
                         i += 1
        #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
+        print(self.intsToActions)
+        print(self.actionsToInts)
 
     def reset(self):
         self.step_count = 0
@@ -101,7 +107,7 @@ class GameOfLifeEnv(core.Env):
         rend_arr = np.vstack((rend_arr * 255, rend_arr * 255, rend_arr * 255))
         if self.view_agent:
             rend_arr[1] = rend_arr[0] = rend_arr[1] - self.agent_builds * 255
-        rend_arr = rend_arr.transpose(1, 2, 0)
+        rend_arr = rend_arr.transpose(2, 1, 0)
         cv2.imshow("Game of Life", rend_arr)
         if self.record and not self.gif_writer.done:
             gif_dir = ('{}/gifs/'.format(self.record))
@@ -116,9 +122,17 @@ class GameOfLifeEnv(core.Env):
         cv2.waitKey(1)
 
     def step(self, a):
+        if self.player_builds:
+            a = self.player_builds[0]
+            self.player_builds = self.player_builds[1:]
+            self.player_step = True
+        else:
+            self.player_step = False
         if self.step_count == self.max_step:
             self.gif_ep_count += 1
         z, act_x, act_y = self.intsToActions[a]
+        if self.player_step:
+            print('executing player build at: {}, {}'.format(act_x, act_y))
         self.world.build_cell(act_x, act_y, alive=True)
         if self.view_agent:
             self.agent_builds[act_x, act_y] = 1
@@ -136,6 +150,11 @@ class GameOfLifeEnv(core.Env):
         infos = {}
         return (self.world.state, reward, terminal, infos)
 
+    def player_build(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            a = int(self.actionsToInts[0][x][y])
+            self.player_builds += [a]
+            print('q\'d player build at: {}, {}'.format(x, y))
 
 
     def seed(self, seed=None):
