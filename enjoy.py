@@ -51,7 +51,7 @@ if 'Micropolis' in env_name:
     args.power_puzzle = saved_args.power_puzzle
 
 dummy_args = args
-dummy_args.render = False
+#dummy_args.render = False
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, None, args.add_timestep, device='cpu',
                     allow_early_resets=False,
