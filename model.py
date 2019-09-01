@@ -89,12 +89,15 @@ class Policy(nn.Module):
        #self.base.cpu()
 
     def visualize_net(self):
-        return
-        x = torch.zeros(size=(self.args.num_processes, *self.obs_shape))
-        if True:
+        x = torch.autograd.Variable(torch.zeros(size=(self.args.num_processes, *self.obs_shape)))
+        if False:
             x.cuda()
         out = self.base(x)
-        make_dot(out)
+        out = out[0]
+        dot = make_dot(out.mean(), params=dict(self.base.named_parameters()))
+        dot.format = 'svg'
+        dot.filename = 'col_{}.gv'.format(self.base.active_column)
+        dot.render()
 
     @property
     def is_recurrent(self):
@@ -447,6 +450,7 @@ class FractalNet(NNBase):
             lambda x: nn.init.constant_(x, 0))
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
+        self.active_column = None
 
     def auto_expand(self):
         self.block_0.auto_expand() # assumption
@@ -469,6 +473,7 @@ class FractalNet(NNBase):
             getattr(self, 'block_{}'.format(i)).set_drop_path()
 
     def set_active_column(self, a):
+        self.active_column = a
         for i in range(self.num_blocks):
             getattr(self, 'block_{}'.format(i)).set_active_column(a)
 
