@@ -119,7 +119,7 @@ class GameOfLifeEnv(core.Env):
                 print('DATBOI \n \n')
                 self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
                 self.gif_ep_count = 0
-        cv2.waitKey(1)
+        cv2.waitKey(10)
 
     def step(self, a):
         if self.player_builds:
@@ -130,10 +130,18 @@ class GameOfLifeEnv(core.Env):
             self.player_step = False
         if self.step_count == self.max_step:
             self.gif_ep_count += 1
+        if a < 0:
+            PLAYER_DEL = True
+            a = -a
+        else:
+            PLAYER_DEL = False
         z, act_x, act_y = self.intsToActions[a]
         if self.player_step:
             print('executing player build at: {}, {}'.format(act_x, act_y))
-        self.world.build_cell(act_x, act_y, alive=True)
+        if PLAYER_DEL:
+            self.world.build_cell(act_x, act_y, alive=False)
+        else:
+            self.world.build_cell(act_x, act_y, alive=True)
         if self.view_agent:
             self.agent_builds[act_x, act_y] = 1
         if self.render_gui:
@@ -155,6 +163,10 @@ class GameOfLifeEnv(core.Env):
             a = int(self.actionsToInts[0][x][y])
             self.player_builds += [a]
             print('q\'d player build at: {}, {}'.format(x, y))
+        elif event == cv2.EVENT_MBUTTONDOWN:
+            a = int(self.actionsToInts[0][x][y])
+            self.player_builds += [-a]
+            print('q\'d player delete at: {}, {}'.format(x, y))
 
 
     def seed(self, seed=None):

@@ -13,9 +13,113 @@ plt.switch_backend('agg')
 import numpy as np
 from scipy.signal import medfilt
 matplotlib.rcParams.update({'font.size': 8})
-import numpy as np
 
 from imutils import paths
+from graphviz import Digraph, Graph
+color_defaults = [
+    '#1f77b4',  # muted blue
+    '#ff7f0e',  # safety orange
+    '#2ca02c',  # cooked asparagus green
+    '#d62728',  # brick red
+    '#9467bd',  # muted purple
+    '#8c564b',  # chestnut brown
+    '#e377c2',  # raspberry yogurt pink
+    '#7f7f7f',  # middle gray
+    '#bcbd22',  # curry yellow-green
+    '#17becf'   # blue-teal
+]
+
+def network_graphs():
+    dot = Digraph(comment='StrictlyConv', node_attr={'shape': 'box'})
+    dot.edge_attr.update(arrowhead='vee')
+    dot.edge_attr.update(color=color_defaults[0])
+    dot.node_attr.update(width='2', height='0.2')
+    dot.node('A', 'Map', shape='box')
+    dot.node('B', '')
+    dot.node('C', '')
+    dot.node('D', 'Action Map')
+    dot.edge('A', 'B', label='c_{k5}')
+    dot.edge('B', 'C', label='c_{k3}')
+    dot.edge('C', 'D')
+    dot.node('E', '', width='1')
+    dot.edge('C', 'E', label='d')
+    dot.node('F', '', width='0.5')
+    dot.edge('E', 'F', label='d')
+    dot.node('G', '', width='0.25')
+    dot.edge('F', 'G', label='d')
+    dot.node('H', '', xlabel='Scalar Value Prediction', width='0.125', shape='circle')
+    dot.edge('G', 'H', label='d')
+    dot.render('strictlyConv.gv', view=True)
+
+    dott = Digraph(comment='FractalNet', node_attr={'shape': 'box'})
+    def expand(dot, i):
+        dott.edge_attr.update(arrowhead='vee')
+        dott.edge_attr.update(color=color_defaults[0])
+        dott.node_attr.update(width='2', height='0.2')
+        with dot.subgraph(name='fc_{}'.format(i)) as subg:
+            fixed = '{}_fixed'.format(i)
+            test = '{}_test'.format(i)
+            subg.node(fixed, '')
+            subg.edge(fixed, test)
+            
+    #dott.render('FractalNetFancy.gv', view=True)
+
+    frac = Digraph(comment='FractalNet', node_attr={'shape': 'box'})
+    #frac.graph_attr['splines'] = 'ortho'
+    #frac.graph_attr['rankdir'] = 'LR'
+    frac.edge_attr.update(arrowhead='vee')
+    n_recs = 3
+    frac.node('A', 'Gameboard', shape='box')
+    frac.node('B', 'Action Map')
+    rows = []
+    for i in range(int(2**(n_recs-2))):
+        i = (i + 1) * 2
+        row = Digraph('child_{}'.format(i))
+        row.attr(rank='same')
+        row.attr(rankdir='LR')
+        print(row)
+        globals()['grp_{}'.format(i)] = row
+        rows += [row]
+    for i in range(n_recs):
+        color = color_defaults[(n_recs - i) + (5-n_recs)]
+        for j in range(2 ** i):
+            n_j = n_recs - j
+            j = j +1
+            print(i, j)
+            if not (i == n_recs - 1 and j % 2 == 1):
+                row = globals()['grp_{}'.format(j * (2 ** (n_recs - i - 1)))]
+            else:
+                row = None
+            print(row)
+            fixed = '{}_{}'.format(i, j)
+            if row is not None:
+                row.node(fixed, '')
+            else:
+                frac.node(fixed, '')
+            if i > 0 and j %2 == 0 and row is not None:
+                row.edge('{}_{}'.format(i - 1, int(j/ 2)),fixed,
+                         style='dashed', 
+                        arrowhead='none' , 
+                       weight='-50'
+                        )
+            if j >1:
+                frac.edge('{}_{}'.format(i, j-1), fixed, arrowhead='vee', color=color,
+                        label='f_{' + str(i) + '-' + str(j - 0)+'}')
+        if i == 0:
+            frac.edge('1_2', 'B', arrowhead='none', style='dotted')
+        frac.edge('A', '{}_{}'.format(i, 1), color=color,
+     label='f_{' + str(i) + '-' + str(0)+'}')
+    frac.node_attr.update(height='0.2')
+    frac.node('E', 'S', shape='circle', style='dotted')
+    frac.edge('1_2', 'E', style='dotted', arrowhead='none')
+
+
+                
+    for row in rows:
+        if row is not None:
+            frac.subgraph(row)
+
+    frac.render('FractalNet.gv', view=True)
 
 def create_gif(inputPath, outputPath, delay, finalDelay, loop):
 	# grab all image paths in the input directory
@@ -33,7 +137,7 @@ def create_gif(inputPath, outputPath, delay, finalDelay, loop):
 
 def smooth_reward_curve(x, y):
     # Halfwidth of our smoothing convolution
-    halfwidth = min(31, int(np.ceil(len(x) / 30)))
+    halfwidth = min(1000, int(np.ceil(len(x) / 30)))
     k = halfwidth
     xsmoo = x[k:-k]
     ysmoo = np.convolve(y, np.ones(2 * k + 1), mode='valid') / \
@@ -111,30 +215,21 @@ def load_data(indir, smooth, bin_size, col=None):
     return [x, y]
 
 
-color_defaults = [
-    '#1f77b4',  # muted blue
-    '#ff7f0e',  # safety orange
-    '#2ca02c',  # cooked asparagus green
-    '#d62728',  # brick red
-    '#9467bd',  # muted purple
-    '#8c564b',  # chestnut brown
-    '#e377c2',  # raspberry yogurt pink
-    '#7f7f7f',  # middle gray
-    '#bcbd22',  # curry yellow-green
-    '#17becf'   # blue-teal
-]
 
 class Plotter(object):
-    def __init__(self, n_cols, indir, n_proc):
+    def __init__(self, n_cols, indir, n_proc, max_steps=None):
         self.n_cols = n_cols + 1
         self.avgs = np.zeros((n_cols + 1))
+        self.n_frames = np.zeros((n_cols + 1))
         self.n_samples = np.zeros((n_cols + 1)) # how many episodes per process, 
         # this may be different for each column due to interrupted evaluation
         self.n_proc = n_proc # how many processes
         self.indir = indir
+        self.max_steps = max_steps # this shouldn't change during frozen eval
 
 
     def get_col_avg(self, col=None):
+        ''' Also records number of episodes '''
         if col is not None:
             infiles = glob.glob(os.path.join(self.indir, 'col_{}_eval.csv'.format(col)))
         else:
@@ -144,6 +239,7 @@ class Plotter(object):
 
         i = 0
         net_reward = 0
+        n_frames = 0
         for inf in infiles:
             with open(inf, 'r') as f:
                 f.readline()
@@ -151,6 +247,7 @@ class Plotter(object):
                 for line in f:
                     tmp = line.split(',')
                     r = float(tmp[0])
+                    n_frames += float(tmp[1])
                     net_reward += r
                     i += 1
         if i != 0:
@@ -158,9 +255,11 @@ class Plotter(object):
         else:
             avg_reward = 0
         self.avgs[col] = avg_reward
+        self.n_frames[col] = n_frames
         return avg_reward
 
     def get_col_std(self, col=None):
+        ''' We need to have already calculated avg for each col '''
         if col is not None:
             infiles = glob.glob(os.path.join(self.indir, 'col_{}_eval.csv'.format(col)))
         else:
@@ -199,7 +298,10 @@ class Plotter(object):
 
         plt.xlabel('Columns')
         plt.ylabel('Rewards')
-
+        for i, v in enumerate(h):
+            plt.text(i - 1.25, v + 3, '{0:.3f}'.format(v))
+            n_col_eps = self.n_frames[i] / self.max_steps # assuming max_steps does not change over course of evaluation
+            plt.text(i - 1.25, v + 1, '{0:4.3e} eps.'.format(n_col_eps))
         plt.title(game)
         plt.legend(loc=4)
         figfolder = folder.replace('/logs_eval_', '/eval_')
@@ -217,17 +319,55 @@ class Plotter(object):
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
-    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=5, n_graphs=None,
-            x_lim=None, y_lim=None):
+    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None,
+            x_lim=None, y_lim=None, man=False):
+        if man:
+            matplotlib.rcParams.update({'font.size': 14})
+        if isinstance(folder, list):
+            print('COPY DAT \n')
+            fld = folder
+            folder = folder[0]
+        else:
+            fld = None
         if folder.endswith('logs'):
             evl = False
         elif folder.endswith('logs_eval'):
             evl = True
-        tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
+        if folder.endswith('logs'):
+            evl = False
+        elif folder.endswith('logs_eval'):
+            evl = True
+        if man:
+            tick_fractions = np.array([1/4, 2/4, 3/4, 1])
+        else:
+            tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
         ticks = tick_fractions * num_steps
         tick_names = ["{:.0e}".format(tick) for tick in ticks]
-        fig = plt.figure()
-        if n_graphs is not None:
+        if man:
+            tick_names[0] =''
+            tick_names[2] = ''
+            fig = plt.figure(figsize=(5.6,5))
+        else:
+            fig = plt.figure()
+        if isinstance(fld, list):
+            j = 0
+            for f in fld:
+                print(f)
+                color = 0
+                tx, ty = load_data(f, smooth, bin_size, col=-1)
+                if tx is None or ty is None:
+                    #print('could not find x y data columns in csv')
+                    pass
+                   #return win
+
+                else:
+                    if j == 0:
+                        plt.plot(tx, ty, label="FullyConv", color=color_defaults[-1], linestyle='dashed')
+                    else:
+                        plt.plot(tx, ty, label="StrictlyConv", color=color_defaults[color])
+                    color += 1
+                j += 1
+        elif n_graphs is not None:
             #print('indaplotter')
             color = 0
             for i in n_graphs:
@@ -238,8 +378,10 @@ class Plotter(object):
                    #return win
 
                 else:
-                    plt.plot(tx, ty, label="col_{}".format(i), color=color_defaults[color])
+                    plt.plot(tx, ty, label="col {}".format(i), color=color_defaults[color])
                     color += 1
+
+
         else:
             tx, ty = load_data(folder, smooth, bin_size)
             if tx is None or ty is None:
@@ -251,25 +393,33 @@ class Plotter(object):
                 plt.plot(tx, ty, label="non-det")
 
 
-        plt.xticks(ticks, tick_names)
         if x_lim:
             plt.xlim(*x_lim)
         else:
             plt.xlim(0, num_steps * 1.01)
         if y_lim:
             plt.ylim(*y_lim)
+        plt.xticks(ticks, tick_names)
 
         plt.xlabel('Number of Timesteps')
         plt.ylabel('Rewards')
-
+        plt.grid(b=True, which='both')
         plt.title(game)
-        plt.legend(loc=4)
+        if man:
+            plt.legend(loc='upper left', bbox_to_anchor=(1,1))
+            plt.tight_layout(w_pad=2)
+        else:
+            plt.legend(loc=4)
         if evl:
             figfolder = folder.replace('/logs_eval', '/eval_')
         else:
             figfolder = folder.replace('/logs', '/train_')
         print('should be saving graph now as {}'.format(figfolder))
-        plt.savefig('./{}fig.png'.format(figfolder), format='png')
+        if man:
+            figfile = './{}fig_man.png'.format(figfolder)
+        else:
+            figfile = './{}fig.png'.format(figfolder)
+        plt.savefig(figfile, format='png')
         plt.show()
         plt.draw()
 
@@ -281,13 +431,23 @@ class Plotter(object):
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
-def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=96, x_lim=None, y_lim=None):
+def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=20, x_lim=None, y_lim=None,
+        title='', smooth=1):
     plotter = Plotter(n_cols=n_cols, indir=indir, n_proc=n_proc)
+
     from visdom import Visdom
     viz = Visdom()
     win = None
-    win = plotter.visdom_plot(viz, win, "{}/logs_eval".format(indir), "",  "Fractal Net", num_steps=num_steps, 
-        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim)
+    if isinstance(indir, list):
+        print('copy man\n')
+        i = 0
+        for d in indir:
+            indir[i] = '{}/logs_eval'.format(d)
+            i += 1
+    else:
+        indir = "{}/logs_eval".format(indir)
+    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps, 
+        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim, man=True, bin_size=100, smooth=smooth)
     return win
 
 if __name__ == "__main__":

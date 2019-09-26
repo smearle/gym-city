@@ -98,6 +98,8 @@ from . import micropolismappanel
 from . import micropolisdisasterspanel
 from . import micropoliscontrolpanel
 
+from . import micropolisagentpanel
+
 
 ########################################################################
 # MicropolisPanelWindow
@@ -219,6 +221,11 @@ class MicropolisPanedWindow(gtk.Window):
             target=self)
         self.controlPanel = controlPanel
         notebook1.addLabelTab('Control', controlPanel)
+
+        agentPanel = micropolisagentpanel.MicropolisAgentPanel(
+            engine=engine)
+        self.agentPanel = agentPanel
+        notebook1.addLabelTab('Agent', agentPanel)
 
         # Panes
 

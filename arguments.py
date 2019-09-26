@@ -27,7 +27,7 @@ def get_args():
                 model_name, args.env_name, args.map_width,
                 args.max_step,
                 args.experiment_name)
-    args.save_interval = args.eval_interval # otherwise we can cut eval graph short by reloading too much
+   #args.save_interval = args.eval_interval # otherwise we can cut eval graph short by reloading too much
     return args
 
 def get_parser():
@@ -66,8 +66,8 @@ def get_parser():
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument('--log-interval', type=int, default=10,
                         help='log interval, one log per n updates (default: 10)')
-#   parser.add_argument('--save-interval', type=int, default=100,
-#                       help='save interval, one save per n updates (default: 100)')
+    parser.add_argument('--save-interval', type=int, default=100,
+                        help='save interval, one save per n updates (default: 100)')
     parser.add_argument('--eval-interval', type=int, default=None,
                         help='eval interval, one eval per n updates (default: None)')
     parser.add_argument('--vis-interval', type=int, default=100,
@@ -127,6 +127,8 @@ def get_parser():
             help='a minigame: the agent uses wire to efficiently connect zones.')
     parser.add_argument('--simple-reward', action='store_true',
             help='reward only for overall population according to game')
+    parser.add_argument('--traffic-only', action='store_true',
+            help='reward only for overall traffic')
     parser.add_argument('--random-builds', action='store_true',
             help='episode begins with random static (unbulldozable) builds on the map')
     parser.add_argument('--random-terrain', action='store_true',

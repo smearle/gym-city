@@ -18,9 +18,30 @@ from model import Policy
 from storage import RolloutStorage, CuriosityRolloutStorage
 from utils import get_vec_normalize
 from visualize import Plotter
+from shutil import copyfile
 
 import csv
 
+
+def init_agent(actor_critic, args):
+    if args.algo == 'a2c':
+        agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
+                               args.entropy_coef, lr=args.lr,
+                               eps=args.eps, alpha=args.alpha,
+                               max_grad_norm=args.max_grad_norm,
+                               curiosity=args.curiosity, args=args)
+    elif args.algo == 'ppo':
+        agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch, args.value_loss_coef, args.entropy_coef, lr=args.lr,
+                               eps=args.eps,
+                               max_grad_norm=args.max_grad_norm)
+    elif args.algo == 'acktr':
+        agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
+                               args.entropy_coef, lr=args.lr,
+                               eps=args.eps, alpha=args.alpha,
+                               max_grad_norm=args.max_grad_norm,
+                               acktr=True,
+                               curiosity=args.curiosity, args=args)
+    return agent
 
 
 def main():
@@ -41,7 +62,7 @@ def main():
     if args.cuda:
         torch.cuda.manual_seed(args.seed)
 
-    graph_name = args.save_dir.replace('trained_models/', '').replace('/', ' ')
+    graph_name = args.save_dir.split('trained_models/')[1].replace('/', ' ')
 
     actor_critic = False
     agent = False
@@ -101,6 +122,7 @@ def main():
             out_w = 1
             out_h = 1
         num_actions = envs.action_space.shape[-1]
+    print('num actions {}'.format(num_actions))
 
     if args.auto_expand:
         args.n_recs -= 1
@@ -117,23 +139,7 @@ def main():
     evaluator = None
 
     if not agent:
-        if args.algo == 'a2c':
-            agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
-                                   args.entropy_coef, lr=args.lr,
-                                   eps=args.eps, alpha=args.alpha,
-                                   max_grad_norm=args.max_grad_norm,
-                                   curiosity=args.curiosity, args=args)
-        elif args.algo == 'ppo':
-            agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch, args.value_loss_coef, args.entropy_coef, lr=args.lr,
-                                   eps=args.eps,
-                                   max_grad_norm=args.max_grad_norm)
-        elif args.algo == 'acktr':
-            agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
-                                   args.entropy_coef, lr=args.lr,
-                                   eps=args.eps, alpha=args.alpha,
-                                   max_grad_norm=args.max_grad_norm,
-                                   acktr=True,
-                                   curiosity=args.curiosity, args=args)
+        agent = init_agent(actor_critic, args)
 
    #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
     if args.load_dir:
@@ -145,12 +151,18 @@ def main():
         checkpoint = torch.load(saved_model)
         saved_args = checkpoint['args']
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
+       #for o, l in zip(agent.optimizer.state_dict, checkpoint['optimizer_state_dict']):
+       #    print(o, l)
+       #print(agent.optimizer.state_dict()['param_groups'])
+       #print('\n')
+       #print(checkpoint['model_state_dict'])
         actor_critic.to(device)
         actor_critic.cuda()
+       #agent = init_agent(actor_critic, saved_args)
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         if args.auto_expand:
             if not args.n_recs - saved_args.n_recs == 1:
-                print('can expand by 1 rec only from saved model')
+                print('can expand by 1 rec only from saved model, not {}'.format(args.n_recs - saved_args.n_recs))
                 raise Exception
             actor_critic.base.auto_expand()
             print('expanded net: \n{}'.format(actor_critic.base))
@@ -174,6 +186,21 @@ def main():
         if vec_norm is not None:
             vec_norm.eval()
             vec_norm.ob_rms = ob_rms
+        saved_args.num_frames = args.num_frames
+        saved_args.vis_interval = args.vis_interval
+        saved_args.eval_interval = args.eval_interval
+        saved_args.overwrite = args.overwrite
+        saved_args.n_recs = args.n_recs
+        saved_args.intra_shr = args.intra_shr
+        saved_args.inter_shr = args.inter_shr
+        saved_args.map_width = args.map_width
+        saved_args.render = args.render
+        saved_args.print_map = args.print_map
+        saved_args.load_dir = args.load_dir
+        saved_args.experiment_name = args.experiment_name
+        saved_args.log_dir = args.log_dir
+        saved_args.save_dir = args.save_dir
+        args = saved_args
     actor_critic.to(device)
 
     if 'LSTM' in args.model:
@@ -199,6 +226,15 @@ def main():
     model = actor_critic.base
     reset_eval = False
     plotter = None
+    if args.model == 'FractalNet' or args.model == 'fractal':
+        n_cols = model.n_cols
+        if args.rule == 'wide1' and args.n_recs > 3:
+            col_step = 3
+        else:
+            col_step = 1
+    else:
+        n_cols = 0
+        col_step = 1
     for j in range(past_steps, num_updates):
         if reset_eval:
             print('post eval reset')
@@ -207,18 +243,12 @@ def main():
             rollouts.to(device)
             reset_eval = False
         if args.model == 'FractalNet' and args.drop_path:
+           #if args.intra_shr and args.inter_shr:
+           #    n_recs = np.randint
+           #    model.set_n_recs()
             model.set_drop_path()
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
-        if args.model == 'FractalNet':
-            n_cols = model.n_cols
-            if args.rule == 'wide1' and args.n_recs > 3:
-                col_step = 3
-            else:
-                col_step = 1
-        else:
-            n_cols = 0
-            col_step = 1
         player_act = None
         for step in range(args.num_steps):
             # Sample actions
@@ -330,7 +360,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
            # making sure the evaluator plots the '-1'st column (the overall net)
 
-            if args.vis and j % args.vis_interval == 0:
+            if args.vis: #and j % args.vis_interval == 0:
                 try:
                     # Sometimes monitor doesn't properly flush the outputs
                     win_eval = evaluator.plotter.visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
@@ -421,13 +451,15 @@ class Evaluator(object):
             else:
                 self.eval_log_dir = args.log_dir + "/eval_{}-steps_w{}_{}rec_{}s".format(past_steps,
                         args.map_width, args.n_recs, args.max_step, '.1f')
+            merge_col_logs = True
         else:
             self.eval_log_dir = args.log_dir + "_eval"
-        merge_col_logs = False
+            merge_col_logs = False
         try:
             os.makedirs(self.eval_log_dir)
         except OSError:
             files = glob.glob(os.path.join(self.eval_log_dir,  '*.monitor.csv'))
+            files += glob.glob(os.path.join(self.eval_log_dir, '*_eval.csv'))
             if args.overwrite:
                 for f in files:
                     os.remove(f)
@@ -454,25 +486,33 @@ class Evaluator(object):
         self.tstart = time.time()
         fieldnames = ['r', 'l', 't']
         model = actor_critic.base
-        if args.model == 'FractalNet':
+        if args.model == 'FractalNet' or args.model =='fractal':
             n_cols = model.n_cols
         else:
             n_cols = 0
-        self.plotter = Plotter(n_cols, self.eval_log_dir, self.num_eval_processes)
+        self.plotter = Plotter(n_cols, self.eval_log_dir, self.num_eval_processes, max_steps=self.args.max_step)
         eval_cols = range(-1, n_cols)
         if args.model == 'fixed' and model.RAND:
             eval_cols = model.eval_recs
         if eval_cols is not None:
             for i in eval_cols:
                 log_file = '{}/col_{}_eval.csv'.format(self.eval_log_dir, i)
-                if merge_col_logs:
+                if merge_col_logs and os.path.exists(log_file):
+                    merge_col_log = True
+                else:
+                    merge_col_log = False
+                if merge_col_log:
+                    if len(eval_cols) > 1 and i == eval_cols[-2] and self.args.auto_expand: # problem if we saved model after auto-expanding, without first evaluating!
+                        # for the newly added column, we duplicate the last col.'s records
+                        new_col_log_file = '{}/col_{}_eval.csv'.format(self.eval_log_dir, i + 1)
+                        copyfile(log_file, new_col_log_file)
                     old_log = '{}_old'.format(log_file)
                     os.rename(log_file, old_log)
                 log_file_col = open(log_file, mode='w')
                 setattr(self, 'log_file_col_{}'.format(i), log_file_col)
                 writer_col = csv.DictWriter(log_file_col, fieldnames=fieldnames)
                 setattr(self, 'writer_col_{}'.format(i), writer_col)
-                if merge_col_logs:
+                if merge_col_log:
                     with open(old_log, newline='') as old:
                         reader = csv.DictReader(old, fieldnames=('r', 'l', 't'))
                         h = 0

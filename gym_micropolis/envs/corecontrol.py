@@ -35,10 +35,11 @@ from pyMicropolis.gtkFrontend import main
 
 class MicropolisControl():
 
-    def __init__(self, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False, rank=None,
+    def __init__(self, env, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False, rank=None,
             power_puzzle=False):
         self.SHOW_GUI=False
-        engine, win1 = main.train(bot=self, rank=rank, map_x=MAP_W, map_y=MAP_H)
+        env.micro = self
+        engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H)
        #os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
@@ -163,27 +164,39 @@ class MicropolisControl():
                 self.map.updateTile(i, j, zone, (i,j))
 
 
+    def fillDensityMap(self, density_map, i, j, val):
+        i = i * 2
+        j = j * 2
+        density_map[i][j] = val
+        density_map[i][j + 1] = val
+        density_map[i + 1][j + 1] = val
+        density_map[i + 1][j] = val
+        return density_map
 
     def getDensityMaps(self):
        #self.last_pollution = self.pollution
         self.total_traffic = 0
         self.land_value = 0
         density_maps = np.zeros((3, self.MAP_X, self.MAP_Y))
-        for i in range (self.MAP_X):
-            for j in range(self.MAP_Y):
-                im = p_im = t_im = i + self.MAP_XS
-                jm = p_jm = t_jm = j + self.MAP_YS
-                t_im -= 2
-                t_jm -= 4
-                t_xy_density = self.engine.getTrafficDensity(im, jm)
+        for i in range (self.MAP_X // 2):
+            for j in range(self.MAP_Y // 2):
+                im = p_im = t_im = i + self.MAP_YS // 2
+                jm = p_jm = t_jm = j + self.MAP_XS // 2
+                t_xy_density = self.engine.getTrafficDensity(t_jm, t_im)
                 self.total_traffic += t_xy_density
-                density_maps[2][i][j] = self.engine.getTrafficDensity(t_im, t_jm)
-                p_im -= 2
-                p_jm -= 2
-                density_maps[1][i][j] = self.engine.getPopulationDensity(p_im, p_jm)
-                density_maps[0][i][j] = self.engine.getPowerGrid(im, jm)
-                self.land_value += self.engine.getLandValue(im, jm)
-
+                density_maps[2] = self.fillDensityMap(density_maps[2], i, j, t_xy_density)
+                pop_xy_density = self.engine.getPopulationDensity(p_jm, p_im)
+                density_maps[1] = self.fillDensityMap(density_maps[1], i, j, pop_xy_density)
+        for i in range(self.MAP_X):
+            for j in range(self.MAP_Y):
+                im = i
+                jm = j
+                im += self.MAP_YS
+                jm += self.MAP_XS
+                density_maps[0][i][j] = self.engine.getPowerGrid(jm, im)
+               #self.land_value += self.engine.getLandValue(im, jm)
+       #if self.total_traffic > 0:
+       #    print('TRAFFIC: {}'.format(self.total_traffic))
         return density_maps
 
     def getPowerMap(self):

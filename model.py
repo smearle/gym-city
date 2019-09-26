@@ -89,15 +89,16 @@ class Policy(nn.Module):
        #self.base.cpu()
 
     def visualize_net(self):
-        x = torch.autograd.Variable(torch.zeros(size=(self.args.num_processes, *self.obs_shape)))
-        if False:
-            x.cuda()
-        out = self.base(x)
-        out = out[0]
-        dot = make_dot(out.mean(), params=dict(self.base.named_parameters()))
-        dot.format = 'svg'
-        dot.filename = 'col_{}.gv'.format(self.base.active_column)
-        dot.render()
+        pass
+       #x = torch.autograd.Variable(torch.zeros(size=(self.args.num_processes, *self.obs_shape)))
+       #if False:
+       #    x.cuda()
+       #out = self.base(x)
+       #out = out[0]
+       #dot = make_dot(out.mean(), params=dict(self.base.named_parameters()))
+       #dot.format = 'svg'
+       #dot.filename = 'col_{}.gv'.format(self.base.active_column)
+       #dot.render()
 
     @property
     def is_recurrent(self):
@@ -242,10 +243,10 @@ class NNBase(nn.Module):
 
         return x, hxs
 
-class FullyConv(NNBase):
+class FullyConv_Atari(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1):
-        super(FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
+        super(FullyConv_Atari, self).__init__(recurrent, hidden_size, hidden_size)
         num_chan = 32
         num_actions = num_actions
         self.map_width = map_width
@@ -282,12 +283,44 @@ class FullyConv(NNBase):
        #print(act.shape)
         return val.view(val.shape[0], -1), act, rhxs
 
-
-class MicropolisBase_FullyConv_linVal(NNBase):
+class FullyConv(NNBase): 
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=1):
-        super(MicropolisBase_FullyConv_linVal, self).__init__(recurrent, hidden_size, hidden_size)
+            map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1):
+        super(FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
         num_chan = 64
+        num_actions = num_actions
+        self.map_width = map_width
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0.1),
+            nn.init.calculate_gain('relu'))
+        self.embed = init_(nn.Conv2d(num_inputs, num_chan, 1, 1, 0))
+        self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
+        self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
+        self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, 3, 3, 1))
+        init_ = lambda m: init(m,
+            nn.init.dirac_,
+            lambda x: nn.init.constant_(x, 0))
+        self.val = init_(nn.Conv2d(num_chan, 1, 3, 1, 1))
+        self.act = init_(nn.Conv2d(num_chan, num_actions, 1, 1, 0))
+
+    def forward(self, x, rhxs=None, masks=None):
+
+        x = F.relu(self.embed(x))
+        x = F.relu(self.k5(x))
+        x = F.relu(self.k3(x))
+        act = self.act(x)
+        for i in range(int(math.log(self.map_width, 2))):
+            x = F.relu(self.val_shrink(x))
+        val = self.val(x)
+       #print(act.shape)
+        return val.view(val.shape[0], -1), act, rhxs
+
+class FullyConv_linVal(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256,
+            map_width=20, num_actions=1, in_w=None, in_h=None, out_w=None, out_h=None):
+        super(FullyConv_linVal, self).__init__(recurrent, hidden_size, hidden_size)
+        num_chan = 32
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
@@ -500,7 +533,7 @@ class FractalBlock(NNBase):
         self.SKIPSQUEEZE = rule == 'wide1' # actually we mean a fractal rule that grows linearly in max depth but exponentially in number of columns, rather than vice versa, with number of recursions #TODO: combine the two rules
         if self.rule == 'wide1':
             self.n_cols = 2 ** (self.n_recs - 1)
-            print('I got {} cols'.format(self.n_cols))
+            print('{} cols'.format(self.n_cols))
         else:
             self.n_cols = self.n_recs
         self.COLUMNS = False # if true, we do not construct the network recursively, but as a row of concurrent columns

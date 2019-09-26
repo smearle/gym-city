@@ -145,26 +145,30 @@ if args.evaluate:
    #args.n_recs = saved_args.n_recs
     args.intra_shr = saved_args.intra_shr
     args.inter_shr = saved_args.inter_shr
+    print('steps: ', saved_args.max_step, '\n')
     evaluator = Evaluator(args, actor_critic, device, frozen=True)
     while True:
-        for i in range(-1, actor_critic.base.n_cols):
-            evaluator.evaluate(column=i)
+        if hasattr(actor_critic.base, 'n_cols'):
+            for i in range(-1, actor_critic.base.n_cols):
+                evaluator.evaluate(column=i)
 
 obs = env.reset()
 obs = torch.Tensor(obs)
 num_step = 0
 player_act = None
+env_done = False
 while True:
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(
             obs, recurrent_hidden_states, masks, deterministic=args.det,
             player_act=player_act)
 
-    if num_step >= 5000 or num_step > args.max_step:
+    if env_done:
         env.reset()
         num_step = 0
     # Obser reward and next obs
     obs, reward, done, infos = env.step(action)
+    env_done = done[0] # assume we have only one env.
     env.venv.venv.envs[0].render()
 
     player_act = None
