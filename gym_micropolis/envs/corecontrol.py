@@ -117,6 +117,9 @@ class MicropolisControl():
         self.win1=win1
         self.player_builds = []
 
+    def displayRewardWeights(self, reward_weights):
+        self.win1.agentPanel.displayRewardWeights(reward_weights)
+
     def layGrid(self, w, h):
 
         for i in range(self.MAP_X):

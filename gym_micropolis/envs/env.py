@@ -27,6 +27,9 @@ class MicropolisEnv(core.Env):
         self.max_static = 0
         self.player_step = False
         self.last_reward = 0
+        self.static_player_builds = False
+
+        self.num_reward_weights = 4
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
 
     def seed(self, seed=None):
@@ -41,12 +44,11 @@ class MicropolisEnv(core.Env):
     def setMapSize(self, size, max_step=None, rank=None, print_map=False,
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
-            power_puzzle=False, record=False):
+            power_puzzle=False, record=False, traffic_only=False, random_builds=False):
+        self.random_builds = random_builds
+        self.traffic_only = traffic_only
         if record: raise NotImplementedError
-        if max_step is not None:
-            self.max_step = max_step
-        else:
-            self.max_step = 1000
+        self.max_step = max_step
         self.empty_start = empty_start
         self.simple_reward = simple_reward
         self.power_puzzle = power_puzzle
@@ -57,7 +59,7 @@ class MicropolisEnv(core.Env):
             self.MAP_X = size[0]
             self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
-        self.micro = MicropolisControl(self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui, rank=rank,
+        self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui, rank=rank,
                 power_puzzle=power_puzzle)
         self.static_builds = True
         self.win1 = self.micro.win1
@@ -72,7 +74,7 @@ class MicropolisEnv(core.Env):
         self.num_density_maps = 3
         num_user_features = 1 # static builds
         # traffic, power, density
-        self.num_obs_channels = self.micro.map.num_features + self.num_scalars + self.num_density_maps + num_user_features
+        self.num_obs_channels = self.micro.map.num_features + self.num_scalars + self.num_density_maps + num_user_features + self.num_reward_weights
         #ac_low = np.zeros((3))
        #ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
        #self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
@@ -93,10 +95,16 @@ class MicropolisEnv(core.Env):
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
         self.print_map = print_map
         self.render_gui = render_gui
+        self.auto_reset = True
         self.mayor_rating = 50
         self.last_mayor_rating = self.mayor_rating
-        
         self.last_priority_road_net_size = 0
+
+    def setRewardWeights(self):
+        w = np.random.rand(self.num_reward_weights) * 4 - 1
+        self.reward_weights = w
+        self.micro.win1.agentPanel.displayRewardWeights(w)
+        return w
 
     def mapIntsToActionsChunk(self):
         ''' Unrolls the action vector into spatial chunks (does this matter empirically?).'''
@@ -135,7 +143,7 @@ class MicropolisEnv(core.Env):
         self.micro.close()
 
     def randomStaticStart(self):
-        num_static = 100
+        num_static = self.MAP_X * self.MAP_Y / 10
         lst_epi = 500
 #       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)   
 #       num_static = max(0, max_static)
@@ -171,6 +179,7 @@ class MicropolisEnv(core.Env):
                                   'NuclearPowerPlant', static_build=True)
 
     def reset(self):
+        self.setRewardWeights()
         if True:
            #if self.render_gui:
             if False:
@@ -182,7 +191,8 @@ class MicropolisEnv(core.Env):
         self.num_step = 0
         if self.power_puzzle:
             self.powerPuzzle()
-       #self.randomStaticStart()
+        if self.random_builds:
+            self.randomStaticStart()
         self.micro.engine.simTick()
         self.micro.setFunds(self.initFunds)
        #curr_funds = self.micro.getFunds()
@@ -207,13 +217,15 @@ class MicropolisEnv(core.Env):
     def getState(self):
         resPop, comPop, indPop = self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
-        scalars = [resPop, comPop, indPop, resDemand, comDemand, indDemand]
+        scalars = [resPop, comPop, indPop, resDemand, comDemand, indDemand, *self.reward_weights]
         return self.observation(scalars)
 
 
     def observation(self, scalars):
         state = self.micro.map.getMapState()
         density_maps = self.micro.getDensityMaps()
+       #if self.render_gui:
+       #    print(density_maps[2])
         road_networks = self.micro.map.road_networks
         if self.render_gui:
            #print(road_networks, self.micro.map.road_net_sizes)
@@ -227,9 +239,12 @@ class MicropolisEnv(core.Env):
         return state
 
     def getPop(self):
-        resPop, comPop, indPop = (1/4) * self.micro.getResPop(), \
-                                self.micro.getComPop(), \
-                                self.micro.getIndPop()
+        resPop, comPop, indPop = self.micro.getResPop(), \
+                                 self.micro.getComPop(), \
+                                 self.micro.getIndPop()
+        resPop, comPop, indPop = self.reward_weights[0] * resPop, \
+                                self.reward_weights[1] * comPop, \
+                                self.reward_weights[2] * indPop
         curr_pop = resPop + \
                    comPop + \
                    indPop
@@ -260,30 +275,59 @@ class MicropolisEnv(core.Env):
     def step(self, a, static_build=False):
        #self.micro.engine.setPasses(np.random.randint(1, 101))
         if self.player_step:
-            if self.player_step == a:
-                static_build=False
-            self.player_step = None
+           #if self.player_step == a:
+           #    static_build=False
+           #static_build = True
+            if self.static_player_builds:
+                static_build=True
+            a = self.player_step
+       #else:
+       #    a = 0
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
         reward = 0
-        self.curr_pop = self.getPopReward() ** 2
+        if self.traffic_only:
+            self.curr_pop = self.getPopReward() / 1
+           #self.curr_pop = 0
+        else:
+            self.curr_pop = self.getPop() #** 2
+           #self.curr_pop = self.getPopReward() #** 2
+        pop_reward = self.curr_pop
         self.curr_mayor_rating = self.getRating()
         self.state = self.getState()
         if not self.simple_reward:
-            reward = self.curr_pop  + (self.micro.total_traffic / 100)
-            if reward > 0 and self.micro.map.num_roads > 0: # to avoid one-road minima in early training
+           #if self.micro.total_traffic > 0:
+           #    print(self.micro.total_traffic)
+            if self.traffic_only:
+                traffic_reward = self.micro.total_traffic * 10
+               #traffic_reward = 0
+            else:
+               #traffic_reward = self.micro.total_traffic / 100
+                traffic_reward = self.reward_weights[3] * self.micro.total_traffic
+            if self.player_step:
+                print('pop reward: {}\n'
+                'traffic reward: {}'.format(pop_reward, traffic_reward))
+                self.player_step = None
+            if pop_reward > 0 and traffic_reward > 0:
+               #print(pop_reward, traffic_reward)
+                pass
+            reward = pop_reward  + traffic_reward
+            if reward > 0 and self.micro.map.num_roads > 0 and not self.traffic_only: # to avoid one-road minima in early training
                 max_net_1 = 0
                 max_net_2 = 0
                 for n in  self.micro.map.road_net_sizes.values():
                     if n > max_net_1:
                         max_net_1 = n
-                        max_net_2 = max_net_1
-                    elif n > max_net_2:
-                        max_net_2 = n
-                reward  += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
-                                                # proportion of max net to tal roads * 
-            reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-                         self.curr_pop / 2)
+                   #    max_net_2 = max_net_1
+                   #elif n > max_net_2:
+                   #    max_net_2 = n
+                reward += (max_net_1 / self.micro.map.num_roads) * min(100, reward)
+               #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
+                                                # proportion of max net to total roads * 
+            if not self.traffic_only:
+               #pass
+                reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
+                             self.curr_pop / 2)
         else:
             reward = self.curr_pop
         reward = reward / self.max_step
@@ -295,8 +339,9 @@ class MicropolisEnv(core.Env):
         self.last_pop = self.curr_pop
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
-        terminal = bankrupt or self.num_step >= self.max_step
-        if True and self.print_map:
+        terminal = (bankrupt or self.num_step >= self.max_step) and\
+            self.auto_reset
+        if self.render_gui and self.print_map:
            #if static_build:
            #    print('STATIC BUILD')
             self.printMap()
@@ -326,7 +371,7 @@ class MicropolisEnv(core.Env):
             np.set_printoptions(threshold=np.inf)
             zone_map = self.micro.map.zoneMap[-1]
             zone_map = np.array_repr(zone_map).replace(',  ','  ').replace('],\n', ']\n').replace(',\n', ',').replace(', ', ' ').replace('        ',' ').replace('         ','  ')
-            print('{}\npopulation: {}, traffic: {}, episode: {}, step: {}, reward: {}'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.curr_reward#, static_map
+            print('{} \n population: {}, traffic: {}, episode: {}, step: {}, reward: {} \n'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.curr_reward#, static_map
                 ))
            #print(self.micro.map.centers)
 
@@ -339,3 +384,14 @@ class MicropolisEnv(core.Env):
         for i in range(5000):
             env.step(env.action_space.sample())
 
+    def set_res_weight(self, val):
+        self.reward_weights[0] = val
+
+    def set_com_weight(self, val):
+        self.reward_weights[1] = val
+
+    def set_ind_weight(self, val):
+        self.reward_weights[2] = val
+
+    def set_traffic_weight(self, val):
+        self.reward_weights[3] = val

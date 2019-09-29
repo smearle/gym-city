@@ -9,13 +9,15 @@ from gym.spaces.box import Box
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+#from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 import csv
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
+        self.env = env
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
         if os.path.exists(logfile):
@@ -33,6 +35,9 @@ class MicropolisMonitor(bench.Monitor):
                         self.logger.writerow(row)
                     h += 1
             os.remove(old_log)
+
+    def setRewardWeights(self):
+        return self.env.setRewardWeights()
 
 
 try:

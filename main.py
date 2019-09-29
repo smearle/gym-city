@@ -242,6 +242,8 @@ def main():
             rollouts.obs[0].copy_(obs)
             rollouts.to(device)
             reset_eval = False
+       #if np.random.rand(1) < 0.1:
+       #    envs.venv.venv.remotes[1].send(('setRewardWeights', None))
         if args.model == 'FractalNet' and args.drop_path:
            #if args.intra_shr and args.inter_shr:
            #    n_recs = np.randint
