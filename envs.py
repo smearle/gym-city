@@ -89,8 +89,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 if rank == 0:
                     render = render_gui
                 else:render = False
-                env.setMapSize(map_width, print_map=print_map, render_gui=render, empty_start=not args.random_terrain, max_step=max_step, rank=rank, traffic_only=args.traffic_only, simple_reward=simple_reward, power_puzzle=power_puzzle, record=record, random_builds=args.random_builds)
-
+                env.setMapSize(map_width, print_map=print_map, render_gui=render, empty_start=not args.random_terrain, max_step=max_step, rank=rank, traffic_only=args.traffic_only, simple_reward=simple_reward, power_puzzle=power_puzzle, record=record, random_builds=args.random_builds, poet=args.poet)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:

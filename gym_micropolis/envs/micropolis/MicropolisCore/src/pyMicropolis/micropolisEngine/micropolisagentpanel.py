@@ -129,7 +129,7 @@ class MicropolisAgentPanel(gtk.Frame):
         scaleRes = gtk.HScale()
         self.scaleRes = scaleRes
         scaleRes.set_digits(10)
-        scaleRes.set_range(-1, 3)
+        scaleRes.set_range(-5, 5)
         scaleRes.set_increments(0.1,0.1)
         scaleRes.connect('value_changed', self.scaleResChanged)
         labelRes = gtk.Label('Residential:')
@@ -139,7 +139,7 @@ class MicropolisAgentPanel(gtk.Frame):
         scaleCom = gtk.HScale()
         self.scaleCom = scaleCom
         scaleCom.set_digits(10)
-        scaleCom.set_range(-1, 3)
+        scaleCom.set_range(-5, 5)
         scaleCom.set_increments(0.1,0.1)
         scaleCom.connect('value_changed', self.scaleComChanged)
         labelCom = gtk.Label('Commercial:')
@@ -149,7 +149,7 @@ class MicropolisAgentPanel(gtk.Frame):
         scaleInd = gtk.HScale()
         self.scaleInd = scaleInd
         scaleInd.set_digits(10)
-        scaleInd.set_range(-1, 3)
+        scaleInd.set_range(-5, 5)
         scaleInd.set_increments(0.1,0.1)
         scaleInd.connect('value_changed', self.scaleIndChanged)
         labelInd = gtk.Label('Industrial:')
@@ -159,14 +159,32 @@ class MicropolisAgentPanel(gtk.Frame):
         scaleTraffic = gtk.HScale()
         self.scaleTraffic = scaleTraffic
         scaleTraffic.set_digits(10)
-        scaleTraffic.set_range(-1, 3)
+        scaleTraffic.set_range(-5, 5)
         scaleTraffic.set_increments(0.1,0.1)
         scaleTraffic.connect('value_changed', self.scaleTrafficChanged)
         labelTraffic = gtk.Label('Traffic:')
         vbox3.pack_start(labelTraffic, False, False, 0)
         vbox3.pack_start(scaleTraffic, False, False, 0)
 
+        scalePlants = gtk.HScale()
+        self.scalePlants = scalePlants
+        scalePlants.set_digits(10)
+        scalePlants.set_range(-5, 5)
+        scalePlants.set_increments(0.1,0.1)
+        scalePlants.connect('value_changed', self.scalePlantsChanged)
+        labelPlants = gtk.Label('Plants:')
+        vbox3.pack_start(labelPlants, False, False, 0)
+        vbox3.pack_start(scalePlants, False, False, 0)
 
+        scaleRating = gtk.HScale()
+        self.scaleRating = scaleRating
+        scaleRating.set_digits(10)
+        scaleRating.set_range(-5, 5)
+        scaleRating.set_increments(0.1,0.1)
+        scaleRating.connect('value_changed', self.scaleRatingChanged)
+        labelRating = gtk.Label('Rating:')
+        vbox3.pack_start(labelRating, False, False, 0)
+        vbox3.pack_start(scaleRating, False, False, 0)
 
     def scaleResChanged(self, scale):
         self.engine.env.set_res_weight(scale.get_value())
@@ -180,11 +198,19 @@ class MicropolisAgentPanel(gtk.Frame):
     def scaleTrafficChanged(self, scale):
         self.engine.env.set_traffic_weight(scale.get_value())
 
+    def scalePlantsChanged(self, scale):
+        self.engine.env.set_plants_weight(scale.get_value())
+
+    def scaleRatingChanged(self, scale):
+        self.engine.env.set_rating_weight(scale.get_value())
+
     def displayRewardWeights(self, reward_weights):
-        self.scaleRes.set_value(reward_weights[0])
-        self.scaleCom.set_value(reward_weights[1])
-        self.scaleInd.set_value(reward_weights[2])
-        self.scaleTraffic.set_value(reward_weights[3])
+        self.scaleRes.set_value(reward_weights['res_pop'])
+        self.scaleCom.set_value(reward_weights['com_pop'])
+        self.scaleInd.set_value(reward_weights['ind_pop'])
+        self.scaleTraffic.set_value(reward_weights['traffic'])
+        self.scalePlants.set_value(reward_weights['num_plants'])
+        self.scaleRating.set_value(reward_weights['mayor_rating'])
 
     def reset_game(self):
         self.engine.env.reset()

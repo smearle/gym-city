@@ -12,20 +12,18 @@ import copy
 
 # from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
 from ConvLSTMCell import ConvLSTMCell
-from torchviz import make_dot
+#from torchviz import make_dot
 
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, base_kwargs=None, curiosity=False, algo='A2C', model='MicropolisBase', args=None):
+    def __init__(self, obs_shape, action_space, base_kwargs={}, curiosity=False, algo='A2C', model='MicropolisBase', args=None):
         super(Policy, self).__init__()
         self.obs_shape = obs_shape
         self.curiosity = curiosity
         self.args = args
-        if base_kwargs is None:
-            base_kwargs = {}
 
 
 
@@ -48,11 +46,14 @@ class Policy(nn.Module):
                 else:
                     base_model = globals()[args.model]
                 if args.model == 'FractalNet':
-                    base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
-                        'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
-                        'rule':args.rule
-                        }}
-                self.base = base_model(**base_kwargs)
+                    if base_kwargs is None:
+                        base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
+                            'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
+                            'rule':args.rule
+                            }}
+                if args.model == 'FullyConv':
+                    base_kwargs['val_stride'] = args.val_stride
+                self.base = base_model(**base_kwargs, n_chan=args.n_chan)
             print('BASE NETWORK: n', self.base)
             # if torch.cuda.is_available:
             #    print('device', torch.cuda.current_device())
@@ -117,11 +118,10 @@ class Policy(nn.Module):
         ''' assumes player actions can only occur on env rank 0'''
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         action_bin = None
-        if 'paint' in self.args.env_name.lower():
+        if 'paint' in self.args.env_name.lower():#or self.args.prebuild:
             dist = torch.distributions.binomial.Binomial(1, actor_features)
             action = dist.sample()
             action_log_probs = dist.log_prob(action)
-
 
         else:
             dist = self.dist(actor_features)
@@ -285,9 +285,10 @@ class FullyConv_Atari(NNBase):
 
 class FullyConv(NNBase): 
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1):
+            map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1,
+            n_chan=64, val_stride=3, prebuild=None):
         super(FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
-        num_chan = 64
+        num_chan = int(n_chan)
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
@@ -297,7 +298,7 @@ class FullyConv(NNBase):
         self.embed = init_(nn.Conv2d(num_inputs, num_chan, 1, 1, 0))
         self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
         self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
-        self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, 3, 3, 1))
+        self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, val_stride, val_stride, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
@@ -318,7 +319,7 @@ class FullyConv(NNBase):
 
 class FullyConv_linVal(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=1, in_w=None, in_h=None, out_w=None, out_h=None):
+            map_width=20, num_actions=1, in_w=None, in_h=None, out_w=None, out_h=None, num_chan=32, prebuild=None):
         super(FullyConv_linVal, self).__init__(recurrent, hidden_size, hidden_size)
         num_chan = 32
         num_actions = num_actions
@@ -451,15 +452,15 @@ class MicropolisBase_FullyConvRec(NNBase):
 
 class FractalNet(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
-                 map_width=16, n_conv_recs=2, n_recs=3,
+                 map_width=16, n_conv_recs=2, n_recs=5,
                  intra_shr=False, inter_shr=False,
                  num_actions=19, rule='extend',
-                 in_w=1, in_h=1, out_w=1, out_h=1):
+                 in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None):
         super(FractalNet, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
         # We can stack multiple Fractal Blocks
        #self.block_chans = block_chans = [32, 32, 16]
-        self.block_chans = block_chans = [32]
+        self.block_chans = block_chans = [n_chan]
         self.num_blocks = num_blocks = len(block_chans)
         self.conv_init_ = init_ = lambda m: init(m,
             nn.init.dirac_,
@@ -513,7 +514,7 @@ class FractalNet(NNBase):
 
 class FractalBlock(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512,
-                 map_width=16, n_recs=3, intra_shr=False,
+                 map_width=16, n_recs=5, intra_shr=False,
                  inter_shr=False, num_actions=19, rule='extend', n_chan=32,
                  n_chan_in=32, base=None):
 
@@ -581,7 +582,7 @@ class FractalBlock(NNBase):
                 subfractal = SubFractal
         n_recs = self.n_recs
         for i in range(n_recs):
-            f_c = subfractal(self, f_c, n_rec=i)
+            f_c = subfractal(self, f_c, n_rec=i, n_chan=self.n_chan)
         self.f_c = f_c
         self.subfractal = subfractal
         self.join_masks = self.f_c.join_masks
@@ -663,11 +664,11 @@ class FractalBlock(NNBase):
 
 
 class SubFractal(nn.Module):
-    def __init__(self, root, f_c, n_rec):
+    def __init__(self, root, f_c, n_rec, n_chan):
         super(SubFractal, self).__init__()
         self.n_recs = root.n_recs
         self.n_rec = n_rec
-        self.n_chan= 32
+        self.n_chan = n_chan
         self.join_layer = False
         init_ = root.c_init_
         if f_c is not None:
@@ -692,9 +693,9 @@ class SubFractal(nn.Module):
         ''' Return a copy of myself to be used as my twin.'''
         if self.n_rec > 0:
             f_c = self.f_c_A.mutate_copy(root)
-            twin = SubFractal(root, f_c, self.n_rec)
+            twin = SubFractal(root, f_c, self.n_rec, n_chan=self.n_chan)
         else:
-            twin = SubFractal(root, None, 0)
+            twin = SubFractal(root, None, 0, n_chan=self.n_chan)
         if root.intracol_share:
             twin.fixed = self.fixed
         return twin

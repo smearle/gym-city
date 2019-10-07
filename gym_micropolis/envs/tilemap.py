@@ -208,7 +208,8 @@ class TileMap(object):
                     net_i = self.road_networks[0, xi, yi]
                    #assert net_i != 0
                     if net_i == 0:
-                        print(self.road_networks, x, y, self.road_net_sizes, print('road label is on map, but not in size dict'))
+                        print(self.road_networks, x, y, self.road_net_sizes)
+                        print('road label is on map, but not in size dict')
                         raise Exception
                     elif self.road_networks[0, x, y] == 0: # set the build road to match a connecting piece
                         self.road_networks[0, x, y] = net_i

@@ -92,6 +92,8 @@ elif isinstance(env.action_space, gym.spaces.Box):
 if saved_args.model == 'fractal':
     saved_args.model = 'FractalNet'
 # We need to use the same statistics for normalization as used in training
+saved_args.n_chan = args.n_chan
+saved_args.val_stride = int(args.val_stride)
 actor_critic = Policy(env.observation_space.shape, env.action_space,
         base_kwargs={'map_width': args.map_width,
                      'recurrent': args.recurrent_policy,

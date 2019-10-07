@@ -12,7 +12,7 @@ class World:
         self.height = height
         self.prob_life = prob_life
         self.tick = 0
-        self.cells = np.full(shape=(width, height), fill_value=None)
+        self.cells = {}
         self.cached_directions = [
             [-1, 1],  [0, 1],  [1, 1], # above
             [-1, 0],           [1, 0], # sides
@@ -29,29 +29,27 @@ class World:
     def _tick(self):
         state_changed = False
         # First determine the action for all cells
-        for row in self.cells:
-            for cell in row:
-                alive_neighbours = self.alive_neighbours_around(cell)
-                if cell.alive is False and alive_neighbours == 3:
-                    cell.next_state = 1
+        for key,cell in self.cells.items():
+            alive_neighbours = self.alive_neighbours_around(cell)
+            if cell.alive is False and alive_neighbours == 3:
+                cell.next_state = 1
+                state_changed = True
+            elif alive_neighbours < 2 or alive_neighbours > 3:
+                if cell.alive:
                     state_changed = True
-                elif alive_neighbours < 2 or alive_neighbours > 3:
-                    if cell.alive:
-                        state_changed = True
-                    cell.next_state = 0
-                    if self.env.view_agent:
-                        self.env.agent_builds[cell.x, cell.y] = 0
+                cell.next_state = 0
+                if self.env.view_agent:
+                    self.env.agent_builds[cell.x, cell.y] = 0
         self.state_changed = state_changed
 
         # Then execute the determined action for all cells
-        for row in self.cells:
-            for cell in row:
-                if cell.next_state == 1:
-                    cell.alive = True
-                elif cell.next_state == 0:
-                    cell.alive = False
-                x, y = cell.x, cell.y
-                self.state[0][x][y] = int(cell.alive)
+        for key,cell in self.cells.items():
+            if cell.next_state == 1:
+                cell.alive = True
+            elif cell.next_state == 0:
+                cell.alive = False
+            x, y = cell.x, cell.y
+            self.state[0][x][y] = int(cell.alive)
 
         self.tick += 1
 
@@ -91,38 +89,36 @@ class World:
                 self.build_cell(x, y, alive)
 
     def prepopulate_neighbours(self):
-        for row in self.cells:
-            for cell in row:
-                self.neighbours_around(cell)
+        for key,cell in self.cells.items():
+            self.neighbours_around(cell)
 
     def add_cell(self, x, y, alive = False):
         cell = self.cell_at(x, y)
         if cell != None:
             self.state[0][x][y] = int(cell.alive)
             raise World.LocationOccupied
+
         cell = Cell(x, y, alive)
-        self.cells[x, y] = cell
+        self.cells[str(x)+'-'+str(y)] = cell
         self.state[0][x][y] = int(alive)
         return self.cell_at(x, y)
 
     def build_cell(self, x, y, alive=True):
         cell = Cell(x, y, alive)
-        self.cells[x, y] = cell
+        self.cells[str(x)+'-'+str(y)] = cell
         self.state[0][x][y] = int(alive)
         return self.cell_at(x, y)
 
     def cell_at(self, x, y):
-        x = x % self.width
-        y = y % self.width
-        return self.cells[x][y]
+        return self.state[x][y]
 
     def neighbours_around(self, cell):
         if cell.neighbours is None:
             cell.neighbours = []
             for rel_x,rel_y in self.cached_directions:
                 neighbour = self.cell_at(
-                    cell.x + rel_x,
-                    cell.y + rel_y
+                    (cell.x + rel_x),
+                    (cell.y + rel_y)
                 )
                 if neighbour is not None:
                     cell.neighbours.append(neighbour)
@@ -141,9 +137,6 @@ class World:
             if neighbour.alive:
                 alive_neighbours += 1
         return alive_neighbours
-
-    def set_state(self, state):
-        pass
 
 class Cell:
 

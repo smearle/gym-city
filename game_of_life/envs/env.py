@@ -29,6 +29,8 @@ class GameOfLifeEnv(core.Env):
 
     def configure(self, render=False, map_width=16, prob_life=20,
             record=None, max_step=None):
+        self.prebuild = True
+        self.prebuild_steps = 50
         self.size = size = map_width
         self.record = record
         if render and record:
@@ -91,8 +93,8 @@ class GameOfLifeEnv(core.Env):
                         self.actionsToInts[z, x, y] = i
                         i += 1
        #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
-        print(self.intsToActions)
-        print(self.actionsToInts)
+       #print(self.intsToActions)
+       #print(self.actionsToInts)
 
     def reset(self):
         self.step_count = 0
@@ -122,40 +124,61 @@ class GameOfLifeEnv(core.Env):
         cv2.waitKey(10)
 
     def step(self, a):
-        if self.player_builds:
-            a = self.player_builds[0]
-            self.player_builds = self.player_builds[1:]
-            self.player_step = True
+        if self.prebuild:
+            self.world.set_state(a)
         else:
-            self.player_step = False
-        if self.step_count == self.max_step:
-            self.gif_ep_count += 1
-        if a < 0:
-            PLAYER_DEL = True
-            a = -a
-        else:
-            PLAYER_DEL = False
-        z, act_x, act_y = self.intsToActions[a]
-        if self.player_step:
-            print('executing player build at: {}, {}'.format(act_x, act_y))
-        if PLAYER_DEL:
-            self.world.build_cell(act_x, act_y, alive=False)
-        else:
-            self.world.build_cell(act_x, act_y, alive=True)
-        if self.view_agent:
-            self.agent_builds[act_x, act_y] = 1
-        if self.render_gui:
-            self.render() # we need to render after moving in case the cell is lost immediately
-        self.world._tick()
-        reward = self.world.state.sum()
-        terminal = (self.step_count == self.max_step) #or\
-                    #reward < 2 # impossible situation for agent
-        reward = reward / self.max_step
-        self.step_count += 1
-        if self.render_gui:
-           #pass # leave this one to main loop
-            self.render() # deal with rendering now
+            if self.player_builds:
+                a = self.player_builds[0]
+                self.player_builds = self.player_builds[1:]
+                self.player_step = True
+            else:
+                self.player_step = False
+            if self.step_count == self.max_step:
+                self.gif_ep_count += 1
+            if a < 0:
+                PLAYER_DEL = True
+                a = -a
+            else:
+                PLAYER_DEL = False
+            z, act_x, act_y = self.intsToActions[a]
+            if self.player_step:
+                print('executing player build at: {}, {}'.format(act_x, act_y))
+            if PLAYER_DEL:
+                self.world.build_cell(act_x, act_y, alive=False)
+        if not self.prebuild or self.step_count < self.prebuild_steps:
+            if self.prebuild:
+                reward = self.world.state.sum() / self.max_step
+               #reward = 0
+            else:
+                reward = self.world.state.sum()
+            if not PLAYER_DEL:
+                self.world.build_cell(act_x, act_y, alive=True)
+                if self.view_agent:
+                    self.agent_builds[act_x, act_y] = 1
+            if self.render_gui:
+                self.render() # we need to render after moving in case the cell is lost immediately
+            terminal = False
+        if self.prebuild and self.step_count >= self.prebuild_steps:
+            reward = self.world.state.sum()
+            for i in range(self.max_step):
+                self.world._tick()
+                reward_i = self.world.state.sum()
+                reward += reward_i
+                if reward_i ==0 or i == self.max_step or not self.world.state_changed:
+                    break
+                if self.render_gui:
+                    self.render()
+            terminal=True
+        if not self.prebuild:
+            terminal = (self.step_count == self.max_step)  or\
+                         reward < 2 # impossible situation for agent
+            reward = reward / self.max_step
+            if self.render_gui:
+               #pass # leave this one to main loop
+                self.render() # deal with rendering now
         infos = {}
+        reward = float(reward) 
+        self.step_count += 1
         return (self.world.state, reward, terminal, infos)
 
     def player_build(self, event, x, y, flags, param):
