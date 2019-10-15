@@ -1,4 +1,6 @@
-# gym-micropolis
+This work was presented and demoed at the 2019 Experimental A.I. in Games (EXAG) workshop, an AIIDE workshop. You can read the paper here: http://www.exag.org/papers/EXAG_2019_paper_21.pdf
+
+# gym-city
 An interface with micropolis for city-building agents, packaged as an OpenAI gym environment.
 
 We can render a training agent in real time and interact with its gui. An experimental hack makes builds taken by the player during training appear to the agent as samples from its own action probability distribution, so that it backpropogates over its own weights as a result of our actions, allowing us to expose the agent to handpicked behaviours so that it might learn from them, or, as is more often the case, so that they may violently disrupt the course of its training. It would be nice to establish a baseline of performance without intervention, and compare to performance of agents trained alongside various strategies of human intervention.
@@ -15,9 +17,7 @@ I'm using acktr, but would like to develop and compare models using recurrent co
 
 Clone this repository, then 
 ```
-cd micropolis/MicropolisCore/src
-make
-sudo make install
+make install
 ```
 
 # Basic Use
@@ -32,27 +32,23 @@ m.layGrid(4, 4)
 
 To use micropolis as a gym environment, install [gym](https://github.com/openai/gym).
 
-To train an agent using ACKTR:
+To train an agent using A2C:
 
 ```
-python3 main.py --log-dir trained_models/acktr --algo acktr --model squeeze --num-process 24 --map-width 27 --render
+python3 main.py --experiment test_0 --algo a2c --model FullyConv --num-process 24 --map-width 16 --render
 ```
 
-To visualize reward: ` python -m visdom.server`
+To visualize reward, in a separate terminal run: ` python -m visdom.server`
 
 To run inference using the agent we have just trained:
 
 ```
-python3 enjoy.py --load-dir trained_models/acktr --map-width 27
+python3 enjoy.py --load-dir <directory/containing/MicropolisEnv-v0.tar> --map-width 16
 ```
-
-The neural architecture consists of a 3x3 convolution applied repeatedly to a fixed-size feature map - enacting a kind of neural game-of-life on the feature map.
-
-Reward corresponds to change in overall population, plus a bonus for each nonzero zone-specific population (or, alternatively, for even distribution of population between zones) - lest the bot exploit the game, since it is able to generate large residential populations without providing any employment.
 
 Generally, agents quickly discover the power-plant + residential zone pairing that creates initial populations, then spend very long at a local minima consisting of a gameboard tiled by residential zones, surrounding a single power plant. On more successful runs, the agent will make the leap toward a smattering of lone road tiles place next to zones, at least one per zone to maximize population density. 
 
-I'm interested in emergent transport networks, though it does not see that the simulation is complex enough for population-optimizing builds to require large-scale transport networks. 
+I'm interested in emergent transport networks, though it does not seem that the simulation is complex enough for population-optimizing builds to require large-scale transport networks. 
 
 We can, however, reward traffic density just enough for continuous/traffic-producing roads to be drawn between zones, but not so much that they billow out into swaths of traffic-exploiting asphalt badlands.
 
