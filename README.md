@@ -1,17 +1,13 @@
-This work was presented and demoed at the 2019 Experimental A.I. in Games (EXAG) workshop, an AIIDE workshop. You can read the paper here: http://www.exag.org/papers/EXAG_2019_paper_21.pdf
+The work in this repo was presented and demoed at the 2019 Experimental A.I. in Games (EXAG) workshop, an AIIDE workshop. You can read the paper here: http://www.exag.org/papers/EXAG_2019_paper_21.pdf
+
 
 # gym-city
-An interface with micropolis for city-building agents, packaged as an OpenAI gym environment.
+A Reinforcement Learning interface for variable-scale city-planing-type gym environments, including ![Micropolis] (open-source SimCity 1) and an interactive version of Conway's Game of Life.
 
-We can render a training agent in real time and interact with its gui. An experimental hack makes builds taken by the player during training appear to the agent as samples from its own action probability distribution, so that it backpropogates over its own weights as a result of our actions, allowing us to expose the agent to handpicked behaviours so that it might learn from them, or, as is more often the case, so that they may violently disrupt the course of its training. It would be nice to establish a baseline of performance without intervention, and compare to performance of agents trained alongside various strategies of human intervention.
+# Example
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
-
-The agent above has a sequential brain of convolutions on a 3D feaure map, where the dimensions corresponding to height and width in terms of game tiles are fixed. One 3x3 kernel convolution is repeated 20 times to allow input activations on opposite ends of the map to affect one another. Only the critic compresses this feature map at its output layer to predict the reward value of an observed map-state. 
-
-Currently I'm working on a model that uses repeated (de-)convolutions to compress and expand the feature map, combined with repeated convolutions on a fixed feature map, so that the agent might learn more abstract features of the map. 
-
-I'm using acktr, but would like to develop and compare models using recurrent convolutions, which are helpful for establishing long-range dependencies not just over time, but also, like the recurrent convolutions mentioned above, over map-space.
+ *Interacting with a trained agent*
 
 # Installation
 
