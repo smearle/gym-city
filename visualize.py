@@ -3,11 +3,9 @@
 # Thanks to the author and OpenAI team!
 
 import glob
-import json
 import os
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 import numpy as np

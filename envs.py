@@ -50,10 +50,10 @@ try:
 except ImportError:
     pass
 
-try:
-    import pybullet_envs
-except ImportError:
-    pass
+#try:
+#    import pybullet_envs
+#except ImportError:
+#    pass
 
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None, simple_reward=False, args=None):
