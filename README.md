@@ -13,6 +13,18 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 
 Clone this repository, then 
 ```
+cd gym-city
+```
+To install dependencied, use either anaconda:
+```
+conda create --name gc --file requirements.txt
+``` 
+or pip:
+```
+pip install -r requirements.txt
+```
+Then:
+```
 make install
 ```
 
