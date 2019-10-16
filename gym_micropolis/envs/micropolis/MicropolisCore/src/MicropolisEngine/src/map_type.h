@@ -70,12 +70,12 @@
 /**
  * Size of the world in horizontal direction.
  */
-static const int WORLD_W = 40;
+static const int WORLD_W = 120;
 
 /**
  * Size of the world in vertical direction.
  */
-static const int WORLD_H = 40;
+static const int WORLD_H = 100;
 
 
 ////////////////////////////////////////////////////////////////////////
