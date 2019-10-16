@@ -97,8 +97,9 @@ pyzmq=18.1.0=pypi_0
 qt=5.9.7=h5867ecd_1
 readline=7.0=h7b6447c_5
 requests=2.10.0=pypi_0
+require=0.1.1=pypi_0
 scipy=1.3.1=pypi_0
-setuptools=39.1.0=pypi_0
+setuptools=41.4.0=pypi_0
 sip=4.19.8=py36hf484d3e_0
 six=1.12.0=pypi_0
 sqlite=3.25.3=h7b6447c_0
