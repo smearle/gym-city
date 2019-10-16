@@ -2,7 +2,7 @@ The work in this repo was presented and demoed at the 2019 Experimental A.I. in 
 
 
 # gym-city
-A Reinforcement Learning interface for variable-scale city-planing-type gym environments, including ![Micropolis] (open-source SimCity 1) and an interactive version of Conway's Game of Life.
+A Reinforcement Learning interface for variable-scale city-planing-type gym environments, including [Micropolis] (open-source SimCity 1) and an interactive version of Conway's Game of Life.
 
 # Example
 
