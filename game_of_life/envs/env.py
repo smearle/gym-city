@@ -29,7 +29,7 @@ class GameOfLifeEnv(core.Env):
 
     def configure(self, render=False, map_width=16, prob_life=20,
             record=None, max_step=None):
-        self.prebuild = True
+        self.prebuild = False
         self.prebuild_steps = 50
         self.size = size = map_width
         self.record = record
@@ -170,6 +170,7 @@ class GameOfLifeEnv(core.Env):
                     self.render()
             terminal=True
         if not self.prebuild:
+            self.world._tick()
             terminal = (self.step_count == self.max_step)  or\
                          reward < 2 # impossible situation for agent
             reward = reward / self.max_step
