@@ -15,7 +15,7 @@ Clone this repository, then
 ```
 cd gym-city
 ```
-To install dependencied, use either anaconda:
+To install dependencies, use either anaconda:
 ```
 conda create --name gc --file requirements.txt
 ``` 
@@ -23,7 +23,7 @@ or pip:
 ```
 pip install -r requirements.txt
 ```
-Then:
+Then build Micropolis:
 ```
 make install
 ```
