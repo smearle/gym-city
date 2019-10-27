@@ -68,10 +68,10 @@ class SubprocVecEnv(VecEnv):
         return param_bounds
 
     def set_params(self, params):
-        worker = self.remotes[0]
-        worker.send(('set_params', params))
-        worker.recv()
-        return
+        for remote in self.remotes:
+            remote.send(('set_params', params))
+            remote.recv()
+            return
 
     def set_param_ranges(self, param_ranges):
         worker = self.remotes[0]

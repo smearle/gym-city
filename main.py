@@ -43,6 +43,9 @@ def init_agent(actor_critic, args):
                                curiosity=args.curiosity, args=args)
     return agent
 
+class Teacher():
+    def __init__(self):
+        pass
 
 def main():
     import random
