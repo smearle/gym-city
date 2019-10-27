@@ -38,11 +38,11 @@ class MicropolisEnv(core.Env):
                 'num_plants': 50,
                'mayor_rating': 100})
         self.param_bounds = {
-                'res_pop': (0, 1000),
-                'com_pop': (0, 1000),
-                'ind_pop': (0, 1000),
+                'res_pop': (0, 500),
+                'com_pop': (0, 100),
+                'ind_pop': (0, 100),
                 'traffic': (0, 1000),
-                'num_plants': (0, 1000),
+                'num_plants': (0, 100),
                 'mayor_rating': (0, 100)}
    ### MIXED
        #self.city_trgs = {

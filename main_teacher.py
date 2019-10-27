@@ -20,6 +20,8 @@ from utils import get_vec_normalize
 from visualize import Plotter
 from shutil import copyfile
 
+from teachDRL.teachers.algos.alp_gmm import ALPGMM
+
 import csv
 
 
@@ -120,7 +122,6 @@ def main():
                         args.gamma, args.log_dir, args.add_timestep, device, False, None,
 
                         args=args)
-    
 
     if isinstance(envs.observation_space, gym.spaces.Discrete):
         num_inputs = envs.observation_space.n
@@ -177,6 +178,7 @@ def main():
     else:
         saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
     vec_norm = get_vec_normalize(envs)
+    alp_gmm = None
     if os.path.exists(saved_model) and not args.overwrite:
         checkpoint = torch.load(saved_model)
         saved_args = checkpoint['args']
@@ -207,6 +209,7 @@ def main():
        #else:
 
        #    raise Exception
+        alp_gmm = checkpoint['alp_gmm']
 
         if vec_norm is not None:
             vec_norm.eval()
@@ -268,16 +271,23 @@ def main():
     num_env_params = len(env_param_bounds)
     env_param_ranges = [abs(v[1] - v[0]) for k, v in env_param_bounds.items()]
     env_param_lw_bounds = [v[0] for k, v in env_param_bounds.items()]
+    env_param_hi_bounds = [v[1] for k, v in env_param_bounds.items()]
+    if alp_gmm is None:
+        alp_gmm = ALPGMM(env_param_lw_bounds, env_param_hi_bounds)
+    params_vec = alp_gmm.sample_task()
     params = OrderedDict()
     print('\n env_param_bounds', env_param_bounds)
+    print(params_vec)
     trial_remaining = args.max_step
     trial_reward = 0
     for j in range(past_steps, num_updates):
         if trial_remaining == 0:
             trial_reward = trial_reward / args.num_processes
+            alp_gmm.update(params_vec, trial_reward)
             trial_reward = 0
             trial_remaining = args.max_step
-            params_vec = np.random.random(num_env_params) * env_param_ranges + env_param_lw_bounds
+            # sample random environment parameters
+            params_vec = alp_gmm.sample_task()
             prm_i = 0
             for k, v in env_param_bounds.items():
                 params[k] = params_vec[prm_i] 
@@ -456,7 +466,8 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 'model_state_dict': save_model.state_dict(),
                 'optimizer_state_dict': optim_save,
                 'ob_rms': ob_rms,
-                'args': args
+                'args': args,
+                'alp_gmm': alp_gmm
                 }, os.path.join(save_path, args.env_name + ".tar"))
 
            #save_model = [save_model,
