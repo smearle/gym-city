@@ -46,8 +46,7 @@ class Policy(nn.Module):
                 else:
                     base_model = globals()[args.model]
                 if args.model == 'FractalNet':
-                    if base_kwargs is None:
-                        base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
+                    base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
                             'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
                             'rule':args.rule
                             }}
@@ -452,7 +451,7 @@ class MicropolisBase_FullyConvRec(NNBase):
 
 class FractalNet(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
-                 map_width=16, n_conv_recs=2, n_recs=5,
+                 map_width=16, n_conv_recs=2, n_recs=1,
                  intra_shr=False, inter_shr=False,
                  num_actions=19, rule='extend',
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None):
@@ -592,7 +591,7 @@ class FractalBlock(NNBase):
         ''' Apply a fractal expansion without introducing new weight layers.
         For neuroevolution or inference.'''
         self.intracol_share = False
-        self.f_c = self.subfractal(self, self.f_c, n_rec=self.n_recs)
+        self.f_c = self.subfractal(self, self.f_c, n_rec=self.n_recs, n_chan=self.n_chan)
         setattr(self, 'fixed_{}'.format(self.n_recs), None)
         self.f_c.copy_child_weights()
         self.f_c.fixed = copy.deepcopy(self.f_c.fixed)

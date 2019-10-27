@@ -126,65 +126,96 @@ class MicropolisAgentPanel(gtk.Frame):
         self.checkButtonStaticBuilds.connect('toggled', lambda item: self.set_static())
         self.vbox1.pack_start(self.checkButtonStaticBuilds, False, False, 0)
 
+        pop_threshold = (0, 200)
+        traffic_range = (0, 500)
+        num_plants_range = (0, 200)
+        mayor_rating_range = (0, 100)
+
         scaleRes = gtk.HScale()
+        scaleResMetric = gtk.HScale()
         self.scaleRes = scaleRes
+        self.scaleResMetric = scaleResMetric
         scaleRes.set_digits(10)
-        scaleRes.set_range(-5, 5)
-        scaleRes.set_increments(0.1,0.1)
+        scaleResMetric.set_digits(10)
+        scaleRes.set_range(*pop_threshold)
+        scaleResMetric.set_range(*pop_threshold)
         scaleRes.connect('value_changed', self.scaleResChanged)
         labelRes = gtk.Label('Residential:')
         vbox2.pack_start(labelRes, False, False, 0)
         vbox2.pack_start(scaleRes, False, False, 0)
+        vbox2.pack_start(scaleResMetric, False, False, 0)
 
         scaleCom = gtk.HScale()
+        scaleComMetric = gtk.HScale()
         self.scaleCom = scaleCom
+        self.scaleComMetric = scaleComMetric
         scaleCom.set_digits(10)
-        scaleCom.set_range(-5, 5)
-        scaleCom.set_increments(0.1,0.1)
+        scaleCom.set_range(*pop_threshold)
         scaleCom.connect('value_changed', self.scaleComChanged)
+        scaleComMetric.set_digits(10)
+        scaleComMetric.set_range(*pop_threshold)
         labelCom = gtk.Label('Commercial:')
         vbox2.pack_start(labelCom, False, False, 0)
         vbox2.pack_start(scaleCom, False, False, 0)
+        vbox2.pack_start(scaleComMetric, False, False, 0)
 
         scaleInd = gtk.HScale()
         self.scaleInd = scaleInd
         scaleInd.set_digits(10)
-        scaleInd.set_range(-5, 5)
-        scaleInd.set_increments(0.1,0.1)
+        scaleInd.set_range(*pop_threshold)
+        scaleIndMetric = gtk.HScale()
+        self.scaleIndMetric = scaleIndMetric
+        scaleIndMetric.set_digits(10)
+        scaleIndMetric.set_range(*pop_threshold)
         scaleInd.connect('value_changed', self.scaleIndChanged)
         labelInd = gtk.Label('Industrial:')
         vbox2.pack_start(labelInd, False, False, 0)
         vbox2.pack_start(scaleInd, False, False, 0)
+        vbox2.pack_start(scaleIndMetric, False, False, 0)
 
         scaleTraffic = gtk.HScale()
         self.scaleTraffic = scaleTraffic
         scaleTraffic.set_digits(10)
-        scaleTraffic.set_range(-5, 5)
-        scaleTraffic.set_increments(0.1,0.1)
+        scaleTraffic.set_range(0, 500)
         scaleTraffic.connect('value_changed', self.scaleTrafficChanged)
+        scaleTrafficMetric = gtk.HScale()
+        self.scaleTrafficMetric = scaleTrafficMetric
+        scaleTrafficMetric.set_digits(10)
+        scaleTrafficMetric.set_range(0, 500)
         labelTraffic = gtk.Label('Traffic:')
         vbox3.pack_start(labelTraffic, False, False, 0)
         vbox3.pack_start(scaleTraffic, False, False, 0)
+        vbox3.pack_start(scaleTrafficMetric, False, False, 0)
 
         scalePlants = gtk.HScale()
         self.scalePlants = scalePlants
         scalePlants.set_digits(10)
-        scalePlants.set_range(-5, 5)
-        scalePlants.set_increments(0.1,0.1)
+        scalePlants.set_range(*num_plants_range)
+        scalePlantsMetric = gtk.HScale()
+        self.scalePlantsMetric = scalePlantsMetric
+        scalePlantsMetric.set_digits(10)
+        scalePlantsMetric.set_range(*num_plants_range)
         scalePlants.connect('value_changed', self.scalePlantsChanged)
         labelPlants = gtk.Label('Plants:')
         vbox3.pack_start(labelPlants, False, False, 0)
         vbox3.pack_start(scalePlants, False, False, 0)
+        vbox3.pack_start(scalePlantsMetric, False, False, 0)
 
         scaleRating = gtk.HScale()
         self.scaleRating = scaleRating
         scaleRating.set_digits(10)
-        scaleRating.set_range(-5, 5)
-        scaleRating.set_increments(0.1,0.1)
+        scaleRating.set_range(*mayor_rating_range)
+        scaleRatingMetric = gtk.HScale()
+        self.scaleRatingMetric = scaleRatingMetric
+        scaleRatingMetric.set_digits(10)
+        scaleRatingMetric.set_range(*mayor_rating_range)
         scaleRating.connect('value_changed', self.scaleRatingChanged)
         labelRating = gtk.Label('Rating:')
         vbox3.pack_start(labelRating, False, False, 0)
         vbox3.pack_start(scaleRating, False, False, 0)
+        vbox3.pack_start(scaleRatingMetric, False, False, 0)
+
+
 
     def scaleResChanged(self, scale):
         self.engine.env.set_res_weight(scale.get_value())
@@ -204,13 +235,35 @@ class MicropolisAgentPanel(gtk.Frame):
     def scaleRatingChanged(self, scale):
         self.engine.env.set_rating_weight(scale.get_value())
 
-    def displayRewardWeights(self, reward_weights):
-        self.scaleRes.set_value(reward_weights['res_pop'])
-        self.scaleCom.set_value(reward_weights['com_pop'])
-        self.scaleInd.set_value(reward_weights['ind_pop'])
-        self.scaleTraffic.set_value(reward_weights['traffic'])
-        self.scalePlants.set_value(reward_weights['num_plants'])
-        self.scaleRating.set_value(reward_weights['mayor_rating'])
+    def displayTrgs(self, trgs):
+        self.scaleRes.set_value(trgs['res_pop'])
+        self.scaleCom.set_value(trgs['com_pop'])
+        self.scaleInd.set_value(trgs['ind_pop'])
+        self.scaleTraffic.set_value(trgs['traffic'])
+        self.scalePlants.set_value(trgs['num_plants'])
+        self.scaleRating.set_value(trgs['mayor_rating'])
+
+    def displayMetrics(self, metrics):
+        self.scaleResMetric.set_value(metrics['res_pop'])
+        self.scaleComMetric.set_value(metrics['com_pop'])
+        self.scaleIndMetric.set_value(metrics['ind_pop'])
+        self.scaleTrafficMetric.set_value(metrics['traffic'])
+        self.scalePlantsMetric.set_value(metrics['num_plants'])
+        self.scaleRatingMetric.set_value(metrics['mayor_rating'])
+
+    def setMetricRanges(self, metric_ranges):
+        self.scaleResMetric.set_range(*metric_ranges['res_pop'])
+        self.scaleComMetric.set_range(*metric_ranges['com_pop'])
+        self.scaleIndMetric.set_range(*metric_ranges['ind_pop'])
+        self.scaleTrafficMetric.set_range(*metric_ranges['traffic'])
+        self.scalePlantsMetric.set_range(*metric_ranges['num_plants'])
+        self.scaleRes.set_range(*metric_ranges['res_pop'])
+        self.scaleCom.set_range(*metric_ranges['com_pop'])
+        self.scaleInd.set_range(*metric_ranges['ind_pop'])
+        self.scaleTraffic.set_range(*metric_ranges['traffic'])
+        self.scalePlants.set_range(*metric_ranges['num_plants'])
+        self.scaleRating.set_range(*metric_ranges['mayor_rating'])
+        self.scaleRating.set_range(*metric_ranges['mayor_rating'])
 
     def reset_game(self):
         self.engine.env.reset()

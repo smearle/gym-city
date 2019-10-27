@@ -2,7 +2,7 @@ import copy
 import glob
 import os
 import time
-from collections import deque
+from collections import deque, OrderedDict
 
 import gym
 import numpy as np
@@ -21,6 +21,8 @@ from visualize import Plotter
 from shutil import copyfile
 
 import csv
+
+
 
 
 def init_agent(actor_critic, args):
@@ -42,6 +44,33 @@ def init_agent(actor_critic, args):
                                acktr=True,
                                curiosity=args.curiosity, args=args)
     return agent
+
+#class Teacher():
+#    def __init__(self, env_param_bounds):
+#        '''
+#            - list of tuples corresponding to boundaries of parameters
+#        '''
+#        self.env_param_bounds = env_param_bounds
+#        self.num_env_params = len(env_param_bounds)
+#        env_param_ranges = [abs(env_param_bounds[i][1] - env_param_bounds[i][0]) 
+#                                for i in range(self.num_env_params)]
+#        self.prm_rew = {}
+#        self.prm_alp = {}
+#        # one episode per trial
+#        self.num_trials = args.num_frames / (args.max_step * args.num_processes)
+#
+#
+#    def teach(self):
+#        env_param_lw_bounds = [b for a, b in self.env_param_bounds]
+#        for i in range(self.num_trials):
+#            env_params = np.random(self.num_env_params) * env_param_ranges + env_param_lw_bounds
+#            epi_rew = self.student.train()
+#
+#
+#
+#class Student():
+#    def __init__(self):
+#        pass
 
 
 def main():
@@ -91,6 +120,7 @@ def main():
                         args.gamma, args.log_dir, args.add_timestep, device, False, None,
 
                         args=args)
+    
 
     if isinstance(envs.observation_space, gym.spaces.Discrete):
         num_inputs = envs.observation_space.n
@@ -151,11 +181,6 @@ def main():
         checkpoint = torch.load(saved_model)
         saved_args = checkpoint['args']
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
-       #for o, l in zip(agent.optimizer.state_dict, checkpoint['optimizer_state_dict']):
-       #    print(o, l)
-       #print(agent.optimizer.state_dict()['param_groups'])
-       #print('\n')
-       #print(checkpoint['model_state_dict'])
         actor_critic.to(device)
         actor_critic.cuda()
        #agent = init_agent(actor_critic, saved_args)
@@ -238,7 +263,27 @@ def main():
     else:
         n_cols = 0
         col_step = 1
+    env_param_bounds = envs.venv.venv.get_param_bounds()
+    envs.venv.venv.set_param_ranges(env_param_bounds)
+    num_env_params = len(env_param_bounds)
+    env_param_ranges = [abs(v[1] - v[0]) for k, v in env_param_bounds.items()]
+    env_param_lw_bounds = [v[0] for k, v in env_param_bounds.items()]
+    params = OrderedDict()
+    print('\n env_param_bounds', env_param_bounds)
+    trial_remaining = args.max_step
+    trial_reward = 0
     for j in range(past_steps, num_updates):
+        if trial_remaining == 0:
+            trial_reward = trial_reward / args.num_processes
+            trial_reward = 0
+            trial_remaining = args.max_step
+            params_vec = np.random.random(num_env_params) * env_param_ranges + env_param_lw_bounds
+            prm_i = 0
+            for k, v in env_param_bounds.items():
+                params[k] = params_vec[prm_i] 
+                prm_i += 1
+            envs.venv.venv.set_params(params)
+        trial_remaining -= args.num_steps
         if reset_eval:
             print('post eval reset')
             obs = envs.reset()
@@ -304,16 +349,22 @@ def main():
 
             for info in infos:
                 if 'episode' in info.keys():
-                    episode_rewards.append(info['episode']['r'])
+                    epi_reward = info['episode']['r']
+                    episode_rewards.append(epi_reward)
+                    trial_reward += epi_reward
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
+
+
             if args.curiosity:
                 rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks,
                                 feature_state, feature_state_pred, action_bin, action_dist_pred)
             else:
                 rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks)
+
+
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],
@@ -574,6 +625,7 @@ class Evaluator(object):
                 if self.args.num_processes == 1:
                     if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
                         self.eval_envs.venv.venv.render()
+                        self.eval_envs.venv.venv.rcv()
                     else:
                         pass
                        #self.eval_envs.venv.venv.envs[0].render()

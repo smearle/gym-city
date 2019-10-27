@@ -101,7 +101,9 @@ def get_parser():
     parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
     parser.add_argument('--overwrite', action='store_true', help='overwrite log files and saved model, optimizer')
     parser.add_argument('--max-step', type=int, default=200)
-    # Fractal Net
+
+    ######## Fractal Net ########
+
 #   parser.add_argument('--squeeze', action='store_true',
 #           help= 'squeeze outward columns of fractal by recurrent up and down convolution')
 #   parser.add_argument('--n-conv-recs', default=2,

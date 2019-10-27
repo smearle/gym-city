@@ -1,5 +1,6 @@
 from gym import core, spaces
 from gym.utils import seeding
+from collections import OrderedDict
 import numpy as np
 import math
  
@@ -28,14 +29,21 @@ class MicropolisEnv(core.Env):
         self.player_step = False
         self.static_player_builds = False
         self.num_reward_weights = 4
-    ### RES ONLY
-       #self.city_trgs = {
-       #        'res_pop': 1,
-       #        'com_pop': 0,
-       #        'ind_pop': 0,
-       #        'traffic': 0,
-       #        'num_plants': 0,
-       #        'mayor_rating': 0}
+    ### MIXED
+        self.city_trgs = OrderedDict({
+                'res_pop': 200,
+                'com_pop': 100,
+                'ind_pop': 100,
+                'traffic': 100,
+                'num_plants': 50,
+               'mayor_rating': 100})
+        self.param_bounds = {
+                'res_pop': (0, 1000),
+                'com_pop': (0, 1000),
+                'ind_pop': (0, 1000),
+                'traffic': (0, 1000),
+                'num_plants': (0, 1000),
+                'mayor_rating': (0, 100)}
    ### MIXED
        #self.city_trgs = {
        #        'res_pop': 1,
@@ -45,14 +53,14 @@ class MicropolisEnv(core.Env):
        #        'num_plants': 0,
        #        'mayor_rating': 0}
   ### Traffic
-        self.city_trgs = {
-                'res_pop': 1,
-                'com_pop': 4,
-                'ind_pop': 4,
-                'traffic': 5,
-                'num_plants': 0,
-                'mayor_rating':0
-                }
+       #self.city_trgs = {
+       #        'res_pop': 1,
+       #        'com_pop': 4,
+       #        'ind_pop': 4,
+       #        'traffic': 5,
+       #        'num_plants': 0,
+       #        'mayor_rating':0
+       #        }
         self.city_metrics = {}
         self.max_reward = 100
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
@@ -128,13 +136,13 @@ class MicropolisEnv(core.Env):
         self.last_mayor_rating = self.mayor_rating
         self.last_priority_road_net_size = 0
         self.display_city_trgs()
+    
+    def get_param_bounds(self):
+        return self.param_bounds
 
     def display_city_trgs(self):
-        self.win1.agentPanel.displayRewardWeights(self.city_trgs)
+        self.win1.agentPanel.displayTrgs(self.city_trgs)
         return self.city_trgs
-
-    def display_city_metrics(self):
-        pass
 
 
     def mapIntsToActionsChunk(self):
@@ -302,11 +310,13 @@ class MicropolisEnv(core.Env):
 
 #           return curr_pop
 
+    def set_metric_ranges(self, metric_ranges):
+        self.win1.agentPanel.setMetricRanges(metric_ranges)
+
 
     def set_city_trgs(self, trgs):
-        for k, v in dict(trgs._asdict()).items():
+        for k, v in trgs.items():
             self.city_trgs[k] = v
-        print('city trgs {}'.format(self.city_trgs))
 
     def get_city_metrics(self):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), \
@@ -315,6 +325,8 @@ class MicropolisEnv(core.Env):
         traffic = self.micro.total_traffic
         mayor_rating = self.getRating()
         num_plants = self.micro.map.num_plants
+       #if self.render_gui:
+       #    print(res_pop)
         city_metrics = {'res_pop': res_pop,
                 'com_pop': com_pop, 'ind_pop': ind_pop,
                 'traffic': traffic, 'num_plants': num_plants,
@@ -328,6 +340,9 @@ class MicropolisEnv(core.Env):
        #self.win1.agentPanel.show_mayorRating(mayor_rating)
 
         return city_metrics
+
+    def display_city_metrics(self):
+        self.win1.agentPanel.displayMetrics(self.city_metrics)
 
 
 
@@ -347,6 +362,8 @@ class MicropolisEnv(core.Env):
         self.micro.takeAction(a, static_build)
         self.state = self.getState()
         self.city_metrics = self.get_city_metrics()
+        if self.render_gui:
+            self.display_city_metrics()
 
        #if self.traffic_only:
        #    self.curr_pop = self.getPopReward() / 1
@@ -383,16 +400,19 @@ class MicropolisEnv(core.Env):
        #           #elif n > max_net_2:
        #           #    max_net_2 = n
         reward = 0
-        for k, v in self.city_trgs.items():
-            if k!= 'name':
-                reward += v * self.city_metrics[k]
-       #max_reward = self.max_reward
-       #self.loss = 0
        #for k, v in self.city_trgs.items():
-       #    self.loss += (v - self.city_metrics[k]) ** 2
-       #print('loss: {}'.format(self.loss))
+       #    if k!= 'name':
+       #        reward += v * self.city_metrics[k]
+        max_reward = self.max_reward
+        self.loss = 0
+        for k, v in self.city_trgs.items():
+            self.loss += (v - self.city_metrics[k]) ** 2
+            self.loss = math.sqrt(self.loss * 4)
+        self.curr_reward = reward =  max(0, max_reward - self.loss)
        #self.curr_reward = math.log10(self.loss * max_reward)
-       #print('reward: {}'.format(self.curr_reward))
+       #if self.render_gui:
+       #    print('loss: {}'.format(self.loss))
+       #    print('reward: {}'.format(self.curr_reward))
                #reward += (max_net_1 / self.micro.map.num_roads) * min(100, reward)
                #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
                                                 # proportion of max net to total roads * 
@@ -461,7 +481,7 @@ class MicropolisEnv(core.Env):
         self.city_trgs['traffic'] = val
 
     def set_plants_weight(self, val):
-        self.city_trgs['plants'] = val
+        self.city_trgs['num_plants'] = val
 
     def set_rating_weight(self,val):
-        self.city_trga['rating'] = val
+        self.city_trgs['mayor_rating'] = val

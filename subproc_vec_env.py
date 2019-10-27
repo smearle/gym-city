@@ -27,6 +27,15 @@ def worker(remote, parent_remote, env_fn_wrapper):
            #remote.send(vec)
         elif cmd == 'get_spaces':
             remote.send((env.observation_space, env.action_space))
+        elif cmd == 'get_param_bounds':
+            param_bounds = env.get_param_bounds()
+            remote.send(param_bounds)
+        elif cmd == 'set_params':
+            env.set_city_trgs(data)
+            remote.send(None)
+        elif cmd == 'set_param_ranges':
+            env.set_metric_ranges(data)
+            remote.send(None)
         else:
             raise NotImplementedError
 
@@ -51,6 +60,24 @@ class SubprocVecEnv(VecEnv):
         self.remotes[0].send(('get_spaces', None))
         observation_space, action_space = self.remotes[0].recv()
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
+
+    def get_param_bounds(self):
+        worker = self.remotes[0]
+        worker.send(('get_param_bounds', None))
+        param_bounds = worker.recv()
+        return param_bounds
+
+    def set_params(self, params):
+        worker = self.remotes[0]
+        worker.send(('set_params', params))
+        worker.recv()
+        return
+
+    def set_param_ranges(self, param_ranges):
+        worker = self.remotes[0]
+        worker.send(('set_param_ranges', param_ranges))
+        worker.recv()
+        return
 
     def step_async(self, actions):
         for remote, action in zip(self.remotes, actions):
