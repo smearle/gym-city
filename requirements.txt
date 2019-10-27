@@ -79,7 +79,7 @@ olefile=0.46=py36_0
 opencv-python=4.1.0.25=pypi_0
 openssl=1.1.1c=h7b6447c_1
 pcre=8.43=he6710b0_0
-pillow=6.2.0=pypi_0
+pillow>=6.2.0=pypi_0
 pip=18.1=py36_0
 progressbar2=3.47.0=pypi_0
 protobuf=3.10.0=pypi_0
