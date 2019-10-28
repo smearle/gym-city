@@ -58,7 +58,7 @@ class ALPGMM():
         # Number of Expectation-Maximization trials when fitting
         self.nb_em_init = 1 if "nb_em_init" not in params else params['nb_em_init']
         # Number of episodes between two fit of the GMM
-        self.fit_rate = 10 if "fit_rate" not in params else params['fit_rate']
+        self.fit_rate = 250 if "fit_rate" not in params else params['fit_rate']
         self.nb_random = self.fit_rate  # Number of bootstrapping episodes
 
         # Ratio of randomly sampled tasks VS tasks sampling using GMM
@@ -101,7 +101,8 @@ class ALPGMM():
 
         # Concatenate task vector with ALP dimension
         self.tasks_alps.append(np.array(task.tolist() + [self.alps[-1]]))
-        print('gmm means: {}'.format(self.gmm.means_))
+        if hasattr(self, 'gmm'):
+            print('gmm means: {}'.format(self.gmm.means_))
 
         if len(self.tasks) >= self.nb_random:  # If initial bootstrapping is done
             if (len(self.tasks) % self.fit_rate) == 0:  # Time to fit

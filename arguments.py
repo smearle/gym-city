@@ -135,9 +135,6 @@ def get_parser():
             help='episode begins with random static (unbulldozable) builds on the map')
     parser.add_argument('--random-terrain', action='store_true',
             help='episode begins on randomly generated micropolis terrain map')
-    parser.add_argument('--poet', action='store_true',
-            help='whether or not to include reward weights/target metrics \
-                    in Micropolis observation')
     parser.add_argument('--n-chan', type=int, default=64)
     parser.add_argument('--val-stride', default=3)
     parser.add_argument('--prebuild', default=False, help='GoL mini-game \

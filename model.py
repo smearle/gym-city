@@ -457,6 +457,7 @@ class FractalNet(NNBase):
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None):
         super(FractalNet, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
+        self.bn = nn.BatchNorm2d(num_inputs)
         # We can stack multiple Fractal Blocks
        #self.block_chans = block_chans = [32, 32, 16]
         self.block_chans = block_chans = [n_chan]
@@ -490,6 +491,7 @@ class FractalNet(NNBase):
         self.n_cols += 1
 
     def forward(self, x, rnn_hxs=None, masks=None):
+        x = self.bn(x)
         for i in range(self.num_blocks):
             block = getattr(self, 'block_{}'.format(i))
             x = F.relu(block(x, rnn_hxs, masks))

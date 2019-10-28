@@ -28,7 +28,6 @@ class MicropolisEnv(core.Env):
         self.max_static = 0
         self.player_step = False
         self.static_player_builds = False
-        self.num_reward_weights = 4
     ### MIXED
         self.city_trgs = OrderedDict({
                 'res_pop': 200,
@@ -317,6 +316,7 @@ class MicropolisEnv(core.Env):
     def set_city_trgs(self, trgs):
         for k, v in trgs.items():
             self.city_trgs[k] = v
+        print('set city trgs to: {}'.format(self.city_trgs))
 
     def get_city_metrics(self):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), \

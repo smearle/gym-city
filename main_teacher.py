@@ -86,6 +86,7 @@ def main():
     if args.recurrent_policy:
         assert args.algo in ['a2c', 'ppo'], \
             'Recurrent policy is not implemented for ACKTR'
+    args.poet = True # hacky
 
     num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
@@ -536,7 +537,7 @@ class Evaluator(object):
         self.args = args
         self.actor_critic = actor_critic
         self.num_eval_processes = args.num_processes
-        if envs:
+        if envs and False:
             self.eval_envs = envs
             self.vec_norm = vec_norm
         else:
