@@ -161,4 +161,9 @@ def get_parser():
         default=0.1,
         metavar='LR',
         help='lambda : balance between A2C & icm')
+
+    parser.add_argument(
+            '--poet',
+            action='store_true',
+            help='set targets for environment, replaces fixed reward function')
     return parser
