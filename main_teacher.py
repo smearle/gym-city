@@ -536,12 +536,12 @@ class Evaluator(object):
 
         self.args = args
         self.actor_critic = actor_critic
-        self.num_eval_processes = args.num_processes
         if envs and False:
+            self.num_eval_processes = args.num_processes
             self.eval_envs = envs
             self.vec_norm = vec_norm
         else:
-
+            self.num_eval_processes = 20
            #print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
            #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
             self.eval_envs = make_vec_envs(
