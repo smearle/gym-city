@@ -22,9 +22,6 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd == 'close':
             remote.close()
             break
-        elif cmd == 'setRewardWeights':
-            vec = env.setRewardWeights()
-           #remote.send(vec)
         elif cmd == 'get_spaces':
             remote.send((env.observation_space, env.action_space))
         elif cmd == 'get_param_bounds':
@@ -68,10 +65,14 @@ class SubprocVecEnv(VecEnv):
         return param_bounds
 
     def set_params(self, params):
+        i = 0
+        print('{} many remotes'.format(len(self.remotes)))
         for remote in self.remotes:
+            print('setting params {}'.format(i))
+            i += 1
             remote.send(('set_params', params))
             remote.recv()
-            return
+        return
 
     def set_param_ranges(self, param_ranges):
         worker = self.remotes[0]
