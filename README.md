@@ -14,6 +14,7 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 ## Ubuntu
 
 Make sure python >= 3.6 is installed.
+
 For Micropolis, we need the python3 header files, gtk and cairo, and swig:
 ```
 sudo apt-get install python3-dev libcairo2-dev python3-cairo-dev swig
@@ -24,21 +25,9 @@ Some additional python packages:
 ```
 pip3 install gym baselines graphviz torchsummary imutils visdom sklearn
 ```
-
 Clone this repository, then 
 ```
 cd gym-city
-```
-To install dependencies, use either anaconda:
-```
-conda create --name gc --file requirements.txt
-``` 
-or pip:
-```
-pip install -r requirements.txt
-```
-Then build Micropolis:
-```
 make install
 ```
 
