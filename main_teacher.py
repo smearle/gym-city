@@ -558,8 +558,8 @@ class Evaluator(object):
             self.vec_norm = vec_norm
         else:
             self.num_eval_processes = 20
-           #print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
-           #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
+            print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
+                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
             self.eval_envs = make_vec_envs(
                         self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
                         self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=self.args)
@@ -641,8 +641,10 @@ class Evaluator(object):
             eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
         i = 0
-        while len(eval_episode_rewards) < self.num_eval_processes:
-       #while i < self.args.max_step:
+        done = np.array([False])
+        # We let all of our eval_envs to play one episode. Does not support
+        # early reset.
+        while not done.all():
             with torch.no_grad():
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
                     obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
