@@ -11,6 +11,12 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 
 # Installation
 
+## Ubuntu
+
+Make sure python >= 3.6 is installed.
+For Micropolis, we need the python3 header files, gtk and cairo, and swig:
+'''sudo apt-get install python3-dev libcairo2-dev python3-cairo-dev swig'''
+
 Clone this repository, then 
 ```
 cd gym-city
