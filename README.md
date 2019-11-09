@@ -23,7 +23,7 @@ We also need [pytorch](https://pytorch.org/get-started/locally/), since we'll be
 
 Some additional python packages:
 ```
-pip3 install gym baselines graphviz torchsummary imutils visdom sklearn
+pip install gym baselines graphviz torchsummary imutils visdom sklearn matplotlib
 ```
 Clone this repository, then 
 ```

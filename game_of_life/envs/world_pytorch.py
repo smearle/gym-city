@@ -23,7 +23,7 @@ def init(module, weight_init, bias_init, gain=1):
 
 
 class World(nn.Module):
-    def __init__(self, map_width=16, map_height=16, prob_life=20, cuda=False, 
+    def __init__(self, map_width=16, map_height=16, prob_life=20, cuda=False,
                  num_proc=1, env=None):
         super(World, self).__init__()
         self.cuda = cuda

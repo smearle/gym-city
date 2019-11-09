@@ -54,7 +54,7 @@ def init_agent(actor_critic, args):
 #        '''
 #        self.env_param_bounds = env_param_bounds
 #        self.num_env_params = len(env_param_bounds)
-#        env_param_ranges = [abs(env_param_bounds[i][1] - env_param_bounds[i][0]) 
+#        env_param_ranges = [abs(env_param_bounds[i][1] - env_param_bounds[i][0])
 #                                for i in range(self.num_env_params)]
 #        self.prm_rew = {}
 #        self.prm_alp = {}
@@ -298,7 +298,7 @@ def main():
             params_vec = alp_gmm.sample_task()
             prm_i = 0
             for k, v in env_param_bounds.items():
-                params[k] = params_vec[prm_i] 
+                params[k] = params_vec[prm_i]
                 prm_i += 1
             envs.set_params(params)
         trial_remaining -= args.num_steps
@@ -347,7 +347,7 @@ def main():
 
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
-            if all(done): # usually this is done elsewhere...
+            if done.all(): # usually this is done elsewhere...
                 obs = envs.reset()
 
             player_act = None
@@ -380,6 +380,7 @@ def main():
                     trial_reward += epi_reward
 
             # If done then clean the history of observations.
+           #print('done shape: {}'.format(done.shape))
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
@@ -648,16 +649,18 @@ class Evaluator(object):
 
             # Observe reward and next obs
             obs, reward, done, infos = self.eval_envs.step(action)
+            if done.all(): # usually this is done elsewhere...
+                obs = self.eval_envs.reset()
             if self.args.render:
                 if self.args.num_processes == 1:
-                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name or 'GoL' in self.args.env_name):
                         self.eval_envs.venv.venv.render()
                         self.eval_envs.venv.venv.rcv()
                     else:
                         pass
                        #self.eval_envs.venv.venv.envs[0].render()
                 else:
-                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name or 'GoL in self.args.env_name'):
                         self.eval_envs.venv.venv.render()
                     else:
                         pass

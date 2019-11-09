@@ -46,14 +46,15 @@ class GoLMultiEnv(core.Env):
             except FileNotFoundError: pass
             except FileExistsError: pass
             try:
-                os.mkdir('{}/gifs/'.format(record)) # in case we are starting a new eval
+                os.mkdir('{}/gifs/'.format(record)) # in case we're starting a new eval
                 os.mkdir('{}/gifs/im/'.format(record))
             except FileExistsError:
                 pass
         self.param_bounds = OrderedDict({
                 'pop': (0, self.map_width * self.map_width)
                 })
-        self.max_loss = sum([abs(ub - lb) for lb, ub in self.param_bounds.values()]) * self.num_proc
+        self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
+        self.max_loss = sum(self.param_ranges) * self.num_proc
         self.params = OrderedDict({
                 'pop': self.map_width * self.map_width # aim for max possible pop
                 })
@@ -63,16 +64,17 @@ class GoLMultiEnv(core.Env):
         obs_shape = (num_proc, 1 + num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
         slice_shape = (num_proc, 1, size, size)
+        action_shape_2D = (num_proc, 1, size, size)
+        self.action_shape_2D = action_shape_2D
         low = np.zeros(obs_shape)
         high = np.ones(obs_shape)
-        i = 0 # bounds of scalars in observation space
-        # the scalar parameter channels come first, matched in step() 
-        for lb, ub in self.param_bounds.values():
-            low[:, i:i+1, :, :] = torch.Tensor(size=slice_shape).fill_(lb)
-            high[:, i:i+1, :, :] = torch.Tensor(size=slice_shape).fill_(ub)
-            i += 1
-        self.observation_space = spaces.Box(low,
-                high=np.ones(obs_shape), dtype=int)
+       #i = 0 # bounds of scalars in observation space
+       ## the scalar parameter channels come first, matched in step()
+       #for lb, ub in self.param_bounds.values():
+       #    low[:, i:i+1, :, :] = torch.Tensor(size=slice_shape).fill_(lb)
+       #    high[:, i:i+1, :, :] = torch.Tensor(size=slice_shape).fill_(ub)
+       #    i += 1
+        self.observation_space = spaces.Box(low, high, dtype=int)
         self.scalar_obs = torch.Tensor()
         self.action_space = spaces.Discrete(self.num_tools * size * size)
         self.view_agent = render
@@ -80,7 +82,7 @@ class GoLMultiEnv(core.Env):
         self.gif_ep_count = 0
         self.step_count = 0
         self.record_entropy = True
-        self.world = World(self.map_width, self.map_width, prob_life=prob_life, 
+        self.world = World(self.map_width, self.map_width, prob_life=prob_life,
                            cuda=cuda, num_proc=num_proc, env=self)
         self.state = None
         self.max_step = max_step
@@ -94,7 +96,7 @@ class GoLMultiEnv(core.Env):
         self.intsToActions = [[] for pixel in range(self.num_tools * self.map_width **2)]
         self.actionsToInts = np.zeros((self.num_tools, self.map_width, self.map_width))
 
-        self.terminal = np.zeros(self.observation_space.shape[0], dtype=bool)
+        self.terminal = np.zeros((self.num_proc, 1), dtype=bool)
 
         ''' Unrolls the action vector in the same order as the pytorch model
         on its forward pass.'''
@@ -107,17 +109,19 @@ class GoLMultiEnv(core.Env):
                         i += 1
        #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
        #print(self.intsToActions)
-        action_bin = torch.zeros(self.observation_space.shape)
+        action_bin = torch.zeros(action_shape_2D)
         # indexes of separate envs
-        action_ixs = torch.LongTensor(list(range(self.observation_space.shape[0]))).unsqueeze(1)
+        action_ixs = torch.LongTensor(list(range(self.num_proc))).unsqueeze(1)
         if self.cuda:
             action_bin = action_bin.cuda()
             action_ixs = action_ixs.cuda()
         action_bin = action_bin.view(action_bin.shape[0], -1)
-        self.action_bin, self.action_ixs = action_bin, action_ixs      #print(self.actionsToInts)
-
+        self.action_bin, self.action_ixs = action_bin, action_ixs
         # refill these rather than creating new ones each step
         self.scalar_obs = torch.zeros(scalar_obs_shape)
+        if self.cuda:
+            self.scalar_obs = self.scalar_obs.cuda()
+        self.set_params(self.params)
 
 
     def get_param_bounds(self):
@@ -132,6 +136,12 @@ class GoLMultiEnv(core.Env):
         print('updated env targets: {}'.format(params))
         self.params = params
         self.trg_param_vals = np.array([v for v in params.values()])
+        # update our scalar observation
+        # TODO: is there a quicker way, that scales to high number of params?
+        i = 0
+        for v in self.trg_param_vals:
+            unit_v = v / self.param_ranges[i]
+            self.scalar_obs[:,i:i+1].fill_(unit_v)
 
 
     def get_curr_param_vals(self):
@@ -144,13 +154,16 @@ class GoLMultiEnv(core.Env):
 
     def step(self, a):
         '''
-        a: 1D tensor of integers, corresponding to action indexes (in 
+        a: 1D tensor of integers, corresponding to action indexes (in
             flattened output space)
         '''
+       #print('world state shape: {}'.format(self.world.state.shape))
         a = a.long()
         actions = self.action_idx_to_tensor(a)
+       #print('actions shape: {}'.format(actions.shape))
         acted_state = self.world.state + actions
         new_state = torch.clamp(acted_state, 0, 1)
+       #print('new world state shape: {}'.format(new_state.shape))
         if self.render_gui:
             # where cells are already alive
             self.failed_builds = torch.where(acted_state == 2, self.world.y1, self.world.y0)
@@ -178,10 +191,16 @@ class GoLMultiEnv(core.Env):
             self.render() # deal with rendering now
         info = [{}]
         self.step_count += 1
-        if terminal.all():
-            self.reset()
-        obs = torch.cat(self.scalar_obs, self.world.state)
+        obs = self.get_obs()
         return (obs, reward, terminal, info)
+
+
+    def get_obs(self):
+        ''' Combine scalar slices with world state to form observation. The
+        agent sees only the target global parameters, leaving it to infer the
+        current global properties of the map.'''
+        obs = torch.cat((self.scalar_obs, self.world.state), dim=1)
+        return obs
 
 
     def action_idx_to_tensor(self, a):
@@ -193,7 +212,7 @@ class GoLMultiEnv(core.Env):
         action_i = torch.cat((action_ixs, a), 1)
         action_bin[action_i[:,0], action_i[:,1]] = 1
         action = action_bin
-        action = action.view(self.observation_space.shape)
+        action = action.view(self.action_shape_2D)
         return action
 
 
@@ -204,18 +223,20 @@ class GoLMultiEnv(core.Env):
        #print('shape in GoLMultiEnv: {}'.format(self.world.state.shape))
         if self.render_gui:
             self.render()
-        return self.world.state
+       #print('a scalar slice: {}'.format(self.scalar_obs[0][0]))
+        obs = self.get_obs()
+        return obs
 
 
     def render(self, mode=None):
         if self.step_count == 0:
-            rend_state = self.world.state[self.rend_idx]
+            rend_state = self.world.state[self.rend_idx].cpu()
             rend_state = np.vstack((rend_state * 255, rend_state * 255, rend_state * 255))
             rend_arr = rend_state
         if not self.step_count == 0:
-            rend_state = self.rend_state[self.rend_idx]
-            rend_failed = self.failed_builds[self.rend_idx]
-            rend_builds = self.agent_builds[self.rend_idx]
+            rend_state = self.rend_state[self.rend_idx].cpu()
+            rend_failed = self.failed_builds[self.rend_idx].cpu()
+            rend_builds = self.agent_builds[self.rend_idx].cpu()
             rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_failed = np.vstack((rend_failed * 0, rend_failed * 0, rend_failed * 1))
             rend_builds = np.vstack((rend_builds * 1, rend_builds * 0, rend_builds * 1))
