@@ -9,7 +9,10 @@ def _flatten_helper(T, N, _tensor):
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size, args=None):
         self.args=args
-        self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
+        if 'GoLMulti' in args.env_name: # since num_proc included in obs space
+            self.obs = torch.zeros(num_steps + 1, *obs_shape)
+        else:
+            self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         if type(recurrent_hidden_state_size) is tuple:
             self.recurrent_hidden_states = torch.zeros(num_steps + 1, 2, num_processes, *recurrent_hidden_state_size)
         else:

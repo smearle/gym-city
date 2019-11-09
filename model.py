@@ -21,11 +21,12 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, base_kwargs={}, curiosity=False, algo='A2C', model='MicropolisBase', args=None):
         super(Policy, self).__init__()
+        self.action_bin = None
         self.obs_shape = obs_shape
         self.curiosity = curiosity
         self.args = args
 
-
+        # TODO this info should come directly from the environment. Redundant code.
 
         if 'GameOfLife' in args.env_name:
             num_actions = 1
@@ -34,10 +35,15 @@ class Policy(nn.Module):
                 num_actions = 1
             else:
                 num_actions = 19
+        self.multi_env = False
+        if 'GoLMultiEnv' in args.env_name:
+            self.multi_env = True
+            num_actions = 1
+
         base_kwargs = {**base_kwargs, **{'num_actions': num_actions}}
 
 
-        if len(obs_shape) == 3:
+        if len(obs_shape) == 3 or len(obs_shape) == 4: # latter being the GoLMultiEnv case
             if curiosity:
                 self.base = MicropolisBase_ICM(obs_shape[0], **base_kwargs)
             else:
@@ -45,13 +51,12 @@ class Policy(nn.Module):
                     args.model = 'fixed'
                 else:
                     base_model = globals()[args.model]
+                base_kwargs['val_kern'] = args.val_kern
                 if args.model == 'FractalNet':
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
                             'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
                             'rule':args.rule
                             }}
-                if args.model == 'FullyConv':
-                    base_kwargs['val_stride'] = args.val_stride
                 self.base = base_model(**base_kwargs, n_chan=args.n_chan)
             print('BASE NETWORK: n', self.base)
             # if torch.cuda.is_available:
@@ -62,7 +67,7 @@ class Policy(nn.Module):
         elif len(obs_shape) == 1:
             self.base = MLPBase(**base_kwargs)
         else:
-            print('unsupported environment observation shape')
+            print('unsupported environment observation shape: {}'.format(obs_shape))
             raise NotImplementedError
 
         if action_space.__class__.__name__ == "Discrete":
@@ -116,7 +121,6 @@ class Policy(nn.Module):
             player_act=None, icm_enabled=False):
         ''' assumes player actions can only occur on env rank 0'''
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
-        action_bin = None
         if 'paint' in self.args.env_name.lower():#or self.args.prebuild:
             dist = torch.distributions.binomial.Binomial(1, actor_features)
             action = dist.sample()
@@ -144,17 +148,22 @@ class Policy(nn.Module):
                     action = dist.sample()
                 action_log_probs = dist.log_probs(action)
 
-
-            if icm_enabled:
+        if icm_enabled:
+            if self.action_bin is None:
                 action_bin = torch.zeros(dist.probs.shape)
-                action_ixs = torch.Tensor(list(range(dist.probs.size(0)))).unsqueeze(1).long()
-
-                action_i = torch.cat((action_ixs.cuda(), action.cuda()), 1)
-                action_bin[action_i[:,0], action_i[:,1]] = 1
-                if torch.cuda.current_device() > 0:
+                # indexes of separate envs
+                action_ixs = torch.LongTensor(list(range(dist.probs.size(0)))).unsqueeze(1)
+                if self.args.cuda:
                     action_bin = action_bin.cuda()
-
-
+                    action_ixs = action_ixs.cuda()
+                self.action_bin, self.action_ixs = action_bin, action_ixs
+            else:
+                action_bin, action_ixs = self.action_bin, self.action_ixs
+            action_i = torch.cat((action_ixs, action), 1)
+            action_bin[action_i[:,0], action_i[:,1]] = 1
+            if self.multi_env:
+                action = action_bin
+                action = action.view(actor_features.shape)
 
         return value, action, action_log_probs, rnn_hxs
 
@@ -285,7 +294,7 @@ class FullyConv_Atari(NNBase):
 class FullyConv(NNBase): 
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1,
-            n_chan=64, val_stride=3, prebuild=None):
+            n_chan=64, val_kern=3, prebuild=None):
         super(FullyConv, self).__init__(recurrent, hidden_size, hidden_size)
         num_chan = int(n_chan)
         num_actions = num_actions
@@ -297,7 +306,7 @@ class FullyConv(NNBase):
         self.embed = init_(nn.Conv2d(num_inputs, num_chan, 1, 1, 0))
         self.k5 = init_(nn.Conv2d(num_chan, num_chan, 5, 1, 2))
         self.k3 = init_(nn.Conv2d(num_chan, num_chan, 3, 1, 1))
-        self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, val_stride, val_stride, 1))
+        self.val_shrink = init_(nn.Conv2d(num_chan, num_chan, val_kern, 2, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
@@ -454,7 +463,8 @@ class FractalNet(NNBase):
                  map_width=16, n_conv_recs=2, n_recs=1,
                  intra_shr=False, inter_shr=False,
                  num_actions=19, rule='extend',
-                 in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None):
+                 in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None,
+                 val_kern=3):
         super(FractalNet, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
         self.bn = nn.BatchNorm2d(num_inputs)
@@ -477,8 +487,7 @@ class FractalNet(NNBase):
         self.n_cols = self.block_0.n_cols
 
         n_out_chan = block_chans[-1]
-        self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, 3, 2, 1))
-       #self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, 2, 2, 0))
+        self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, val_kern, 2, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
@@ -491,7 +500,8 @@ class FractalNet(NNBase):
         self.n_cols += 1
 
     def forward(self, x, rnn_hxs=None, masks=None):
-        x = self.bn(x)
+       #print(x[0][-2])
+       #x = self.bn(x)
         for i in range(self.num_blocks):
             block = getattr(self, 'block_{}'.format(i))
             x = F.relu(block(x, rnn_hxs, masks))

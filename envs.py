@@ -12,7 +12,9 @@ from baselines.common.vec_env import VecEnvWrapper
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+#from dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
+import time
 
 import csv
 class MicropolisMonitor(bench.Monitor):
@@ -38,6 +40,34 @@ class MicropolisMonitor(bench.Monitor):
 
     def setRewardWeights(self):
         return self.env.setRewardWeights()
+
+class MultiMonitor(MicropolisMonitor):
+    def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
+        super(MultiMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
+
+    def step(self, action):
+        if self.needs_reset:
+            raise RuntimeError("Tried to step environment that needs reset")
+        ob, rew, done, info = self.env.step(action)
+        self.rewards.append(rew.sum())
+        if done.all():
+            self.needs_reset = True
+            eprew = float(sum(self.rewards))
+            eplen = len(self.rewards) * self.env.num_proc
+            epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6)}
+            for k in self.info_keywords:
+                epinfo[k] = info[k]
+            self.episode_rewards.append(eprew)
+            self.episode_lengths.append(eplen)
+            self.episode_times.append(time.time() - self.tstart)
+            epinfo.update(self.current_reset_info)
+            if self.logger:
+                self.logger.writerow(epinfo)
+                self.f.flush()
+            info[0]['episode'] = epinfo
+        self.total_steps += 1
+       #print('dones: {}'.format(done))
+        return (ob, rew, done, info)
 
 
 try:
@@ -70,26 +100,32 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             else:
                 record_dir = None
             if 'gameoflife' in env_id.lower():
-               #print("ENV RANK: ", rank)
-                power_puzzle = False
-               #if args.power_puzzle:
-               #    power_puzzle = True
                 if rank == 0:
                     render = render_gui
-                else:render = False
+                else: render = False
                 env.configure(map_width=map_width, render=render,
                         prob_life = args.prob_life, record=record_dir,
                         max_step=max_step)
-
+            if 'golmulti' in env_id.lower():
+                multi_env = True
+                env.configure(map_width=map_width, render=render_gui,
+                        prob_life = args.prob_life, record=record_dir,
+                        max_step=max_step, cuda=args.cuda,
+                        num_proc=args.num_processes)
+            else:
+                multi_env = False
             if 'micropolis' in env_id.lower():
-                print("ENV RANK: ", rank)
                 power_puzzle = False
                 if args.power_puzzle:
                     power_puzzle = True
                 if rank == 0:
                     render = render_gui
                 else:render = False
-                env.setMapSize(map_width, print_map=print_map, render_gui=render, empty_start=not args.random_terrain, max_step=max_step, rank=rank, traffic_only=args.traffic_only, simple_reward=simple_reward, power_puzzle=power_puzzle, record=record, random_builds=args.random_builds, poet=args.poet)
+                env.setMapSize(map_width, print_map=print_map, render_gui=render,
+                        empty_start=not args.random_terrain, max_step=max_step,
+                        rank=rank, traffic_only=args.traffic_only,
+                        simple_reward=simple_reward, power_puzzle=power_puzzle,
+                        record=record, random_builds=args.random_builds, poet=args.poet)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
@@ -103,7 +139,11 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = AddTimestep(env)
 
         if log_dir is not None:
-            env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
+            if multi_env:
+                env = MultiMonitor(env, os.path.join(log_dir, str(rank)),
+                                allow_early_resets=True)
+            else:
+                env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
                                 allow_early_resets=True)
             
            #print(log_dir)
@@ -127,10 +167,15 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None, 
                   args=None):
+    if 'golmultienv' in env_name.lower():
+        num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
     envs = [make_env(env_name, seed, i, log_dir, add_timestep, 
-        allow_early_resets, map_width=args.map_width, render_gui=args.render, 
-        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, simple_reward=args.simple_reward, args=args)
+        allow_early_resets, map_width=args.map_width, render_gui=args.render,
+        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step,
+        simple_reward=args.simple_reward, args=args)
             for i in range(num_processes)]
+    if 'golmultienv' in env_name.lower():
+        return envs[0]()
 
     if len(envs) > 1:
         envs = SubprocVecEnv(envs)
@@ -213,9 +258,15 @@ class VecPyTorch(VecEnvWrapper):
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
+        ### micropolis ###
+        obs = np.array(obs)
+        ### ########## ###
         obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
+
+    def get_param_bounds(self):
+        return self.venv.get_param_bounds()
 
 
 class VecNormalize(VecNormalize_):
@@ -281,3 +332,12 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
     def close(self):
         self.venv.close()
+
+    def get_param_bounds(self):
+        return self.venv.get_param_bounds()
+
+    def set_param_bounds(self, bounds):
+        return self.venv.venv.set_param_bounds(bounds)
+
+    def set_params(self,params):
+        return self.venv.venv.set_params(params)

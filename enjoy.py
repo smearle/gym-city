@@ -28,9 +28,11 @@ import game_of_life
 
 env_name = args.load_dir.split('/')[-1].split('_')[0]
 if torch.cuda.is_available() and not args.no_cuda:
+    args.cuda = True
     device = torch.device('cuda')
     map_location = torch.device('cuda')
 else:
+    args.cuda = False
     device = torch.device('cpu')
     map_location = torch.device('cpu')
 try:
@@ -50,10 +52,12 @@ env_name = saved_args.env_name
 if 'Micropolis' in env_name:
     args.power_puzzle = saved_args.power_puzzle
 
+if not args.evaluate:
+    # assume we just want to observe/interact w/ a single env.
+    args.num_proc = 1
 dummy_args = args
-#dummy_args.render = False
 env = make_vec_envs(env_name, args.seed + 1000, 1,
-                    None, None, args.add_timestep, device='cpu',
+                    None, None, args.add_timestep, device=device,
                     allow_early_resets=False,
                     args=dummy_args)
 
@@ -74,10 +78,9 @@ elif isinstance(env.observation_space, gym.spaces.Box):
 if isinstance(env.action_space, gym.spaces.Discrete):
     out_w = 1
     out_h = 1
-    if 'Micropolis' in args.env_name:
-        print(dir(env.venv.venv.envs[0]))
+    if 'Micropolis' in env_name:
         num_actions = env.venv.venv.envs[0].num_tools
-    elif 'GameOfLife' in args.env_name:
+    elif 'GameOfLife' in env_name:
         num_actions = 1
     else:
         num_actions = env.action_space.n
@@ -93,7 +96,7 @@ if saved_args.model == 'fractal':
     saved_args.model = 'FractalNet'
 # We need to use the same statistics for normalization as used in training
 saved_args.n_chan = args.n_chan
-saved_args.val_stride = int(args.val_stride)
+saved_args.val_kern = int(args.val_kern)
 actor_critic = Policy(env.observation_space.shape, env.action_space,
         base_kwargs={'map_width': args.map_width,
                      'recurrent': args.recurrent_policy,
@@ -101,6 +104,7 @@ actor_critic = Policy(env.observation_space.shape, env.action_space,
             'out_w': out_w, 'out_h': out_h },
                      curiosity=args.curiosity, algo=saved_args.algo,
                      model=saved_args.model, args=saved_args)
+actor_critic.to(device)
 torch.nn.Module.dump_patches = True
 new_recs = args.n_recs - saved_args.n_recs
 actor_critic.load_state_dict(checkpoint['model_state_dict'])
@@ -117,8 +121,6 @@ if vec_norm is not None:
 
 recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)
-if args.evaluate:
-    actor_critic.to(device)
 
 #if render_func is not None:
 #    render_func('human')

@@ -127,13 +127,17 @@ def main():
     if isinstance(envs.observation_space, gym.spaces.Discrete):
         num_inputs = envs.observation_space.n
     elif isinstance(envs.observation_space, gym.spaces.Box):
+        if 'golmulti' in args.env_name.lower():
+            observation_space_shape = envs.observation_space.shape[1:]
+        else:
+            observation_space_shape = envs.observation_space.shape
         if len(envs.observation_space.shape) == 3:
-            in_w = envs.observation_space.shape[1]
-            in_h = envs.observation_space.shape[2]
+            in_w = observation_space_shape[1]
+            in_h = observation_space_shape[2]
         else:
             in_w = 1
             in_h = 1
-        num_inputs = envs.observation_space.shape[0]
+        num_inputs = observation_space_shape[0]
     if isinstance(envs.action_space, gym.spaces.Discrete):
         out_w = 1
         out_h = 1
@@ -249,6 +253,7 @@ def main():
                             recurrent_hidden_state_size, args=args)
 
     obs = envs.reset()
+    print('rollout obs shape:{} \nobs shape: {}'.format(rollouts.obs[0].shape, obs.shape))
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
@@ -267,8 +272,10 @@ def main():
     else:
         n_cols = 0
         col_step = 1
-    env_param_bounds = envs.venv.venv.get_param_bounds()
-    envs.venv.venv.set_param_ranges(env_param_bounds)
+    env_param_bounds = envs.get_param_bounds()
+    # in case we want to change this dynamically in the future (e.g., we may
+    # not know how much traffic the agent can possibly produce in Micropolis)
+    envs.set_param_bounds(env_param_bounds) # start with default bounds
     num_env_params = len(env_param_bounds)
     env_param_ranges = [abs(v[1] - v[0]) for k, v in env_param_bounds.items()]
     env_param_lw_bounds = [v[0] for k, v in env_param_bounds.items()]
@@ -293,7 +300,7 @@ def main():
             for k, v in env_param_bounds.items():
                 params[k] = params_vec[prm_i] 
                 prm_i += 1
-            envs.venv.venv.set_params(params)
+            envs.set_params(params)
         trial_remaining -= args.num_steps
         if reset_eval:
             print('post eval reset')
@@ -316,12 +323,14 @@ def main():
             with torch.no_grad():
                 if args.render:
                     if args.num_processes == 1:
-                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name):
+                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name
+                                or 'GoL' in args.env_name):
                             envs.venv.venv.render()
                         else:
                             pass
                     else:
-                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name):
+                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name
+                                or 'GoL' in args.env_name):
                             envs.render()
                             envs.venv.venv.render()
                         else:
@@ -338,12 +347,18 @@ def main():
 
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
+            if all(done): # usually this is done elsewhere...
+                obs = envs.reset()
 
             player_act = None
             if args.render:
-                if infos[0]:
-                    if 'player_move' in infos[0].keys():
-                        player_act = infos[0]['player_move']
+                if type(infos) is list:
+                    info = infos[0]
+                else:
+                    info = infos # when we're dealing with a multi-env
+                if info:
+                    if 'player_move' in info.keys():
+                        player_act = info['player_move']
             if args.curiosity:
                 # run icm
                 with torch.no_grad():

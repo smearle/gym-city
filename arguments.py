@@ -95,7 +95,7 @@ def get_parser():
                         help='port to run the server on (default: 8097)')
     parser.add_argument('--map-width', type=int, default=20,
                         help="width of micropolis map")
-    parser.add_argument('--model', default='fractal')
+    parser.add_argument('--model', default='FractalNet')
     parser.add_argument('--curiosity', action='store_true', default=False)
     parser.add_argument('--no-reward', action='store_true', default=False)
     parser.add_argument('--experiment_name', default='', help='a title for the experiment log')
@@ -136,7 +136,7 @@ def get_parser():
     parser.add_argument('--random-terrain', action='store_true',
             help='episode begins on randomly generated micropolis terrain map')
     parser.add_argument('--n-chan', type=int, default=64)
-    parser.add_argument('--val-stride', default=3)
+    parser.add_argument('--val-kern', default=3)
     parser.add_argument('--prebuild', default=False, help='GoL mini-game \
             encouraging blossoming structures')
 ########################################### Game of Life

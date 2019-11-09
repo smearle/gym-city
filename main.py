@@ -26,21 +26,21 @@ import csv
 def init_agent(actor_critic, args):
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
-                               args.entropy_coef, lr=args.lr,
-                               eps=args.eps, alpha=args.alpha,
-                               max_grad_norm=args.max_grad_norm,
-                               curiosity=args.curiosity, args=args)
+                args.entropy_coef, lr=args.lr,
+                eps=args.eps, alpha=args.alpha,
+                max_grad_norm=args.max_grad_norm,
+                curiosity=args.curiosity, args=args)
     elif args.algo == 'ppo':
         agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch, args.value_loss_coef, args.entropy_coef, lr=args.lr,
-                               eps=args.eps,
-                               max_grad_norm=args.max_grad_norm)
+                eps=args.eps,
+                max_grad_norm=args.max_grad_norm)
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
-                               args.entropy_coef, lr=args.lr,
-                               eps=args.eps, alpha=args.alpha,
-                               max_grad_norm=args.max_grad_norm,
-                               acktr=True,
-                               curiosity=args.curiosity, args=args)
+                args.entropy_coef, lr=args.lr,
+                eps=args.eps, alpha=args.alpha,
+                max_grad_norm=args.max_grad_norm,
+                acktr=True,
+                curiosity=args.curiosity, args=args)
     return agent
 
 class Teacher():
@@ -57,7 +57,7 @@ def main():
     assert args.algo in ['a2c', 'ppo', 'acktr']
     if args.recurrent_policy:
         assert args.algo in ['a2c', 'ppo'], \
-            'Recurrent policy is not implemented for ACKTR'
+                'Recurrent policy is not implemented for ACKTR'
 
     num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
@@ -91,20 +91,25 @@ def main():
         print('env name: {}'.format(args.env_name))
         num_actions = 1
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep, device, False, None,
+            args.gamma, args.log_dir, args.add_timestep, device, False, None,
 
-                        args=args)
+            args=args)
 
     if isinstance(envs.observation_space, gym.spaces.Discrete):
         num_inputs = envs.observation_space.n
     elif isinstance(envs.observation_space, gym.spaces.Box):
+        if 'golmulti' in args.env_name.lower():
+            multi_env = True
+            observation_space_shape = envs.observation_space.shape[1:]
+        else:
+            observation_space_shape = envs.observation_space.shape
         if len(envs.observation_space.shape) == 3:
-            in_w = envs.observation_space.shape[1]
-            in_h = envs.observation_space.shape[2]
+            in_w = observation_space_shape[1]
+            in_h = observation_space_shape[2]
         else:
             in_w = 1
             in_h = 1
-        num_inputs = envs.observation_space.shape[0]
+        num_inputs = observation_space_shape[0]
     if isinstance(envs.action_space, gym.spaces.Discrete):
         out_w = 1
         out_h = 1
@@ -171,7 +176,6 @@ def main():
             print('expanded net: \n{}'.format(actor_critic.base))
         past_steps = checkpoint['past_steps']
         ob_rms = checkpoint['ob_rms']
-
         past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
         print('Resuming from step {}'.format(past_steps))
 
@@ -241,6 +245,7 @@ def main():
     else:
         n_cols = 0
         col_step = 1
+    # Main training loop
     for j in range(past_steps, num_updates):
         if reset_eval:
             print('post eval reset')
@@ -248,12 +253,7 @@ def main():
             rollouts.obs[0].copy_(obs)
             rollouts.to(device)
             reset_eval = False
-       #if np.random.rand(1) < 0.1:
-       #    envs.venv.venv.remotes[1].send(('setRewardWeights', None))
         if args.model == 'FractalNet' and args.drop_path:
-           #if args.intra_shr and args.inter_shr:
-           #    n_recs = np.randint
-           #    model.set_n_recs()
             model.set_drop_path()
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
@@ -263,12 +263,12 @@ def main():
             with torch.no_grad():
                 if args.render:
                     if args.num_processes == 1:
-                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name):
+                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name or multi_env):
                             envs.venv.venv.render()
                         else:
                             pass
                     else:
-                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name):
+                        if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name or multi_env):
                             envs.render()
                             envs.venv.venv.render()
                         else:
@@ -285,12 +285,16 @@ def main():
 
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
+            if all(done): # usually this is done elsewhere...
+                obs = envs.reset()
 
             player_act = None
             if args.render:
-                if infos[0]:
-                    if 'player_move' in infos[0].keys():
-                        player_act = infos[0]['player_move']
+                pass
+               #print('infos be: {}'.format(infos))
+               #if infos[0]:
+               #    if 'player_move' in infos[0].keys():
+               #        player_act = infos[0]['player_move']
             if args.curiosity:
                 # run icm
                 with torch.no_grad():
@@ -304,7 +308,8 @@ def main():
                 if args.no_reward:
                     reward = 0
                 reward += intrinsic_reward.cpu()
-
+            if type(infos) is dict:
+                infos = [infos]
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
@@ -581,7 +586,7 @@ class Evaluator(object):
                         pass
                        #self.eval_envs.venv.venv.envs[0].render()
                 else:
-                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name or 'GoL' in self.args.env_name):
                         self.eval_envs.venv.venv.render()
                     else:
                         pass

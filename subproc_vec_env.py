@@ -28,10 +28,10 @@ def worker(remote, parent_remote, env_fn_wrapper):
             param_bounds = env.get_param_bounds()
             remote.send(param_bounds)
         elif cmd == 'set_params':
-            env.set_city_trgs(data)
+            env.set_params(data)
             remote.send(None)
-        elif cmd == 'set_param_ranges':
-            env.set_metric_ranges(data)
+        elif cmd == 'set_param_bounds':
+            env.set_param_bounds(data)
             remote.send(None)
         else:
             raise NotImplementedError
@@ -65,18 +65,14 @@ class SubprocVecEnv(VecEnv):
         return param_bounds
 
     def set_params(self, params):
-        i = 0
-        print('{} many remotes'.format(len(self.remotes)))
         for remote in self.remotes:
-            print('setting params {}'.format(i))
-            i += 1
             remote.send(('set_params', params))
             remote.recv()
         return
 
-    def set_param_ranges(self, param_ranges):
+    def set_param_bounds(self, param_bounds):
         worker = self.remotes[0]
-        worker.send(('set_param_ranges', param_ranges))
+        worker.send(('set_param_ranges', param_bounds))
         worker.recv()
         return
 
