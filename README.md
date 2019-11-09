@@ -18,10 +18,12 @@ For Micropolis, we need the python3 header files, gtk and cairo, and swig:
 ```
 sudo apt-get install python3-dev libcairo2-dev python3-cairo-dev swig
 ```
-We also need pytorch, since we'll be using it to build and train our agents, and tensorflow (since baselines depends on it).
+We also need [pytorch](https://pytorch.org/get-started/locally/), since we'll be using it to build and train our agents, and [tensorflow](https://www.tensorflow.org/install) (since baselines depends on it).
 
 Some additional python packages:
-```pip3 install gym baselines graphviz torchsummary imutils visdom sklearn```
+```
+pip3 install gym baselines graphviz torchsummary imutils visdom sklearn
+```
 
 Clone this repository, then 
 ```
