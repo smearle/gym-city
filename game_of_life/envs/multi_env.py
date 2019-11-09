@@ -1,0 +1,267 @@
+import gym
+from gym import core, spaces
+from gym.utils import seeding
+from .gol import utils
+import argparse
+import itertools
+
+import cv2
+import numpy as np
+import torch
+from torch import ByteTensor, Tensor
+from torch.nn import Conv2d, Parameter
+from torch.nn.init import zeros_
+from .world_pytorch import World
+from .im2gif import GifWriter
+import os
+import shutil
+from collections import OrderedDict
+
+
+class GoLMultiEnv(core.Env):
+    ''' Multiple simulations are processed at once by a Neural Network.
+    This single environment manages them all.
+    '''
+    def __init__(self):
+        self.num_tools = 1 # bring cell to life
+        self.player_step = False
+        self.player_builds = []
+        self.action_bin = None
+        self.rend_idx = 0
+
+    def configure(self, render=False, map_width=16, prob_life=20,
+             max_step=200, num_proc=1, record=None, cuda=False):
+        self.num_proc = num_proc
+        self.prebuild = False
+        self.prebuild_steps = 50
+        self.map_width = size = map_width
+        self.record = record
+        self.cuda = cuda
+
+        self.render_gui = render
+        if render and record:
+            self.gif_writer = GifWriter()
+            try:
+                os.mkdir('{}/gifs/im/'.format(record)) # in case we are continuing eval
+            except FileNotFoundError: pass
+            except FileExistsError: pass
+            try:
+                os.mkdir('{}/gifs/'.format(record)) # in case we are starting a new eval
+                os.mkdir('{}/gifs/im/'.format(record))
+            except FileExistsError:
+                pass
+        self.param_bounds = OrderedDict({
+                'pop': (0, self.map_width * self.map_width)
+                })
+        self.max_loss = sum([abs(ub - lb) for lb, ub in self.param_bounds.values()]) * self.num_proc
+        self.params = OrderedDict({
+                'pop': self.map_width * self.map_width # aim for max possible pop
+                })
+        self.trg_param_vals = np.array([v for v in self.params.values()])
+        self.curr_param_vals = np.zeros(shape=self.trg_param_vals.shape)
+        num_params = len(self.curr_param_vals)
+        obs_shape = (num_proc, 1 + num_params, size, size)
+        scalar_obs_shape = (num_proc, num_params, size, size)
+        slice_shape = (num_proc, 1, size, size)
+        low = np.zeros(obs_shape)
+        high = np.ones(obs_shape)
+        i = 0 # bounds of scalars in observation space
+        # the scalar parameter channels come first, matched in step() 
+        for lb, ub in self.param_bounds.values():
+            low[:, i:i+1, :, :] = torch.Tensor(size=slice_shape).fill_(lb)
+            high[:, i:i+1, :, :] = torch.Tensor(size=slice_shape).fill_(ub)
+            i += 1
+        self.observation_space = spaces.Box(low,
+                high=np.ones(obs_shape), dtype=int)
+        self.scalar_obs = torch.Tensor()
+        self.action_space = spaces.Discrete(self.num_tools * size * size)
+        self.view_agent = render
+
+        self.gif_ep_count = 0
+        self.step_count = 0
+        self.record_entropy = True
+        self.world = World(self.map_width, self.map_width, prob_life=prob_life, 
+                           cuda=cuda, num_proc=num_proc, env=self)
+        self.state = None
+        self.max_step = max_step
+
+        self.entropies = []
+        if self.render_gui:
+            #TODO: render function should deal with this somehow
+            cv2.namedWindow("Game of Life", cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback("Game of Life", self.player_build)
+
+        self.intsToActions = [[] for pixel in range(self.num_tools * self.map_width **2)]
+        self.actionsToInts = np.zeros((self.num_tools, self.map_width, self.map_width))
+
+        self.terminal = np.zeros(self.observation_space.shape[0], dtype=bool)
+
+        ''' Unrolls the action vector in the same order as the pytorch model
+        on its forward pass.'''
+        i = 0
+        for z in range(self.num_tools):
+            for x in range(self.map_width):
+                for y in range(self.map_width):
+                        self.intsToActions[i] = [z, x, y]
+                        self.actionsToInts[z, x, y] = i
+                        i += 1
+       #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
+       #print(self.intsToActions)
+        action_bin = torch.zeros(self.observation_space.shape)
+        # indexes of separate envs
+        action_ixs = torch.LongTensor(list(range(self.observation_space.shape[0]))).unsqueeze(1)
+        if self.cuda:
+            action_bin = action_bin.cuda()
+            action_ixs = action_ixs.cuda()
+        action_bin = action_bin.view(action_bin.shape[0], -1)
+        self.action_bin, self.action_ixs = action_bin, action_ixs      #print(self.actionsToInts)
+
+        # refill these rather than creating new ones each step
+        self.scalar_obs = torch.zeros(scalar_obs_shape)
+
+
+    def get_param_bounds(self):
+        return self.param_bounds
+
+
+    def set_param_bounds(self, bounds):
+        self.param_bounds = bounds
+
+
+    def set_params(self, params):
+        print('updated env targets: {}'.format(params))
+        self.params = params
+        self.trg_param_vals = np.array([v for v in params.values()])
+
+
+    def get_curr_param_vals(self):
+        self.curr_param_vals[0] = self.get_pop()
+
+
+    def get_pop(self):
+        return  self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
+
+
+    def step(self, a):
+        '''
+        a: 1D tensor of integers, corresponding to action indexes (in 
+            flattened output space)
+        '''
+        a = a.long()
+        actions = self.action_idx_to_tensor(a)
+        acted_state = self.world.state + actions
+        new_state = torch.clamp(acted_state, 0, 1)
+        if self.render_gui:
+            # where cells are already alive
+            self.failed_builds = torch.where(acted_state == 2, self.world.y1, self.world.y0)
+            self.agent_builds = actions - self.failed_builds
+            assert torch.sum(self.failed_builds + self.agent_builds) == self.num_proc
+            self.rend_state = self.world.state - actions
+            self.render()
+        self.world.state = new_state
+        self.world._tick()
+        if self.render_gui:
+            self.render()
+        self.get_curr_param_vals()
+        loss = abs(self.curr_param_vals - self.trg_param_vals)
+        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step))
+       #reward = self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
+        if self.step_count == self.max_step:
+            terminal = np.ones(self.num_proc, dtype=bool)
+        else:
+            terminal = self.terminal
+                   # reward < 2 # impossible situation for agent
+        # reward: average fullness of board
+       #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
+        if self.render_gui:
+           #pass # leave this one to main loop
+            self.render() # deal with rendering now
+        info = [{}]
+        self.step_count += 1
+        if terminal.all():
+            self.reset()
+        obs = torch.cat(self.scalar_obs, self.world.state)
+        return (obs, reward, terminal, info)
+
+
+    def action_idx_to_tensor(self, a):
+        '''
+        a: tensor of size (num_proc, 1) containing action indexes
+        '''
+        self.action_bin.fill_(0)
+        action_bin, action_ixs = self.action_bin, self.action_ixs
+        action_i = torch.cat((action_ixs, a), 1)
+        action_bin[action_i[:,0], action_i[:,1]] = 1
+        action = action_bin
+        action = action.view(self.observation_space.shape)
+        return action
+
+
+    def reset(self):
+        self.step_count = 0
+        self.world.repopulate_cells()
+       #self.world.prepopulate_neighbours()
+       #print('shape in GoLMultiEnv: {}'.format(self.world.state.shape))
+        if self.render_gui:
+            self.render()
+        return self.world.state
+
+
+    def render(self, mode=None):
+        if self.step_count == 0:
+            rend_state = self.world.state[self.rend_idx]
+            rend_state = np.vstack((rend_state * 255, rend_state * 255, rend_state * 255))
+            rend_arr = rend_state
+        if not self.step_count == 0:
+            rend_state = self.rend_state[self.rend_idx]
+            rend_failed = self.failed_builds[self.rend_idx]
+            rend_builds = self.agent_builds[self.rend_idx]
+            rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
+            rend_failed = np.vstack((rend_failed * 0, rend_failed * 0, rend_failed * 1))
+            rend_builds = np.vstack((rend_builds * 1, rend_builds * 0, rend_builds * 1))
+            rend_arr = rend_state + rend_failed + rend_builds
+        rend_arr = rend_arr.transpose(2, 1, 0)
+        cv2.imshow("Game of Life", rend_arr)
+       #print(self.world.state[3][0])
+        if self.record and not self.gif_writer.done:
+            gif_dir = ('{}/gifs/'.format(self.record))
+            im_dir = os.path.join(gif_dir, 'im')
+            im_path = os.path.join(im_dir, 'e{:02d}_s{:04d}.png'.format(self.gif_ep_count, self.step_count))
+           #print('saving frame at {}'.format(im_path))
+            cv2.imwrite(im_path, rend_arr)
+            if self.gif_ep_count == 0 and self.step_count == self.max_step:
+                self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
+                self.gif_ep_count = 0
+        cv2.waitKey(1)
+
+
+    def player_build(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            a = int(self.actionsToInts[0][x][y])
+            self.player_builds += [a]
+            print('q\'d player build at: {}, {}'.format(x, y))
+        elif event == cv2.EVENT_MBUTTONDOWN:
+            a = int(self.actionsToInts[0][x][y])
+            self.player_builds += [-a]
+            print('q\'d player delete at: {}, {}'.format(x, y))
+
+
+    def seed(self, seed=None):
+        self.np_random, seed1 = seeding.np_random(seed)
+        # Derive a random seed. This gets passed as a uint, but gets
+        # checked as an int elsewhere, so we need to keep it below
+        # 2**31.
+        seed2 = seeding.hash_seed(seed1 + 1) % 2**31
+        np.random.seed(seed)
+        self.world.seed(seed)
+        return [seed1, seed2]
+
+
+cv2.destroyAllWindows()
+
+def main():
+    env = GoLMultiEnv()
+    env.configure(render=True)
+    while True:
+        env.step(0)
+

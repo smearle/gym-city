@@ -42,7 +42,6 @@ class GameOfLifeEnv(core.Env):
             try:
                 os.mkdir('{}/gifs/'.format(record)) # in case we are starting a new eval
                 os.mkdir('{}/gifs/im/'.format(record))
-                print('madedatfoldo \n')
             except FileExistsError:
                 pass
         self.observation_space = spaces.Box(low=np.zeros((1, size, size)),
@@ -95,6 +94,7 @@ class GameOfLifeEnv(core.Env):
        #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
        #print(self.intsToActions)
        #print(self.actionsToInts)
+        print('render: ', self.render_gui)
 
     def reset(self):
         self.step_count = 0
@@ -118,10 +118,9 @@ class GameOfLifeEnv(core.Env):
            #print('saving frame at {}'.format(im_path))
             cv2.imwrite(im_path, rend_arr)
             if self.gif_ep_count == 0 and self.step_count == self.max_step:
-                print('DATBOI \n \n')
                 self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
                 self.gif_ep_count = 0
-        cv2.waitKey(10)
+        cv2.waitKey(1)
 
     def step(self, a):
         if self.prebuild:
@@ -173,7 +172,7 @@ class GameOfLifeEnv(core.Env):
             self.world._tick()
             terminal = (self.step_count == self.max_step)  or\
                          reward < 2 # impossible situation for agent
-            reward = reward / self.max_step
+            reward = reward * 100 / (self.max_step * self.size * self.size)
             if self.render_gui:
                #pass # leave this one to main loop
                 self.render() # deal with rendering now
@@ -204,3 +203,10 @@ class GameOfLifeEnv(core.Env):
         return [seed1, seed2]
 
 cv2.destroyAllWindows()
+
+def main():
+    env = GameOfLifeEnv()
+    env.configure(render=True)
+    while True:
+        env.step(0)
+

@@ -43,6 +43,8 @@ class MicropolisEnv(core.Env):
                 'traffic': (0, 1000),
                 'num_plants': (0, 100),
                 'mayor_rating': (0, 100)}
+        # not necessarily true but should take care of most cases
+        self.max_loss = sum([abs(ub - lb) for lb, ub in self.param_bounds.values()])
    ### MIXED
        #self.city_trgs = {
        #        'res_pop': 1,
@@ -77,6 +79,7 @@ class MicropolisEnv(core.Env):
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
             power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False):
+        self.rank = rank
         self.random_builds = random_builds
         self.traffic_only = traffic_only
         if record: raise NotImplementedError
@@ -116,7 +119,7 @@ class MicropolisEnv(core.Env):
         self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
         self.last_state = None
         self.metadata = {'runtime.vectorized': True}
- 
+        # TODO: TOTALLY WRONG! IS THIS NOT CLIPPING OUR SCALAR OBSERVATION CHANNELS?! 
         low_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=-1)
         high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
         # TODO: can/should we use Tuples of MultiBinaries instead, for greater efficiency?
@@ -255,7 +258,7 @@ class MicropolisEnv(core.Env):
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
         scalars = [res_pop, com_pop, ind_pop, resDemand, comDemand, indDemand]
         if self.poet:
-            trg_metrics = [v for v in self.city_trgs.values()]
+            trg_metrics = [v for k, v in self.city_trgs.items()]
             scalars += trg_metrics
         return self.observation(scalars)
 
@@ -309,14 +312,16 @@ class MicropolisEnv(core.Env):
 
 #           return curr_pop
 
-    def set_metric_ranges(self, metric_ranges):
-        self.win1.agentPanel.setMetricRanges(metric_ranges)
+    def set_param_bounds(self, bounds):
+        print('setting visual param bounds (TODO: forreal')
+        self.win1.agentPanel.setMetricRanges(bounds)
 
 
-    def set_city_trgs(self, trgs):
+    def set_params(self, trgs):
         for k, v in trgs.items():
             self.city_trgs[k] = v
-        print('set city trgs to: {}'.format(self.city_trgs))
+        self.display_city_trgs()
+       #print('set city trgs of env {} to: {}'.format(self.rank, self.city_trgs))
 
     def get_city_metrics(self):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), \
@@ -325,20 +330,10 @@ class MicropolisEnv(core.Env):
         traffic = self.micro.total_traffic
         mayor_rating = self.getRating()
         num_plants = self.micro.map.num_plants
-       #if self.render_gui:
-       #    print(res_pop)
         city_metrics = {'res_pop': res_pop,
                 'com_pop': com_pop, 'ind_pop': ind_pop,
                 'traffic': traffic, 'num_plants': num_plants,
                 'mayor_rating': mayor_rating}
-
-       #self.win1.agentPanel.show_resPop(res_pop)
-       #self.win1.agentPanel.show_comPop(com_pop)
-       #self.win1.agentPanel.show_indPop(ind_pop)
-       #self.win1.agentPanel.show_traffic(traffic)
-       #self.win1.agentPanel.show_numPlants(num_plants)
-       #self.win1.agentPanel.show_mayorRating(mayor_rating)
-
         return city_metrics
 
     def display_city_metrics(self):
@@ -361,6 +356,7 @@ class MicropolisEnv(core.Env):
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
         self.state = self.getState()
+       #print(self.state[-2])
         self.city_metrics = self.get_city_metrics()
         if self.render_gui:
             self.display_city_metrics()
@@ -404,22 +400,22 @@ class MicropolisEnv(core.Env):
        #    if k!= 'name':
        #        reward += v * self.city_metrics[k]
         max_reward = self.max_reward
-        self.loss = 0
+        loss = 0
         for k, v in self.city_trgs.items():
-            self.loss += (v - self.city_metrics[k]) ** 2
-            self.loss = math.sqrt(self.loss * 4)
-        self.curr_reward = reward =  max(0, max_reward - self.loss)
+            loss += abs(v - self.city_metrics[k])
+        reward = (self.max_loss - loss) * max_reward / self.max_loss
+        self.curr_reward = reward
        #self.curr_reward = math.log10(self.loss * max_reward)
        #if self.render_gui:
        #    print('loss: {}'.format(self.loss))
        #    print('reward: {}'.format(self.curr_reward))
-               #reward += (max_net_1 / self.micro.map.num_roads) * min(100, reward)
-               #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
-                                                # proportion of max net to total roads * 
-           #if not self.traffic_only:
-           #   #pass
-           #    reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-           #                 self.curr_pop / 2)
+       #reward += (max_net_1 / self.micro.map.num_roads) * min(100, reward)
+       #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
+                                            # proportion of max net to total roads * 
+       #if not self.traffic_only:
+       #   #pass
+       #    reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
+       #                 self.curr_pop / 2)
        #self.last_pop = self.curr_pop
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
