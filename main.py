@@ -482,7 +482,7 @@ class Evaluator(object):
         self.args = args
         self.actor_critic = actor_critic
         self.num_eval_processes = args.num_processes
-        if envs:
+        if envs and False:
             self.eval_envs = envs
             self.vec_norm = vec_norm
         else:
@@ -570,7 +570,9 @@ class Evaluator(object):
             eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
         i = 0
-        while len(eval_episode_rewards) < self.num_eval_processes:
+        done = np.array([False])
+        while not done.all():
+       #while len(eval_episode_rewards) < self.num_eval_processes:
        #while i < self.args.max_step:
             with torch.no_grad():
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(

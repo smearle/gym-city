@@ -51,15 +51,18 @@ class GoLMultiEnv(core.Env):
             except FileExistsError:
                 pass
         self.param_bounds = OrderedDict({
-                'pop': (0, self.map_width * self.map_width)
+                'pop': (0, self.map_width * self.map_width * self.num_proc)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
-        self.max_loss = sum(self.param_ranges) * self.num_proc
+        self.max_loss = sum(self.param_ranges)
         self.params = OrderedDict({
-                'pop': self.map_width * self.map_width # aim for max possible pop
+               #'pop': 1000
+                'pop': 0 # aim for empty board
+               #'pop': self.map_width * self.map_width * self.num_proc # aim for max possible pop
                 })
-        self.trg_param_vals = np.array([v for v in self.params.values()])
-        self.curr_param_vals = np.zeros(shape=self.trg_param_vals.shape)
+        self.trg_param_vals = torch.Tensor([[v for v in self.params.values()]
+                                             for i in range(self.num_proc)])
+        self.curr_param_vals = torch.zeros(size=self.trg_param_vals.shape)
         num_params = len(self.curr_param_vals)
         obs_shape = (num_proc, 1 + num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
@@ -110,6 +113,7 @@ class GoLMultiEnv(core.Env):
        #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
        #print(self.intsToActions)
         action_bin = torch.zeros(action_shape_2D)
+        action_bin = action_bin.byte()
         # indexes of separate envs
         action_ixs = torch.LongTensor(list(range(self.num_proc))).unsqueeze(1)
         if self.cuda:
@@ -121,6 +125,8 @@ class GoLMultiEnv(core.Env):
         self.scalar_obs = torch.zeros(scalar_obs_shape)
         if self.cuda:
             self.scalar_obs = self.scalar_obs.cuda()
+            self.curr_param_vals.cuda()
+            self.trg_param_vals.cuda()
         self.set_params(self.params)
 
 
@@ -135,22 +141,24 @@ class GoLMultiEnv(core.Env):
     def set_params(self, params):
         print('updated env targets: {}'.format(params))
         self.params = params
-        self.trg_param_vals = np.array([v for v in params.values()])
+       #self.trg_param_vals = torc([v for v in params.values()])
         # update our scalar observation
         # TODO: is there a quicker way, that scales to high number of params?
         i = 0
-        for v in self.trg_param_vals:
+        for v in self.trg_param_vals[:]:
+            print(self.trg_param_vals)
+            self.trg_param_vals[:,i:i+1].fill_(v[0])
             unit_v = v / self.param_ranges[i]
-            self.scalar_obs[:,i:i+1].fill_(unit_v)
+            self.scalar_obs[:,i:i+1].fill_(unit_v[0])
 
 
     def get_curr_param_vals(self):
-        self.curr_param_vals[0] = self.get_pop()
+        self.curr_param_vals[:, 0] = self.get_pop()
 
 
     def get_pop(self):
-        return  self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
-
+        pop = self.world.state.sum(dim=1).sum(1).sum(1)
+        return pop
 
     def step(self, a):
         '''
@@ -162,13 +170,13 @@ class GoLMultiEnv(core.Env):
         actions = self.action_idx_to_tensor(a)
        #print('actions shape: {}'.format(actions.shape))
         acted_state = self.world.state + actions
-        new_state = torch.clamp(acted_state, 0, 1)
+        new_state = self.world.state.byte() ^ actions
        #print('new world state shape: {}'.format(new_state.shape))
         if self.render_gui:
             # where cells are already alive
-            self.failed_builds = torch.where(acted_state == 2, self.world.y1, self.world.y0)
-            self.agent_builds = actions - self.failed_builds
-            assert torch.sum(self.failed_builds + self.agent_builds) == self.num_proc
+            self.agent_dels = torch.where(acted_state == 2, self.world.y1, self.world.y0)
+            self.agent_builds = actions - self.agent_dels
+            assert torch.sum(self.agent_dels + self.agent_builds) == self.num_proc
             self.rend_state = self.world.state - actions
             self.render()
         self.world.state = new_state
@@ -176,22 +184,24 @@ class GoLMultiEnv(core.Env):
         if self.render_gui:
             self.render()
         self.get_curr_param_vals()
-        loss = abs(self.curr_param_vals - self.trg_param_vals)
-        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step))
-       #reward = self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
+        loss = (abs(self.trg_param_vals - self.curr_param_vals))
+        print('loss:shape'.format(loss.shape))
+        reward = torch.Tensor([(self.max_loss - loss) * 100 / (self.max_loss * self.max_step)])
+        #reward = self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
         if self.step_count == self.max_step:
             terminal = np.ones(self.num_proc, dtype=bool)
         else:
             terminal = self.terminal
                    # reward < 2 # impossible situation for agent
-        # reward: average fullness of board
-       #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
+        #reward: average fullness of board
+        #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
         if self.render_gui:
            #pass # leave this one to main loop
             self.render() # deal with rendering now
         info = [{}]
         self.step_count += 1
         obs = self.get_obs()
+        print('rew shape {}'.format(reward.shape))
         return (obs, reward, terminal, info)
 
 
@@ -235,7 +245,7 @@ class GoLMultiEnv(core.Env):
             rend_arr = rend_state
         if not self.step_count == 0:
             rend_state = self.rend_state[self.rend_idx].cpu()
-            rend_failed = self.failed_builds[self.rend_idx].cpu()
+            rend_failed = self.agent_dels[self.rend_idx].cpu()
             rend_builds = self.agent_builds[self.rend_idx].cpu()
             rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_failed = np.vstack((rend_failed * 0, rend_failed * 0, rend_failed * 1))
