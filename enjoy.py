@@ -106,14 +106,15 @@ actor_critic = Policy(env.observation_space.shape, env.action_space,
                      model=saved_args.model, args=saved_args)
 actor_critic.to(device)
 torch.nn.Module.dump_patches = True
-new_recs = args.n_recs - saved_args.n_recs
 actor_critic.load_state_dict(checkpoint['model_state_dict'])
 ob_rms = checkpoint['ob_rms']
-for nr in range(new_recs):
-    actor_critic.base.auto_expand()
-print('expanded network:\n', actor_critic.base)
-if args.active_column is not None:
-    actor_critic.base.set_active_column(args.active_column)
+if 'fractal' in args.model.lower():
+    new_recs = args.n_recs - saved_args.n_recs
+    for nr in range(new_recs):
+        actor_critic.base.auto_expand()
+    print('expanded network:\n', actor_critic.base)
+    if args.active_column is not None:
+        actor_critic.base.set_active_column(args.active_column)
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()

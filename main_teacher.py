@@ -4,12 +4,12 @@ import os
 import time
 from collections import deque, OrderedDict
 
-import gym
+import gymn
 import numpy as np
-import torch
+import torchn
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+import torch.optim as optimn
 
 import algo
 from arguments import get_args

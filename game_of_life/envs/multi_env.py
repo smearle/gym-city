@@ -54,7 +54,8 @@ class GoLMultiEnv(core.Env):
                 'pop': (0, self.map_width * self.map_width * self.num_proc)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
-        self.max_loss = sum(self.param_ranges)
+        max_loss = sum(self.param_ranges)
+        self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
                #'pop': 1000
                 'pop': 0 # aim for empty board
@@ -62,7 +63,7 @@ class GoLMultiEnv(core.Env):
                 })
         self.trg_param_vals = torch.Tensor([[v for v in self.params.values()]
                                              for i in range(self.num_proc)])
-        self.curr_param_vals = torch.zeros(size=self.trg_param_vals.shape)
+        self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
         num_params = len(self.curr_param_vals)
         obs_shape = (num_proc, 1 + num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
@@ -110,8 +111,6 @@ class GoLMultiEnv(core.Env):
                         self.intsToActions[i] = [z, x, y]
                         self.actionsToInts[z, x, y] = i
                         i += 1
-       #print('len of intsToActions: {}\n num tools: {}'.format(len(self.intsToActions), self.num_tools))
-       #print(self.intsToActions)
         action_bin = torch.zeros(action_shape_2D)
         action_bin = action_bin.byte()
         # indexes of separate envs
@@ -139,14 +138,13 @@ class GoLMultiEnv(core.Env):
 
 
     def set_params(self, params):
-        print('updated env targets: {}'.format(params))
+        print('Updated env targets: {}'.format(params))
         self.params = params
        #self.trg_param_vals = torc([v for v in params.values()])
         # update our scalar observation
         # TODO: is there a quicker way, that scales to high number of params?
         i = 0
         for v in self.trg_param_vals[:]:
-            print(self.trg_param_vals)
             self.trg_param_vals[:,i:i+1].fill_(v[0])
             unit_v = v / self.param_ranges[i]
             self.scalar_obs[:,i:i+1].fill_(unit_v[0])
@@ -165,13 +163,10 @@ class GoLMultiEnv(core.Env):
         a: 1D tensor of integers, corresponding to action indexes (in
             flattened output space)
         '''
-       #print('world state shape: {}'.format(self.world.state.shape))
         a = a.long()
         actions = self.action_idx_to_tensor(a)
-       #print('actions shape: {}'.format(actions.shape))
         acted_state = self.world.state + actions
         new_state = self.world.state.byte() ^ actions
-       #print('new world state shape: {}'.format(new_state.shape))
         if self.render_gui:
             # where cells are already alive
             self.agent_dels = torch.where(acted_state == 2, self.world.y1, self.world.y0)
@@ -184,9 +179,10 @@ class GoLMultiEnv(core.Env):
         if self.render_gui:
             self.render()
         self.get_curr_param_vals()
-        loss = (abs(self.trg_param_vals - self.curr_param_vals))
-        print('loss:shape'.format(loss.shape))
-        reward = torch.Tensor([(self.max_loss - loss) * 100 / (self.max_loss * self.max_step)])
+        loss = abs(self.trg_param_vals - self.curr_param_vals)
+        loss = loss.squeeze(-1)
+        # loss in a 1D tensor of losses of individual envs
+        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step))
         #reward = self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
         if self.step_count == self.max_step:
             terminal = np.ones(self.num_proc, dtype=bool)
@@ -201,7 +197,7 @@ class GoLMultiEnv(core.Env):
         info = [{}]
         self.step_count += 1
         obs = self.get_obs()
-        print('rew shape {}'.format(reward.shape))
+        reward = reward.unsqueeze(-1)
         return (obs, reward, terminal, info)
 
 
@@ -230,10 +226,8 @@ class GoLMultiEnv(core.Env):
         self.step_count = 0
         self.world.repopulate_cells()
        #self.world.prepopulate_neighbours()
-       #print('shape in GoLMultiEnv: {}'.format(self.world.state.shape))
         if self.render_gui:
             self.render()
-       #print('a scalar slice: {}'.format(self.scalar_obs[0][0]))
         obs = self.get_obs()
         return obs
 
@@ -253,7 +247,6 @@ class GoLMultiEnv(core.Env):
             rend_arr = rend_state + rend_failed + rend_builds
         rend_arr = rend_arr.transpose(2, 1, 0)
         cv2.imshow("Game of Life", rend_arr)
-       #print(self.world.state[3][0])
         if self.record and not self.gif_writer.done:
             gif_dir = ('{}/gifs/'.format(self.record))
             im_dir = os.path.join(gif_dir, 'im')

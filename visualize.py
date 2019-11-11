@@ -59,7 +59,7 @@ def network_graphs():
             test = '{}_test'.format(i)
             subg.node(fixed, '')
             subg.edge(fixed, test)
-            
+
     #dott.render('FractalNetFancy.gv', view=True)
 
     frac = Digraph(comment='FractalNet', node_attr={'shape': 'box'})
@@ -96,8 +96,8 @@ def network_graphs():
                 frac.node(fixed, '')
             if i > 0 and j %2 == 0 and row is not None:
                 row.edge('{}_{}'.format(i - 1, int(j/ 2)),fixed,
-                         style='dashed', 
-                        arrowhead='none' , 
+                         style='dashed',
+                        arrowhead='none' ,
                        weight='-50'
                         )
             if j >1:
@@ -112,7 +112,7 @@ def network_graphs():
     frac.edge('1_2', 'E', style='dotted', arrowhead='none')
 
 
-                
+
     for row in rows:
         if row is not None:
             frac.subgraph(row)
@@ -219,7 +219,7 @@ class Plotter(object):
         self.n_cols = n_cols + 1
         self.avgs = np.zeros((n_cols + 1))
         self.n_frames = np.zeros((n_cols + 1))
-        self.n_samples = np.zeros((n_cols + 1)) # how many episodes per process, 
+        self.n_samples = np.zeros((n_cols + 1)) # how many episodes per process,
         # this may be different for each column due to interrupted evaluation
         self.n_proc = n_proc # how many processes
         self.indir = indir
@@ -444,7 +444,7 @@ def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=20, x_lim=None, y
             i += 1
     else:
         indir = "{}/logs_eval".format(indir)
-    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps, 
+    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps,
         n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim, man=True, bin_size=100, smooth=smooth)
     return win
 

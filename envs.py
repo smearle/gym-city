@@ -61,7 +61,7 @@ class MultiMonitor(MicropolisMonitor):
             self.episode_lengths.append(eplen)
             self.episode_times.append(time.time() - self.tstart)
             epinfo.update(self.current_reset_info)
-            if self.logger:
+            if hasattr(self, 'logger'):
                 self.logger.writerow(epinfo)
                 self.f.flush()
             info[0]['episode'] = epinfo
@@ -145,9 +145,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             else:
                 env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
                                 allow_early_resets=True)
-            
+
            #print(log_dir)
-           # 
+           #
            #print(type(env))
            #print(dir(env))
            #raise Exception
@@ -165,11 +165,11 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
     return _thunk
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
-                  device, allow_early_resets, num_frame_stack=None, 
+                  device, allow_early_resets, num_frame_stack=None,
                   args=None):
     if 'golmultienv' in env_name.lower():
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
-    envs = [make_env(env_name, seed, i, log_dir, add_timestep, 
+    envs = [make_env(env_name, seed, i, log_dir, add_timestep,
         allow_early_resets, map_width=args.map_width, render_gui=args.render,
         print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step,
         simple_reward=args.simple_reward, args=args)
