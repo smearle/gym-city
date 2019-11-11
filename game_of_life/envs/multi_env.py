@@ -51,15 +51,15 @@ class GoLMultiEnv(core.Env):
             except FileExistsError:
                 pass
         self.param_bounds = OrderedDict({
-                'pop': (0, self.map_width * self.map_width * self.num_proc)
+                'pop': (0, self.map_width * self.map_width)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
         max_loss = sum(self.param_ranges)
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
-               #'pop': 1000
-                'pop': 0 # aim for empty board
-               #'pop': self.map_width * self.map_width * self.num_proc # aim for max possible pop
+                'pop': 80
+               #'pop': 0 # aim for empty board
+               #'pop': self.map_width * self.map_width # aim for max possible pop
                 })
         self.trg_param_vals = torch.Tensor([[v for v in self.params.values()]
                                              for i in range(self.num_proc)])
@@ -182,7 +182,7 @@ class GoLMultiEnv(core.Env):
         loss = abs(self.trg_param_vals - self.curr_param_vals)
         loss = loss.squeeze(-1)
         # loss in a 1D tensor of losses of individual envs
-        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step))
+        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
         #reward = self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
         if self.step_count == self.max_step:
             terminal = np.ones(self.num_proc, dtype=bool)
