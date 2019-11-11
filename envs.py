@@ -20,16 +20,18 @@ import csv
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         self.env = env
+        self.dist_entropy = 0
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
         if os.path.exists(logfile):
             append_log = True
             old_log = '{}_old'.format(logfile)
             os.rename(logfile, old_log)
+        info_keywords = (*info_keywords, 'e')
         super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
         if append_log:
             with open(old_log, newline='') as old:
-                reader = csv.DictReader(old, fieldnames=('r', 'l', 't'))
+                reader = csv.DictReader(old, fieldnames=('r', 'l', 't','e'))
                 h = 0
                 for row in reader:
                     if h > 1:
@@ -54,9 +56,11 @@ class MultiMonitor(MicropolisMonitor):
             self.needs_reset = True
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards) * self.env.num_proc
-            epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6)}
+            epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
+                    "e": round(self.dist_entropy, 6)}
             for k in self.info_keywords:
-                epinfo[k] = info[k]
+                if k != 'e':
+                    epinfo[k] = info[k]
             self.episode_rewards.append(eprew)
             self.episode_lengths.append(eplen)
             self.episode_times.append(time.time() - self.tstart)

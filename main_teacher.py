@@ -236,6 +236,7 @@ def main():
         saved_args.num_processes = args.num_processes
         saved_args.n_chan = args.n_chan
         saved_args.prebuild = args.prebuild
+        saved_args.log_interval = args.log_interval
         args = saved_args
     actor_critic.to(device)
 
@@ -403,6 +404,7 @@ def main():
             value_loss, action_loss, dist_entropy, fwd_loss, inv_loss = agent.update(rollouts)
         else:
             value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        envs.dist_entropy = dist_entropy
 
         rollouts.after_update()
 
@@ -414,7 +416,7 @@ def main():
             dist_entropy = 0
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
-            print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n \
+            print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.5f}/{:.5f}, min/max reward {:.5f}/{:.5f}\n \
 dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 format(j, total_num_steps,
                        int((total_num_steps - past_steps * args.num_processes * args.num_steps) / (end - start)),
@@ -568,7 +570,7 @@ class Evaluator(object):
             self.vec_norm.eval()
             self.vec_norm.ob_rms = get_vec_normalize(self.eval_envs).ob_rms
         self.tstart = time.time()
-        fieldnames = ['r', 'l', 't']
+        fieldnames = ['r', 'l', 't', 'e']
         model = actor_critic.base
         if args.model == 'FractalNet':
             n_cols = model.n_cols
@@ -598,7 +600,7 @@ class Evaluator(object):
                 setattr(self, 'writer_col_{}'.format(i), writer_col)
                 if merge_col_log:
                     with open(old_log, newline='') as old:
-                        reader = csv.DictReader(old, fieldnames=('r', 'l', 't'))
+                        reader = csv.DictReader(old, fieldnames=('r', 'l', 't', 'e'))
                         h = 0
                         try: # in case of null bytes resulting from interrupted logging
                             for row in reader:

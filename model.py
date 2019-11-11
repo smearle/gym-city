@@ -291,7 +291,7 @@ class FullyConv_Atari(NNBase):
        #print(act.shape)
         return val.view(val.shape[0], -1), act, rhxs
 
-class FullyConv(NNBase): 
+class FullyConv(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=1, in_w=1, in_h=1, out_w=1, out_h=1,
             n_chan=64, val_kern=3, prebuild=None):
@@ -361,7 +361,7 @@ class FullyConv_linVal(NNBase):
         return val.view(val.shape[0], -1), act, rhxs
 
 class MicropolisBase_FullyConvLSTM(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=256, 
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=18):
         self.hidden_size = (32, map_width, map_width)
         super(MicropolisBase_FullyConvLSTM, self).__init__(recurrent, hidden_size, hidden_size)
@@ -409,7 +409,7 @@ class MicropolisBase_FullyConvLSTM(NNBase):
 
 
 class MicropolisBase_FullyConvRec(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=256, 
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256,
             map_width=20, num_actions=18):
 
         super(MicropolisBase_FullyConvRec, self).__init__(recurrent, hidden_size, hidden_size)
@@ -901,7 +901,7 @@ class SubFractal_squeeze(nn.Module):
             return twin
         else:
             twin = SubFractal_squeeze(root, None, 0)
-            ##win.body = nn.Sequential(twin.body, twin.body)            
+            ##win.body = nn.Sequential(twin.body, twin.body)
             return twin
     def forward(self, x, net_coords):
         if x is None:
@@ -1144,7 +1144,7 @@ class MicropolisBase_squeeze(NNBase):
     def forward(self, inputs, rnn_hxs, masks):
         x = inputs
         x = F.relu(self.cmp_in(x))
-        x_obs = [] 
+        x_obs = []
         for i in range(self.num_maps): # shrink if not first, then run life sim
             if i != 0:
                 shrink_life = getattr(self, 'dwn_{}'.format(0))
@@ -1187,7 +1187,7 @@ class MicropolisBase_squeeze(NNBase):
             x = F.relu(cmp_life_val_in(x))
             x = F.relu(dwn_val(x))
             x = F.relu(prj_life_val(x))
-        vals = self.cmp_val_out(x) 
+        vals = self.cmp_val_out(x)
         vals = vals.view(vals.size(0), -1)
         return  vals, acts, rnn_hxs
 
@@ -1215,14 +1215,14 @@ class MicropolisBase_ICM(MicropolisBase_fixed):
         self.icm_pred_s_in = init_(nn.Conv2d((num_inputs) + self.num_action_channels, 64, 1, 1, 0))
         self.icm_pred_s_conv_0 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_1 = init_(nn.Conv2d(64, 64, 3, 1, 1))
-        self.icm_pred_s_conv_2 = init_(nn.Conv2d(64, 64, 3, 1, 1))      
+        self.icm_pred_s_conv_2 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_3 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_4 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_5 = init_(nn.Conv2d(64, 64, 3, 1, 1))
-        self.icm_pred_s_conv_6 = init_(nn.Conv2d(64, 64, 3, 1, 1))      
+        self.icm_pred_s_conv_6 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_7 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_8 = init_(nn.Conv2d(64, 64, 3, 1, 1))
-        self.icm_pred_s_conv_9 = init_(nn.Conv2d(64, 64, 3, 1, 1))      
+        self.icm_pred_s_conv_9 = init_(nn.Conv2d(64, 64, 3, 1, 1))
         self.icm_pred_s_conv_10 = init_(nn.Conv2d(64, 64, 3, 1, 1))
 
        #self.icm_skip_compress = init_(nn.Conv2d(num_inputs, 15, 1, stride=1))
@@ -1241,7 +1241,7 @@ class MicropolisBase_ICM(MicropolisBase_fixed):
     def forward(self, inputs, rnn_hxs, masks, icm=False):
         if icm == False:
             return super().forward(inputs, rnn_hxs, masks)
-            
+
         else:
 
             # Encode state feature-maps

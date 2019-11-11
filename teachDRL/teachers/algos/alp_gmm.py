@@ -21,10 +21,10 @@ class EmpiricalALPComputer():
         alp = 0
         if len(self.alp_knn) > 5:
             # Compute absolute learning progress for new task
-            
+
             # 1 - Retrieve closest previous task
             dist, idx = self.alp_knn.nn_y(task)
-            
+
             # 2 - Retrieve corresponding reward
             closest_previous_task_reward = self.alp_knn.get_x(idx[0])
 
@@ -141,7 +141,6 @@ class ALPGMM():
         if (len(self.tasks) < self.nb_random) or (np.random.random() < self.random_task_ratio):
             # Random task sampling
             new_task = self.random_task_generator.sample()
-            print('Selecting random env params: {}'.format(new_task))
         else:
             # ALP-based task sampling
 
@@ -149,7 +148,6 @@ class ALPGMM():
             self.alp_means = []
             for pos, _, w in zip(self.gmm.means_, self.gmm.covariances_, self.gmm.weights_):
                 self.alp_means.append(pos[-1])
-            print('alp means: {}'.format(self.alp_means))
 
             # 2 - Sample Gaussian proportionally to its mean ALP
             idx = proportional_choice(self.alp_means, eps=0.0)
