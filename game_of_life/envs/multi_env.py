@@ -57,14 +57,14 @@ class GoLMultiEnv(core.Env):
         max_loss = sum(self.param_ranges)
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
-                'pop': 80
+                'pop': 0
                #'pop': 0 # aim for empty board
                #'pop': self.map_width * self.map_width # aim for max possible pop
                 })
         self.trg_param_vals = torch.Tensor([[v for v in self.params.values()]
                                              for i in range(self.num_proc)])
         self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
-        num_params = len(self.curr_param_vals)
+        num_params = len(self.params)
         obs_shape = (num_proc, 1 + num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
         slice_shape = (num_proc, 1, size, size)
@@ -175,9 +175,11 @@ class GoLMultiEnv(core.Env):
             self.rend_state = self.world.state - actions
             self.render()
         self.world.state = new_state
-        self.world._tick()
-        if self.render_gui:
-            self.render()
+        if self.step_count % 5 == 0:
+            for i in range(1):
+                self.world._tick()
+                if self.render_gui:
+                    self.render(agent=False)
         self.get_curr_param_vals()
         loss = abs(self.trg_param_vals - self.curr_param_vals)
         loss = loss.squeeze(-1)
@@ -205,7 +207,7 @@ class GoLMultiEnv(core.Env):
         ''' Combine scalar slices with world state to form observation. The
         agent sees only the target global parameters, leaving it to infer the
         current global properties of the map.'''
-        obs = torch.cat((self.scalar_obs, self.world.state), dim=1)
+        obs = torch.cat((self.scalar_obs, self.world.state.float()), dim=1)
         return obs
 
 
@@ -232,12 +234,12 @@ class GoLMultiEnv(core.Env):
         return obs
 
 
-    def render(self, mode=None):
-        if self.step_count == 0:
+    def render(self, mode=None, agent=True):
+        if not agent or self.step_count == 0:
             rend_state = self.world.state[self.rend_idx].cpu()
             rend_state = np.vstack((rend_state * 255, rend_state * 255, rend_state * 255))
             rend_arr = rend_state
-        if not self.step_count == 0:
+        if agent and not self.step_count == 0:
             rend_state = self.rend_state[self.rend_idx].cpu()
             rend_failed = self.agent_dels[self.rend_idx].cpu()
             rend_builds = self.agent_builds[self.rend_idx].cpu()

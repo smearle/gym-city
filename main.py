@@ -25,7 +25,7 @@ import csv
 
 def init_agent(actor_critic, args):
     if args.algo == 'a2c':
-        agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
+        agent = algo.A2C(actor_critic, args.value_loss_coef,
                 args.entropy_coef, lr=args.lr,
                 eps=args.eps, alpha=args.alpha,
                 max_grad_norm=args.max_grad_norm,
@@ -35,7 +35,7 @@ def init_agent(actor_critic, args):
                 eps=args.eps,
                 max_grad_norm=args.max_grad_norm)
     elif args.algo == 'acktr':
-        agent = algo.A2C_ACKTR_NOREWARD(actor_critic, args.value_loss_coef,
+        agent = algo.A2C(actor_critic, args.value_loss_coef,
                 args.entropy_coef, lr=args.lr,
                 eps=args.eps, alpha=args.alpha,
                 max_grad_norm=args.max_grad_norm,
