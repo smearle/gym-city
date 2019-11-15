@@ -214,7 +214,8 @@ def main():
        #else:
 
        #    raise Exception
-        alp_gmm = checkpoint['alp_gmm']
+        if 'alp_gmm' in checkpoint.keys():
+            alp_gmm = checkpoint['alp_gmm']
 
         if vec_norm is not None:
             vec_norm.eval()
@@ -462,7 +463,7 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 try:
                     # Sometimes monitor doesn't properly flush the outputs
                     win_eval = evaluator.plotter.visdom_plot(viz, win_eval, evaluator.eval_log_dir, graph_name,
-                                  args.algo, args.num_frames, n_graphs= col_idx)
+                                  args.algo, args.num_frames, n_graphs= col_idx, header='r')
                 except IOError:
                     pass
            #elif args.model == 'fixed' and model.RAND:
@@ -516,8 +517,10 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                 plotter = Plotter(n_cols, args.log_dir, args.num_processes)
             try:
                 # Sometimes monitor doesn't properly flush the outputs
-                win = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
-                                  args.algo, args.num_frames)
+                win_e = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
+                                  args.algo, args.num_frames, header='e')
+                win_r = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
+                                  args.algo, args.num_frames, header='r')
             except IOError:
                 pass
 
@@ -567,7 +570,7 @@ class Evaluator(object):
 
         self.args = args
         self.actor_critic = actor_critic
-        if envs and False:
+        if envs and 'GoLMulti' in args.env_name:
             self.num_eval_processes = args.num_processes
             self.eval_envs = envs
             self.vec_norm = vec_norm
@@ -602,7 +605,7 @@ class Evaluator(object):
                     merge_col_log = False
                 if merge_col_log:
                     if len(eval_cols) > 1 and i == eval_cols[-2] and self.args.auto_expand: # problem if we saved model after auto-expanding, without first evaluating!
-                        # for the newly added column, we duplicate the last col.'s records
+                    # cor the newly added column, we duplicate the last col.'s records
                         new_col_log_file = '{}/col_{}_eval.csv'.format(self.eval_log_dir, i + 1)
                         copyfile(log_file, new_col_log_file)
                     old_log = '{}_old'.format(log_file)
@@ -653,7 +656,7 @@ class Evaluator(object):
             recurrent_hidden_state_size = self.actor_critic.recurrent_hidden_state_size
             eval_recurrent_hidden_states = torch.zeros(self.num_eval_processes,
                             recurrent_hidden_state_size, device=self.device)
-            eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
+        eval_masks = torch.zeros(self.num_eval_processes, 1, device=self.device)
 
         i = 0
         done = np.array([False])
