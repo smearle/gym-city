@@ -277,10 +277,20 @@ def main():
     # in case we want to change this dynamically in the future (e.g., we may
     # not know how much traffic the agent can possibly produce in Micropolis)
     envs.set_param_bounds(env_param_bounds) # start with default bounds
-    num_env_params = len(env_param_bounds)
-    env_param_ranges = [abs(v[1] - v[0]) for k, v in env_param_bounds.items()]
-    env_param_lw_bounds = [v[0] for k, v in env_param_bounds.items()]
-    env_param_hi_bounds = [v[1] for k, v in env_param_bounds.items()]
+    #num_env_params = len(env_param_bounds)
+    num_env_params = 1
+    env_param_ranges = []
+    env_param_lw_bounds = []
+    env_param_hi_bounds = []
+    i = 0
+    for k, v in env_param_bounds.items():
+        if i < num_env_params:
+            env_param_ranges += [abs(v[1] - v[0])]
+            env_param_lw_bounds += [v[0]]
+            env_param_hi_bounds += [v[1]]
+            i += 1
+        else:
+            break
     if alp_gmm is None:
         alp_gmm = ALPGMM(env_param_lw_bounds, env_param_hi_bounds)
     params_vec = alp_gmm.sample_task()
@@ -299,8 +309,11 @@ def main():
             params_vec = alp_gmm.sample_task()
             prm_i = 0
             for k, v in env_param_bounds.items():
-                params[k] = params_vec[prm_i]
-                prm_i += 1
+                if prm_i < num_env_params:
+                    params[k] = params_vec[prm_i]
+                    prm_i += 1
+                else:
+                    break
             envs.set_params(params)
         trial_remaining -= args.num_steps
         if reset_eval:

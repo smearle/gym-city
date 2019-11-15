@@ -51,7 +51,8 @@ class Policy(nn.Module):
                     args.model = 'fixed'
                 else:
                     base_model = globals()[args.model]
-                base_kwargs['val_kern'] = args.val_kern
+                if not args.model == 'FullyConv_linVal':
+                    base_kwargs['val_kern'] = args.val_kern
                 if args.model == 'FractalNet':
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
                             'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
@@ -327,9 +328,9 @@ class FullyConv(NNBase):
 
 class FullyConv_linVal(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=1, in_w=None, in_h=None, out_w=None, out_h=None, num_chan=32, prebuild=None):
+            map_width=20, num_actions=1, in_w=None, in_h=None, out_w=None, out_h=None, n_chan=32, prebuild=None):
         super(FullyConv_linVal, self).__init__(recurrent, hidden_size, hidden_size)
-        num_chan = 32
+        num_chan = n_chan
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
@@ -457,7 +458,6 @@ class MicropolisBase_FullyConvRec(NNBase):
         return val.view(val.shape[0], -1), act, rhxs
 
 
-
 class FractalNet(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
                  map_width=16, n_conv_recs=2, n_recs=1,
@@ -467,7 +467,7 @@ class FractalNet(NNBase):
                  val_kern=3):
         super(FractalNet, self).__init__(recurrent, hidden_size, hidden_size)
         self.map_width = map_width
-        self.bn = nn.BatchNorm2d(num_inputs)
+       #self.bn = nn.BatchNorm2d(num_inputs)
         # We can stack multiple Fractal Blocks
        #self.block_chans = block_chans = [32, 32, 16]
         self.block_chans = block_chans = [n_chan]

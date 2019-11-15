@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
+import copy
 
 def pad_circular(x, pad):
     """
@@ -76,7 +77,7 @@ class World(nn.Module):
         self.state = torch.where(self.state < self.prob_life, self.y1, self.y0).float()
 
     def repopulate_cells(self):
-        self.state.uniform_(0, 1)
+        self.state.float().uniform_(0, 1)
         self.state = torch.where(self.state < self.prob_life, self.y1, self.y0).float()
         self.builds.fill_(0)
         self.failed.fill_(0)
@@ -93,20 +94,34 @@ class World(nn.Module):
 
     def forward(self, x):
         with torch.no_grad():
-            x = x.float()
             if self.cuda:
                 x = x.cuda()
             x = pad_circular(x, 1)
+            x = x.float()
             x = self.transition_rule(x)
-            return self.GoLu(x)
+            x = self.GoLu(x)
+            return x
 
     def GoLu(self, x):
         '''
         Applies the Game of Life Unit activation function, element-wise:
         '''
-
-#       return torch.where(2 < x, y1, y0)
-        return torch.where((x == 3) | (x == 11) | (x == 12), self.y1, self.y0)
+        # TODO: make this a piecewise linear, or piecewise smooth function
+        x_out = copy.deepcopy(x).fill_(0).float()
+        ded_0 = (x < 3).float()
+        bth_0 = ded_0 * (x > 2).float()
+        x_out = x_out + (bth_0 * (x - 2).float())
+        ded_1 = (x >= 3).float()
+        bth_1 = ded_1 * (x < 4).float()
+        x_out = x_out + abs(bth_1 * (x - 4).float())
+        alv_0 = (x >= 10).float()
+        lif_0 = alv_0 * (x <= 11.5).float()
+        x_out = x_out + (lif_0 * (x - 10).float())
+        alv_1 = (x >= 11.5).float()
+        lif_1 = alv_1 * (x < 13).float()
+        x_out = x_out + abs(lif_1 * (x -13).float())
+        x_out = torch.clamp(x_out, 0, 1)
+        return x_out
 
     def seed(self, seed=None):
         np.random.seed(seed)

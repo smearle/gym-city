@@ -39,7 +39,7 @@ class World:
                     if cell.alive:
                         state_changed = True
                     cell.next_state = 0
-                    if self.env.view_agent:
+                    if self.env is not None and self.env.view_agent:
                         self.env.agent_builds[cell.x, cell.y] = 0
         self.state_changed = state_changed
 
@@ -95,7 +95,7 @@ class World:
             for cell in row:
                 self.neighbours_around(cell)
 
-    def add_cell(self, x, y, alive = False):
+    def add_cell(self, x, y, alive=False):
         cell = self.cell_at(x, y)
         if cell != None:
             self.state[0][x][y] = int(cell.alive)

@@ -11,8 +11,8 @@ from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-#from dummy_vec_env import DummyVecEnv
+#from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 import time
 
@@ -27,7 +27,7 @@ class MicropolisMonitor(bench.Monitor):
             append_log = True
             old_log = '{}_old'.format(logfile)
             os.rename(logfile, old_log)
-        info_keywords = (*info_keywords, 'e')
+       #info_keywords = (*info_keywords, 'e')
         super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
         if append_log:
             with open(old_log, newline='') as old:
@@ -36,9 +36,15 @@ class MicropolisMonitor(bench.Monitor):
                 for row in reader:
                     if h > 1:
                         row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
+                        # TODO: logger or results_writer, what's going on here?
                         self.logger.writerow(row)
                     h += 1
             os.remove(old_log)
+
+    def step(self,action):
+        ob, reward, done, info = super().step(action)
+       #info['e'] = round(self.dist_entropy, 6)
+        return ob, reward, done, info
 
     def setRewardWeights(self):
         return self.env.setRewardWeights()

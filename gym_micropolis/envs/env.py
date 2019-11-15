@@ -3,17 +3,17 @@ from gym.utils import seeding
 from collections import OrderedDict
 import numpy as np
 import math
- 
+
 import sys
 if sys.version_info[0] >= 3:
     import gi
     gi.require_version('Gtk', '3.0')
     from gi.repository import Gtk as gtk
-    from .tilemap import TileMap 
+    from .tilemap import TileMap
     from .corecontrol import MicropolisControl
 else:
     import gtk
-    from tilemap import TileMap 
+    from tilemap import TileMap
     from corecontrol import MicropolisControl
 import time
 import torch
@@ -35,16 +35,27 @@ class MicropolisEnv(core.Env):
                 'ind_pop': 100,
                 'traffic': 100,
                 'num_plants': 50,
-               'mayor_rating': 100})
-        self.param_bounds = {
+                'mayor_rating': 100
+                })
+        self.param_bounds = OrderedDict({
                 'res_pop': (0, 500),
                 'com_pop': (0, 100),
                 'ind_pop': (0, 100),
                 'traffic': (0, 1000),
                 'num_plants': (0, 100),
-                'mayor_rating': (0, 100)}
+                'mayor_rating': (0, 100)
+                })
+        self.num_params = 1
         # not necessarily true but should take care of most cases
-        self.max_loss = sum([abs(ub - lb) for lb, ub in self.param_bounds.values()])
+        self.max_loss = 0
+        i = 0
+        self.param_ranges = []
+        for lb, ub in self.param_bounds.values():
+            rng = abs(ub - lb)
+            self.param_ranges += [rng]
+            if i < self.num_params:
+                self.max_loss += rng
+                i += 1
    ### MIXED
        #self.city_trgs = {
        #        'res_pop': 1,
@@ -111,7 +122,7 @@ class MicropolisEnv(core.Env):
         # traffic, power, density
         self.num_obs_channels = self.micro.map.num_features + self.num_scalars + self.num_density_maps + num_user_features
         self.poet = poet
-        if poet:
+        if self.poet:
             self.num_obs_channels += len(self.city_trgs)
         #ac_low = np.zeros((3))
        #ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
@@ -119,7 +130,7 @@ class MicropolisEnv(core.Env):
         self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
         self.last_state = None
         self.metadata = {'runtime.vectorized': True}
-        # TODO: TOTALLY WRONG! IS THIS NOT CLIPPING OUR SCALAR OBSERVATION CHANNELS?! 
+        # TODO: TOTALLY WRONG! IS THIS NOT CLIPPING OUR SCALAR OBSERVATION CHANNELS?!
         low_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=-1)
         high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
         # TODO: can/should we use Tuples of MultiBinaries instead, for greater efficiency?
@@ -138,7 +149,7 @@ class MicropolisEnv(core.Env):
         self.last_mayor_rating = self.mayor_rating
         self.last_priority_road_net_size = 0
         self.display_city_trgs()
-    
+
     def get_param_bounds(self):
         return self.param_bounds
 
@@ -157,13 +168,13 @@ class MicropolisEnv(core.Env):
                 for j1 in range(w0 // w1):
                     for k1 in range(w0 // w1):
                         for z in range(self.num_tools):
-                            for x in range(j0 * w0 + j1*w1, 
+                            for x in range(j0 * w0 + j1*w1,
                                     j0 * w0 + (j1+1)*w1):
-                                for y in range(k0 * w0 + k1*w1, 
+                                for y in range(k0 * w0 + k1*w1,
                                         k0 * w0 + (k1+1)*w1):
                                     self.intsToActions[i] = [z, x, y]
                                     i += 1
-                                
+
     def mapIntsToActions(self):
         ''' Unrolls the action vector in the same order as the pytorch model
         on its forward pass.'''
@@ -186,7 +197,7 @@ class MicropolisEnv(core.Env):
     def randomStaticStart(self):
         num_static = self.MAP_X * self.MAP_Y / 10
         lst_epi = 500
-#       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)   
+#       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)
 #       num_static = max(0, max_static)
         self.micro.setFunds(10000000)
         if num_static > 0:
@@ -247,7 +258,7 @@ class MicropolisEnv(core.Env):
         return self.state
 
   # def getRoadPenalty(self):
-  #     
+  #
   #     class roadPenalty(torch.nn.module):
   #         def __init__(self):
   #             super(roadPenalty, self).__init__()
@@ -259,6 +270,8 @@ class MicropolisEnv(core.Env):
         scalars = [res_pop, com_pop, ind_pop, resDemand, comDemand, indDemand]
         if self.poet:
             trg_metrics = [v for k, v in self.city_trgs.items()]
+            for i in range(len(trg_metrics)):
+                trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
             scalars += trg_metrics
         return self.observation(scalars)
 
@@ -330,10 +343,13 @@ class MicropolisEnv(core.Env):
         traffic = self.micro.total_traffic
         mayor_rating = self.getRating()
         num_plants = self.micro.map.num_plants
-        city_metrics = {'res_pop': res_pop,
-                'com_pop': com_pop, 'ind_pop': ind_pop,
+        city_metrics = {
+                'res_pop': res_pop,
+                'com_pop': com_pop,
+                'ind_pop': ind_pop,
                 'traffic': traffic, 'num_plants': num_plants,
-                'mayor_rating': mayor_rating}
+                'mayor_rating': mayor_rating
+                }
         return city_metrics
 
     def display_city_metrics(self):
@@ -401,8 +417,14 @@ class MicropolisEnv(core.Env):
        #        reward += v * self.city_metrics[k]
         max_reward = self.max_reward
         loss = 0
+        i = 0
         for k, v in self.city_trgs.items():
-            loss += abs(v - self.city_metrics[k])
+            if i == self.num_params:
+                break
+            else:
+                loss += abs(v - self.city_metrics[k])
+                i += 1
+
         reward = (self.max_loss - loss) * max_reward / self.max_loss
         self.curr_reward = reward
        #self.curr_reward = math.log10(self.loss * max_reward)
@@ -410,8 +432,8 @@ class MicropolisEnv(core.Env):
        #    print('loss: {}'.format(self.loss))
        #    print('reward: {}'.format(self.curr_reward))
        #reward += (max_net_1 / self.micro.map.num_roads) * min(100, reward)
-       #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so 
-                                            # proportion of max net to total roads * 
+       #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so
+                                            # proportion of max net to total roads *
        #if not self.traffic_only:
        #   #pass
        #    reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,

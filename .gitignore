@@ -10,3 +10,4 @@ runs*
 notes*
 
 *.pyc
+*.o

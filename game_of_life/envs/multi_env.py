@@ -57,9 +57,8 @@ class GoLMultiEnv(core.Env):
         max_loss = sum(self.param_ranges)
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
-                'pop': 0
                #'pop': 0 # aim for empty board
-               #'pop': self.map_width * self.map_width # aim for max possible pop
+                'pop': self.map_width * self.map_width # aim for max possible pop
                 })
         self.trg_param_vals = torch.Tensor([[v for v in self.params.values()]
                                              for i in range(self.num_proc)])
@@ -164,22 +163,35 @@ class GoLMultiEnv(core.Env):
             flattened output space)
         '''
         a = a.long()
+       #a.fill_(0)
         actions = self.action_idx_to_tensor(a)
         acted_state = self.world.state + actions
-        new_state = self.world.state.byte() ^ actions
+        new_state = self.world.state.round().byte() ^ actions
         if self.render_gui:
             # where cells are already alive
             self.agent_dels = torch.where(acted_state == 2, self.world.y1, self.world.y0)
-            self.agent_builds = actions - self.agent_dels
-            assert torch.sum(self.agent_dels + self.agent_builds) == self.num_proc
-            self.rend_state = self.world.state - actions
-            self.render()
+            agent_builds = actions - self.agent_dels
+            assert(agent_builds >= 0).all()
+            assert torch.sum(self.agent_dels + agent_builds) == self.num_proc
+            if not hasattr(self, 'agent_builds'):
+                self.agent_builds = actions.float()
+            else:
+                # agent builds accumulate on rendered board during agent's build-turn
+                self.agent_builds = torch.clamp(self.agent_builds + actions, 0, 1)
+            self.agent_builds -= self.agent_dels # in case agent deletes what it has built in the
+            # current build-turn
+            self.rend_state = new_state - self.agent_builds # separate state from agent's actions
+            self.rend_state = torch.clamp(self.rend_state, 0, 1)
+           #assert (self.rend_state >= 0).all() # was something built w/o being added to new state?
+            # for separate rendering
+            self.render(agent=True)
         self.world.state = new_state
-        if self.step_count % 5 == 0:
+        if self.step_count % 1 == 0: # the agent build-turn is over
+            self.agent_builds.fill_(0)
             for i in range(1):
                 self.world._tick()
                 if self.render_gui:
-                    self.render(agent=False)
+                    self.render(agent=True)
         self.get_curr_param_vals()
         loss = abs(self.trg_param_vals - self.curr_param_vals)
         loss = loss.squeeze(-1)
@@ -228,6 +240,8 @@ class GoLMultiEnv(core.Env):
         self.step_count = 0
         self.world.repopulate_cells()
        #self.world.prepopulate_neighbours()
+        if hasattr(self, 'agent_builds'):
+            self.agent_builds.fill_(0)
         if self.render_gui:
             self.render()
         obs = self.get_obs()
@@ -237,16 +251,16 @@ class GoLMultiEnv(core.Env):
     def render(self, mode=None, agent=True):
         if not agent or self.step_count == 0:
             rend_state = self.world.state[self.rend_idx].cpu()
-            rend_state = np.vstack((rend_state * 255, rend_state * 255, rend_state * 255))
+            rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_arr = rend_state
         if agent and not self.step_count == 0:
             rend_state = self.rend_state[self.rend_idx].cpu()
-            rend_failed = self.agent_dels[self.rend_idx].cpu()
+            rend_dels = self.agent_dels[self.rend_idx].cpu()
             rend_builds = self.agent_builds[self.rend_idx].cpu()
             rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
-            rend_failed = np.vstack((rend_failed * 0, rend_failed * 0, rend_failed * 1))
+            rend_dels = np.vstack((rend_dels * 0, rend_dels * 0, rend_dels * 1))
             rend_builds = np.vstack((rend_builds * 1, rend_builds * 0, rend_builds * 1))
-            rend_arr = rend_state + rend_failed + rend_builds
+            rend_arr = rend_state + rend_dels + rend_builds
         rend_arr = rend_arr.transpose(2, 1, 0)
         cv2.imshow("Game of Life", rend_arr)
         if self.record and not self.gif_writer.done:

@@ -63,6 +63,7 @@ def main():
 
     torch.manual_seed(args.seed)
     if args.cuda:
+        print('CUDA ENABLED')
         torch.cuda.manual_seed(args.seed)
 
     graph_name = args.save_dir.split('trained_models/')[1].replace('/', ' ')
@@ -248,7 +249,6 @@ def main():
     # Main training loop
     for j in range(past_steps, num_updates):
         if reset_eval:
-            print('post eval reset')
             obs = envs.reset()
             rollouts.obs[0].copy_(obs)
             rollouts.to(device)
@@ -333,6 +333,7 @@ def main():
             value_loss, action_loss, dist_entropy, fwd_loss, inv_loss = agent.update(rollouts)
         else:
             value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        envs.dist_entropy = dist_entropy
 
         rollouts.after_update()
 
@@ -582,7 +583,7 @@ class Evaluator(object):
             obs, reward, done, infos = self.eval_envs.step(action)
             if self.args.render:
                 if self.args.num_processes == 1:
-                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name):
+                    if not ('Micropolis' in self.args.env_name or 'GameOfLife' in self.args.env_name or 'GoL' in self.args.env_name):
                         self.eval_envs.venv.venv.render()
                     else:
                         pass

@@ -8,6 +8,8 @@ def get_args():
     parser =  get_parser()
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
+    if not torch.cuda.is_available():
+        print('CUDA not available')
     if args.experiment_name == '':
         args.experiment_name += '{}'.format(datetime.datetime.now())
   # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
@@ -32,7 +34,7 @@ def get_args():
 
 def get_parser():
     parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--algo', default='acktr',
+    parser.add_argument('--algo', default='a2c',
                         help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument('--lr', type=float, default=7e-4,
                         help='learning rate (default: 7e-4)')
@@ -93,7 +95,7 @@ def get_parser():
                         help='enable visdom visualization')
     parser.add_argument('--port', type=int, default=8097,
                         help='port to run the server on (default: 8097)')
-    parser.add_argument('--map-width', type=int, default=20,
+    parser.add_argument('--map-width', type=int, default=16,
                         help="width of micropolis map")
     parser.add_argument('--model', default='FractalNet')
     parser.add_argument('--curiosity', action='store_true', default=False)

@@ -28,7 +28,7 @@ class DummyVecEnv(VecEnv):
                 self.buf_obs[0][i] = obs_tuple
         return self.buf_obs, self.buf_rews, self.buf_dones, self.buf_infos
 
-    def reset(self):        
+    def reset(self):
         for i in range(self.num_envs):
             obs_tuple = self.envs[i].reset()
             if isinstance(obs_tuple, (tuple, list)):
@@ -36,8 +36,22 @@ class DummyVecEnv(VecEnv):
                     self.buf_obs[t][i] = x
             else:
                 self.buf_obs[0][i] = obs_tuple
-        print('shape in dummy_vec_env reset: {}'.format(np.array(self.buf_obs).shape))
         return self.buf_obs
+
+
+    def get_param_bounds(self):
+        return self.envs[0].get_param_bounds()
+
+
+    def set_param_bounds(self, bounds):
+        for env in self.envs:
+            return env.set_param_bounds(bounds)
+
+
+    def set_params(self, params):
+        for env in self.envs:
+            return env.set_params(params)
+
 
     def close(self):
         return

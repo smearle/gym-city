@@ -101,8 +101,6 @@ class ALPGMM():
 
         # Concatenate task vector with ALP dimension
         self.tasks_alps.append(np.array(task.tolist() + [self.alps[-1]]))
-        if hasattr(self, 'gmm'):
-            print('gmm means: {}'.format(self.gmm.means_))
 
         if len(self.tasks) >= self.nb_random:  # If initial bootstrapping is done
             if (len(self.tasks) % self.fit_rate) == 0:  # Time to fit

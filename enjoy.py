@@ -143,6 +143,7 @@ if args.evaluate:
    #saved_args.render = args.render
    #saved_args.prob_life = args.prob_life
    #saved_args.record = args.record
+    args.poet = saved_args.poet
     args.env_name = saved_args.env_name
     args.log_dir = args.load_dir
     args.model = saved_args.model
@@ -150,6 +151,8 @@ if args.evaluate:
    #args.n_recs = saved_args.n_recs
     args.intra_shr = saved_args.intra_shr
     args.inter_shr = saved_args.inter_shr
+    args.n_chan = saved_args.n_chan
+    args.val_kern = saved_args.val_kern
     print('steps: ', saved_args.max_step, '\n')
     evaluator = Evaluator(args, actor_critic, device, frozen=True)
     while True:
@@ -158,7 +161,7 @@ if args.evaluate:
                 evaluator.evaluate(column=i)
 
 obs = env.reset()
-obs = torch.Tensor(obs)
+#obs = torch.Tensor(obs)
 num_step = 0
 player_act = None
 env_done = False
