@@ -169,7 +169,7 @@ def fix_point(x, y, interval):
     return fx, fy
 
 
-def load_data(indir, smooth, bin_size, col=None):
+def load_data(indir, smooth, bin_size, col=None, header='r'):
     datas = []
     if col is not None:
         infiles = glob.glob(os.path.join(indir, 'col_{}_eval.csv'.format(col)))
@@ -318,11 +318,15 @@ class Plotter(object):
         return viz.image(image, win=win)
 
     def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None,
-            x_lim=None, y_lim=None, man=False):
+            x_lim=None, y_lim=None, man=False,
+            header='r'
+            ):
+        '''
+         - n_graphs: specific to fractal columns
+        '''
         if man:
             matplotlib.rcParams.update({'font.size': 14})
         if isinstance(folder, list):
-            print('COPY DAT \n')
             fld = folder
             folder = folder[0]
         else:
@@ -339,6 +343,7 @@ class Plotter(object):
             tick_fractions = np.array([1/4, 2/4, 3/4, 1])
         else:
             tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
+
         ticks = tick_fractions * num_steps
         tick_names = ["{:.0e}".format(tick) for tick in ticks]
         if man:
@@ -352,7 +357,7 @@ class Plotter(object):
             for f in fld:
                 print(f)
                 color = 0
-                tx, ty = load_data(f, smooth, bin_size, col=-1)
+                tx, ty = load_data(f, smooth, bin_size, col=-1, header=header)
                 if tx is None or ty is None:
                     #print('could not find x y data columns in csv')
                     pass
@@ -369,7 +374,7 @@ class Plotter(object):
             #print('indaplotter')
             color = 0
             for i in n_graphs:
-                tx, ty = load_data(folder, smooth, bin_size, col=i)
+                tx, ty = load_data(folder, smooth, bin_size, col=i, header=header)
                 if tx is None or ty is None:
                     #print('could not find x y data columns in csv')
                     pass
@@ -378,10 +383,8 @@ class Plotter(object):
                 else:
                     plt.plot(tx, ty, label="col {}".format(i), color=color_defaults[color])
                     color += 1
-
-
         else:
-            tx, ty = load_data(folder, smooth, bin_size)
+            tx, ty = load_data(folder, smooth, bin_size, header=header)
             if tx is None or ty is None:
                 return win
             if evl:
@@ -402,7 +405,7 @@ class Plotter(object):
         plt.xlabel('Number of Timesteps')
         plt.ylabel('Rewards')
         plt.grid(b=True, which='both')
-        plt.title(game)
+        plt.title('{}_{}'.format(game, header))
         if man:
             plt.legend(loc='upper left', bbox_to_anchor=(1,1))
             plt.tight_layout(w_pad=2)
@@ -413,10 +416,12 @@ class Plotter(object):
         else:
             figfolder = folder.replace('/logs', '/train_')
         print('should be saving graph now as {}'.format(figfolder))
+
+
         if man:
-            figfile = './{}fig_man.png'.format(figfolder)
+            figfile = './{}_{}_fig_man.png'.format(figfolder, header)
         else:
-            figfile = './{}fig.png'.format(figfolder)
+            figfile = './{}_{}_fig.png'.format(figfolder, header)
         plt.savefig(figfile, format='png')
         plt.show()
         plt.draw()
@@ -424,6 +429,8 @@ class Plotter(object):
         image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
         image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
         plt.close(fig)
+
+
 
         # Show it in visdom
         image = np.transpose(image, (2, 0, 1))

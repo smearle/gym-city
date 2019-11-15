@@ -166,7 +166,7 @@ class GoLMultiEnv(core.Env):
        #a.fill_(0)
         actions = self.action_idx_to_tensor(a)
         acted_state = self.world.state + actions
-        new_state = self.world.state.round().byte() ^ actions
+        new_state = self.world.state.round().long() ^ actions.long()
         if self.render_gui:
             # where cells are already alive
             self.agent_dels = torch.where(acted_state == 2, self.world.y1, self.world.y0)
@@ -187,7 +187,8 @@ class GoLMultiEnv(core.Env):
             self.render(agent=True)
         self.world.state = new_state
         if self.step_count % 1 == 0: # the agent build-turn is over
-            self.agent_builds.fill_(0)
+            if self.render_gui:
+                self.agent_builds.fill_(0)
             for i in range(1):
                 self.world._tick()
                 if self.render_gui:
