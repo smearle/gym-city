@@ -361,32 +361,34 @@ class FullyConv_linVal(NNBase):
         val = self.val(x_lin)
         return val.view(val.shape[0], -1), act, rhxs
 
-class MicropolisBase_FullyConvLSTM(NNBase):
+class FullyConvLSTM(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256,
-            map_width=20, num_actions=18):
-        self.hidden_size = (32, map_width, map_width)
-        super(MicropolisBase_FullyConvLSTM, self).__init__(recurrent, hidden_size, hidden_size)
+            in_w=16, in_h=16, out_w=16, out_h=16, num_actions=18, prebuild=None,
+            map_width=16, val_kern=3, n_chan=64):
+        self.n_chan=n_chan
+        self.hidden_size = (self.n_chan, map_width, map_width)
+        super(FullyConvLSTM, self).__init__(recurrent, hidden_size, hidden_size)
         num_actions = num_actions
         self.map_width = map_width
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
-        self.embed = init_(nn.Conv2d(num_inputs, 32, 1, 1, 0))
-        self.k5 = init_(nn.Conv2d(32, 32, 5, 1, 2))
-        self.k3 = init_(ConvLSTMCell(32, 32))
-        self.val_shrink = init_(nn.Conv2d(32, 32, 2, 2, 0))
-       #state_size = map_width * map_width * 32
+        self.embed = init_(nn.Conv2d(num_inputs, self.n_chan, 1, 1, 0))
+        self.k5 = init_(nn.Conv2d(self.n_chan, self.n_chan, 5, 1, 2))
+        self.k3 = init_(ConvLSTMCell(self.n_chan, self.n_chan))
+        self.val_shrink = init_(nn.Conv2d(self.n_chan, self.n_chan, 2, 2, 0))
+       #state_size = map_width * map_width * self.n_chan
        #init_ = lambda m: init(m,
        #    nn.init.orthogonal_,
        #    lambda x: nn.init.constant_(x, 0))
        #self.dense = init_(nn.Linear(state_size, 256))
        #self.val = init_(nn.Linear(128, 1))
-        self.val = init_(nn.Conv2d(32, 1, 3, 1, 1))
+        self.val = init_(nn.Conv2d(self.n_chan, 1, 3, 1, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
-        self.act = init_(nn.Conv2d(32, num_actions, 1, 1, 0))
+        self.act = init_(nn.Conv2d(self.n_chan, num_actions, 1, 1, 0))
 
     def forward(self, x, rhxs=None, masks=None):
 
@@ -406,7 +408,7 @@ class MicropolisBase_FullyConvLSTM(NNBase):
         return val.view(val.shape[0], -1), act, rhxs
 
     def get_recurrent_state_size(self):
-        return(32, self.map_width, self.map_width)
+        return(self.n_chan, self.map_width, self.map_width)
 
 
 class MicropolisBase_FullyConvRec(NNBase):
