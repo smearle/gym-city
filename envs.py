@@ -27,7 +27,7 @@ class MicropolisMonitor(bench.Monitor):
             append_log = True
             old_log = '{}_old'.format(logfile)
             os.rename(logfile, old_log)
-       #info_keywords = (*info_keywords, 'e')
+        info_keywords = (*info_keywords, 'e')
         super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
         if append_log:
             with open(old_log, newline='') as old:
