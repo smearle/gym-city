@@ -41,10 +41,32 @@ class MicropolisMonitor(bench.Monitor):
                     h += 1
             os.remove(old_log)
 
-    def step(self,action):
-        ob, reward, done, info = super().step(action)
-       #info['e'] = round(self.dist_entropy, 6)
-        return ob, reward, done, info
+    def step(self, action):
+        if self.needs_reset:
+            raise RuntimeError("Tried to step environment that needs reset")
+        ob, rew, done, info = self.env.step(action)
+        self.rewards.append(rew)
+        if done:
+            self.needs_reset = True
+            eprew = float(sum(self.rewards))
+            eplen = len(self.rewards)
+            epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
+                    "e": round(self.dist_entropy, 6),
+                    "p": round(self.trg_param_vals[0].item(), 6)}
+            for k in self.info_keywords:
+                if k != 'e' and k!= 'p':
+                    epinfo[k] = info[k]
+            self.episode_rewards.append(eprew)
+            self.episode_lengths.append(eplen)
+            self.episode_times.append(time.time() - self.tstart)
+            epinfo.update(self.current_reset_info)
+            if hasattr(self, 'logger'):
+                self.logger.writerow(epinfo)
+                self.f.flush()
+            info['episode'] = epinfo
+        self.total_steps += 1
+       #print('dones: {}'.format(done))
+        return (ob, rew, done, info)
 
     def setRewardWeights(self):
         return self.env.setRewardWeights()

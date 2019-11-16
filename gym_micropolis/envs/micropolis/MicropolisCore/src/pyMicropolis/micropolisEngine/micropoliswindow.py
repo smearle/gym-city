@@ -340,7 +340,7 @@ class MicropolisPanedWindow(gtk.Window):
                 gtk.STOCK_OPEN,
                 gtk.RESPONSE_OK,
             ))
-       
+
         filter = gtk.FileFilter()
         filter.set_name("Micropolis Cities")
         filter.add_pattern("*.xml")

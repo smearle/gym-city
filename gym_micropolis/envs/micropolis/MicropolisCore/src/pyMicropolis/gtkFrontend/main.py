@@ -65,7 +65,7 @@ def run(builderBot=None):
 
 
 # for bots. Return the engine for training simulation
-def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20):
+def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20, gui=False):
 
     kwargs = {'env': env, 'rank': rank, 'root_gtk': root_gtk}
     engine = micropolisgtkengine.CreateGTKEngine(**kwargs)
@@ -78,11 +78,13 @@ def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20):
     w = 800
     h = 600
 
-    if True:
+    if gui:
         win1 = micropoliswindow.MicropolisPanedWindow(engine=engine)
         win1.set_default_size(w, h)
         win1.set_size_request(w, h)
         win1.move(x, y)
         win1.show_all()
+    else:
+        win1 = None
 
     return engine, win1

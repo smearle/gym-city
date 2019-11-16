@@ -37,6 +37,7 @@ class MicropolisEnv(core.Env):
                 'num_plants': 50,
                 'mayor_rating': 100
                 })
+        self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
         self.param_bounds = OrderedDict({
                 'res_pop': (0, 500),
                 'com_pop': (0, 100),
@@ -90,6 +91,7 @@ class MicropolisEnv(core.Env):
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
             power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False):
+        self.render_gui = render_gui
         self.rank = rank
         self.random_builds = random_builds
         self.traffic_only = traffic_only
@@ -105,8 +107,8 @@ class MicropolisEnv(core.Env):
             self.MAP_X = size[0]
             self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
-        self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, PADDING, parallel_gui=parallel_gui, rank=rank,
-                power_puzzle=power_puzzle)
+        self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, PADDING,
+                rank=rank, power_puzzle=power_puzzle, gui=render_gui)
         self.static_builds = True
         self.win1 = self.micro.win1
         self.micro.SHOW_GUI=self.SHOW_GUI
@@ -143,7 +145,6 @@ class MicropolisEnv(core.Env):
         self.last_num_roads = 0
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
         self.print_map = print_map
-        self.render_gui = render_gui
         self.auto_reset = True
         self.mayor_rating = 50
         self.last_mayor_rating = self.mayor_rating
@@ -154,7 +155,8 @@ class MicropolisEnv(core.Env):
         return self.param_bounds
 
     def display_city_trgs(self):
-        self.win1.agentPanel.displayTrgs(self.city_trgs)
+        if self.win1 is not None:
+            self.win1.agentPanel.displayTrgs(self.city_trgs)
         return self.city_trgs
 
 
@@ -327,12 +329,14 @@ class MicropolisEnv(core.Env):
 
     def set_param_bounds(self, bounds):
         print('setting visual param bounds (TODO: forreal')
-        self.win1.agentPanel.setMetricRanges(bounds)
+        if win1 is not None:
+            self.win1.agentPanel.setMetricRanges(bounds)
 
 
     def set_params(self, trgs):
         for k, v in trgs.items():
             self.city_trgs[k] = v
+        self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
         self.display_city_trgs()
        #print('set city trgs of env {} to: {}'.format(self.rank, self.city_trgs))
 
@@ -353,7 +357,8 @@ class MicropolisEnv(core.Env):
         return city_metrics
 
     def display_city_metrics(self):
-        self.win1.agentPanel.displayMetrics(self.city_metrics)
+        if self.win1 is not None:
+            self.win1.agentPanel.displayMetrics(self.city_metrics)
 
 
 

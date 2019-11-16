@@ -25,7 +25,7 @@ GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
 ## we need to do this so the micropolisgenericengine can access images/micropolisEngine/dataColorMap.png
 #
 #
-#os.chdir(MICROPOLISCORE_DIR)   
+#os.chdir(MICROPOLISCORE_DIR)
 sys.path.append(os.path.abspath(os.path.join(FILE_DIR, './micropolis/MicropolisCore/src')))
 print(sys.path)
 from pyMicropolis.gtkFrontend import main
@@ -35,11 +35,11 @@ from pyMicropolis.gtkFrontend import main
 
 class MicropolisControl():
 
-    def __init__(self, env, MAP_W=12, MAP_H=12, PADDING=13, parallel_gui=False, rank=None,
+    def __init__(self, env, MAP_W=12, MAP_H=12, PADDING=13, gui=False, rank=None,
             power_puzzle=False):
-        self.SHOW_GUI=False
-        env.micro = self
-        engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H)
+        env.micro = self # attach ourselves to our parent before we start
+        engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
+                gui=gui)
        #os.chdir(CURR_DIR)
         self.engine = engine
         self.engine.setGameLevel(2)
@@ -52,9 +52,9 @@ class MicropolisControl():
         self.MAP_XS = 16
         self.MAP_YS = 8
         self.num_roads = 0
-        self.engineTools = ['Residential', 'Commercial', 'Industrial', 
-                'FireDept', 
-                'PoliceDept', 
+        self.engineTools = ['Residential', 'Commercial', 'Industrial',
+                'FireDept',
+                'PoliceDept',
                 # TODO: implement query (skipped for now by indexing)
                'Query',
                'Wire',
@@ -62,9 +62,9 @@ class MicropolisControl():
                'Rail',
                'Road',
                 'Stadium',
-                'Park', 
+                'Park',
                  'Seaport',
-                'CoalPowerPlant', 
+                'CoalPowerPlant',
                 'NuclearPowerPlant',
                 'Airport',
                 'Net',
@@ -76,9 +76,9 @@ class MicropolisControl():
         if power_puzzle:
             self.tools = ['Wire']
         else:
-            self.tools = ['Residential', 'Commercial', 'Industrial', 
-                    'FireDept', 
-                    'PoliceDept', 
+            self.tools = ['Residential', 'Commercial', 'Industrial',
+                    'FireDept',
+                    'PoliceDept',
                  # 'Query',
                     'Clear',
                    'Wire',
@@ -86,9 +86,9 @@ class MicropolisControl():
                    'Rail',
                    'Road',
                     'Stadium',
-                    'Park', 
+                    'Park',
                      'Seaport',
-                    'CoalPowerPlant', 
+                    'CoalPowerPlant',
                     'NuclearPowerPlant',
                     'Airport',
                     'Net',
@@ -104,9 +104,16 @@ class MicropolisControl():
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest
         self.engine.autoBulldoze = True
-        # for bots 
+        # for bots
         self.land_value = 0
-        win1.playCity()
+
+        if win1:
+           win1.playCity()
+        else:
+            self.engine.setSpeed(2)
+            self.engine.setPasses(1)
+            self.engine.resume()
+
         self.engine.setFunds(1000000)
         engine.setSpeed(3)
         engine.setPasses(100)
@@ -141,10 +148,10 @@ class MicropolisControl():
                 # random zones
                 elif ((i + 2 - (i + 4) // w) % 3) ==0 and \
                      ((j + 2 - (j + 1) // h) % 3) ==0:
-     
+
                     tool_i = random.randint(0, 3-1)
                     self.doTool(i, j, ['Residential', 'Commercial', 'Industrial'][tool_i])
-    
+
     def newMap(self):
         self.engine.generateMap()
         self.updateMap()
@@ -162,7 +169,7 @@ class MicropolisControl():
             for j in range(self.MAP_Y):
                 tile_int = self.getTile(i,j)
                 zone = zoneFromInt(tile_int)
-                # assuming there are no zones not built via us, 
+                # assuming there are no zones not built via us,
                 # or else we must find center
                 self.map.updateTile(i, j, zone, (i,j))
 
@@ -231,11 +238,11 @@ class MicropolisControl():
 
     def doBotTool(self, x, y, tool, static_build=False):
         '''Takes string for tool'''
-        return self.map.addZoneBot(x + self.PADDING, y + self.PADDING, tool, static_build=static_build) 
+        return self.map.addZoneBot(x + self.PADDING, y + self.PADDING, tool, static_build=static_build)
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''
-        return self.map.addZoneBot(x, y, tool) 
+        return self.map.addZoneBot(x, y, tool)
 
     def playerToolDown(self, tool_int, x, y):
         if not x < self.MAP_X and y < self.MAP_Y:
@@ -303,7 +310,7 @@ class MicropolisControl():
             for j in range(self.MAP_Y):
                 tileMap[i][j] = self.getTile(i, j)
         print(tileMap)
- 
+
     def close(self):
     #   self.engine.doReallyQuit()
         del(self.engine)
