@@ -368,7 +368,7 @@ class Plotter(object):
 
         image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
         image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
-       #plt.close(fig)
+        plt.close(fig)
 
 
 
