@@ -22,7 +22,7 @@ class RolloutStorage(object):
       # n_channels = 32 # make this an arg
       # for j in range(args.n_recs):
       #     reps = 2 ** (args.n_recs - j - 1) # number of times column segment repeats
-      #     n_squish = min(j, self.num_maps) 
+      #     n_squish = min(j, self.num_maps)
       #     for r in range(reps):
       #         if j == 0:
       #             s = torch.cuda.FloatTensor(size=
@@ -36,7 +36,7 @@ class RolloutStorage(object):
       #         rnn_hxs[j] += [(s, s)]
       #         for k in range(n_squish):
       #             for l in range(n_squish - k + 2):
-      #                 width = width 
+      #                 width = width
       #                 s = torch.cuda.FloatTensor(size=(
       #                     n_batch, n_channels, width, width)).fill_(0.0)
       #                 rnn_hxs[j] += [(s, s)]
@@ -45,8 +45,8 @@ class RolloutStorage(object):
       #     rnn_hxs_i = rnn_hxs
       #     rnn_hxs = torch.cat(
       #         [torch.cat([u.squeeze(0) for u in rnn_hxs[v]], dim=0).squeeze(0) for v in len(rnn_hxs)], dim=0)
-      #     rnn_hxs_i = 
- 
+      #     rnn_hxs_i =
+
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
@@ -192,7 +192,7 @@ class RolloutStorage(object):
 
 class CuriosityRolloutStorage(RolloutStorage):
 
-    def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size, 
+    def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size,
             state_feature_space #, curiosity_reccurent_hidden_state_size
             ):
 
@@ -205,7 +205,7 @@ class CuriosityRolloutStorage(RolloutStorage):
         self.feature_state_preds = torch.zeros(num_steps + 1, num_processes, *state_feature_space)
 
     def to(self, device):
-        self.action_bins.to(device) 
+        self.action_bins.to(device)
         self.action_dist_preds.to(device)
         self.feature_states.to(device)
         self.feature_state_preds.to(device)
@@ -223,7 +223,7 @@ class CuriosityRolloutStorage(RolloutStorage):
     def after_update(self):
         self.feature_state_preds[0].copy_(self.feature_state_preds[-1])
         self.action_dist_preds[0].copy_(self.action_dist_preds[-1])
-       #self.curiosity_hidden_recurrent_states[0].copy_(self.curiosity_recurrent_hidden_states[-1])   
+       #self.curiosity_hidden_recurrent_states[0].copy_(self.curiosity_recurrent_hidden_states[-1])
         super().after_update()
 
     def feed_forward_generator(self):

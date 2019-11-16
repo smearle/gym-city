@@ -50,22 +50,27 @@ class GoLMultiEnv(core.Env):
                 os.mkdir('{}/gifs/im/'.format(record))
             except FileExistsError:
                 pass
+        max_pop = self.map_width * self.map_width * 2/3
         self.param_bounds = OrderedDict({
-                'pop': (0, self.map_width * self.map_width)
+                'pop': (0, max_pop)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
         max_loss = sum(self.param_ranges)
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
                #'pop': 0 # aim for empty board
-                'pop': self.map_width * self.map_width # aim for max possible pop
+                'pop': max_pop,
+                # aim for max possible pop (roughly?)
                 })
-        self.trg_param_vals = torch.Tensor([[v for v in self.params.values()]
-                                             for i in range(self.num_proc)])
-        self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
         num_params = len(self.params)
+        # so that we can calculate the loss of each sim separately
+        self.trg_param_vals = torch.Tensor([v for v in self.params.values()])
+        self.trg_param_vals = self.trg_param_vals.unsqueeze(0).expand(self.num_proc,
+                num_params)
+        self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
         obs_shape = (num_proc, 1 + num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
+        self.num_params = num_params
         slice_shape = (num_proc, 1, size, size)
         action_shape_2D = (num_proc, 1, size, size)
         self.action_shape_2D = action_shape_2D
@@ -124,7 +129,6 @@ class GoLMultiEnv(core.Env):
         if self.cuda:
             self.scalar_obs = self.scalar_obs.cuda()
             self.curr_param_vals.cuda()
-            self.trg_param_vals.cuda()
         self.set_params(self.params)
 
 
@@ -139,14 +143,16 @@ class GoLMultiEnv(core.Env):
     def set_params(self, params):
         print('Updated env targets: {}'.format(params))
         self.params = params
-       #self.trg_param_vals = torc([v for v in params.values()])
+        self.trg_param_vals = torch.Tensor([v for v in params.values()])
+        self.trg_param_vals = self.trg_param_vals.unsqueeze(0).expand(self.num_proc,
+                self.num_params)
         # update our scalar observation
         # TODO: is there a quicker way, that scales to high number of params?
         i = 0
-        for v in self.trg_param_vals[:]:
-            self.trg_param_vals[:,i:i+1].fill_(v[0])
+        for v in self.trg_param_vals[0]:
             unit_v = v / self.param_ranges[i]
-            self.scalar_obs[:,i:i+1].fill_(unit_v[0])
+            trg_channel = self.scalar_obs[:,i:i+1]
+            trg_channel.fill_(unit_v)
 
 
     def get_curr_param_vals(self):
@@ -166,7 +172,7 @@ class GoLMultiEnv(core.Env):
        #a.fill_(0)
         actions = self.action_idx_to_tensor(a)
         acted_state = self.world.state + actions
-        new_state = self.world.state.round().long() ^ actions.long()
+        new_state = self.world.state.long() ^ actions.long()
         if self.render_gui:
             # where cells are already alive
             self.agent_dels = torch.where(acted_state == 2, self.world.y1, self.world.y0)
@@ -186,7 +192,7 @@ class GoLMultiEnv(core.Env):
             # for separate rendering
             self.render(agent=True)
         self.world.state = new_state
-        if self.step_count % 1 == 0: # the agent build-turn is over
+        if self.step_count % self.max_step == 0: # the agent build-turn is over
             if self.render_gui:
                 self.agent_builds.fill_(0)
             for i in range(1):
@@ -194,11 +200,12 @@ class GoLMultiEnv(core.Env):
                 if self.render_gui:
                     self.render(agent=True)
         self.get_curr_param_vals()
-        loss = abs(self.trg_param_vals - self.curr_param_vals)
+        loss = self.trg_param_vals - self.curr_param_vals
         loss = loss.squeeze(-1)
         # loss in a 1D tensor of losses of individual envs
-        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
-        #reward = self.world.state.sum(dim=1).sum(1).sum(1).sum(0)
+        reward = torch.Tensor((100 * 50 / (loss + 50)))
+        reward = reward / (self.max_loss * self.max_step * self.num_proc)
+       #reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
         if self.step_count == self.max_step:
             terminal = np.ones(self.num_proc, dtype=bool)
         else:

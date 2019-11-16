@@ -12,6 +12,18 @@ import numpy as np
 from scipy.signal import medfilt
 matplotlib.rcParams.update({'font.size': 8})
 
+# the index of particular columns in the log files
+# TODO: we could make this depend directly on the ordering of columns defined
+# in envs.py
+header_idxs ={
+        'r': 0,
+        'e': 3
+        }
+header_names = {
+        'r': 'Rewards',
+        'e': 'Action Entropy'
+        }
+
 from imutils import paths
 from graphviz import Digraph, Graph
 color_defaults = [
@@ -64,7 +76,7 @@ def network_graphs():
 
     frac = Digraph(comment='FractalNet', node_attr={'shape': 'box'})
     #frac.graph_attr['splines'] = 'ortho'
-    #frac.graph_attr['rankdir'] = 'LR'
+    #frac.graph_attr['rankdir'] = 'LR'xclip -sel clip < ~/.ssh/id_rsa.pub
     frac.edge_attr.update(arrowhead='vee')
     n_recs = 3
     frac.node('A', 'Gameboard', shape='box')
@@ -185,7 +197,9 @@ def load_data(indir, smooth, bin_size, col=None, header='r'):
             for line in f:
                 tmp = line.split(',')
                 t_time = float(tmp[2])
-                tmp = [t_time, int(tmp[1]), float(tmp[0])]
+                header_idx = header_idxs[header]
+                val = tmp[header_idx]
+                tmp = [t_time, int(tmp[1]), float(val)]
                 datas.append(tmp)
 
     datas = sorted(datas, key=lambda d_entry: d_entry[0])
@@ -403,7 +417,8 @@ class Plotter(object):
         plt.xticks(ticks, tick_names)
 
         plt.xlabel('Number of Timesteps')
-        plt.ylabel('Rewards')
+        header_name = header_names[header]
+        plt.ylabel(header_name)
         plt.grid(b=True, which='both')
         plt.title('{}_{}'.format(game, header))
         if man:

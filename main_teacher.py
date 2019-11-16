@@ -233,7 +233,7 @@ def main():
         saved_args.load_dir = args.load_dir
         saved_args.experiment_name = args.experiment_name
         saved_args.log_dir = args.log_dir
-        saved_args.save_dir = args.save_dir
+       #saved_args.save_dir = args.save_dir
         saved_args.num_processes = args.num_processes
         saved_args.n_chan = args.n_chan
         saved_args.prebuild = args.prebuild
