@@ -152,7 +152,6 @@ class MicropolisView(gtk.DrawingArea):
     def draw(self, widget=None, event=None):
 
         ctxWindow = self.get_window().cairo_create()
-
         winRect = self.get_allocation()
         winWidth = winRect.width
         winHeight = winRect.height
@@ -179,7 +178,7 @@ class MicropolisView(gtk.DrawingArea):
 
     def update(self, name, *args):
 
-        print(("MicropolisView update", self, name, args))
+       #print(("MicropolisView update", self, name, args))
 
         self.queue_draw()
 
@@ -283,7 +282,7 @@ class MicropolisView(gtk.DrawingArea):
 
     def handleButtonPress(self, widget, event):
 
-        print("handleButtonPress", self, event, event.x, event.y)
+        #print("handleButtonPress", self, event, event.x, event.y)
 
         if not self.clickable:
             return
@@ -312,7 +311,7 @@ class MicropolisView(gtk.DrawingArea):
 
         direction = event.direction
 
-        print("handleMouseScroll", direction)
+        #print("handleMouseScroll", direction)
 
 
     def pointInRect(self, x, y, rect):
