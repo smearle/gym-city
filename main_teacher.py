@@ -131,7 +131,7 @@ def main():
             observation_space_shape = envs.observation_space.shape[1:]
         else:
             observation_space_shape = envs.observation_space.shape
-        if len(envs.observation_space.shape) == 3:
+        if len(observation_space_shape) == 3:
             in_w = observation_space_shape[1]
             in_h = observation_space_shape[2]
         else:
@@ -139,8 +139,8 @@ def main():
             in_h = 1
         num_inputs = observation_space_shape[0]
     if isinstance(envs.action_space, gym.spaces.Discrete):
-        out_w = 1
-        out_h = 1
+        out_w = args.map_width
+        out_h = args.map_width
         if 'Micropolis' in args.env_name: #otherwise it's set
             if args.power_puzzle:
                 num_actions = 1
@@ -579,7 +579,7 @@ class Evaluator(object):
             self.eval_envs = envs
             self.vec_norm = vec_norm
         else:
-            self.num_eval_processes = 20
+            self.num_eval_processes = 1
             print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
                         self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
             self.eval_envs = make_vec_envs(

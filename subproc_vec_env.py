@@ -23,7 +23,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.close()
             break
         elif cmd == 'get_spaces':
-            remote.send(CloudpickleWrapper((env.observation_space, env.action_space)))
+            remote.send((env.observation_space, env.action_space))
         elif cmd == 'get_param_bounds':
             param_bounds = env.get_param_bounds()
             remote.send(param_bounds)
@@ -55,7 +55,7 @@ class SubprocVecEnv(VecEnv):
             remote.close()
 
         self.remotes[0].send(('get_spaces', None))
-        observation_space, action_space, _ = self.remotes[0].recv()
+        observation_space, action_space = self.remotes[0].recv()
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
 
     def get_param_bounds(self):
