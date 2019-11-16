@@ -89,13 +89,13 @@ class GoLMultiEnv(core.Env):
 
         self.gif_ep_count = 0
         self.step_count = 0
-        self.record_entropy = True
+       #self.record_entropy = True
         self.world = World(self.map_width, self.map_width, prob_life=prob_life,
                            cuda=cuda, num_proc=num_proc, env=self)
         self.state = None
         self.max_step = max_step
 
-        self.entropies = []
+       #self.entropies = []
         if self.render_gui:
             #TODO: render function should deal with this somehow
             cv2.namedWindow("Game of Life", cv2.WINDOW_NORMAL)
@@ -150,7 +150,7 @@ class GoLMultiEnv(core.Env):
         # TODO: is there a quicker way, that scales to high number of params?
         i = 0
         for v in self.trg_param_vals[0]:
-            unit_v = v / self.param_ranges[i]
+            unit_v = v  / self.param_ranges[i]
             trg_channel = self.scalar_obs[:,i:i+1]
             trg_channel.fill_(unit_v)
 
@@ -200,7 +200,7 @@ class GoLMultiEnv(core.Env):
                 if self.render_gui:
                     self.render(agent=True)
         self.get_curr_param_vals()
-        loss = self.trg_param_vals - self.curr_param_vals
+        loss = abs(self.trg_param_vals - self.curr_param_vals)
         loss = loss.squeeze(-1)
         # loss in a 1D tensor of losses of individual envs
         reward = torch.Tensor((100 * 50 / (loss + 50)))

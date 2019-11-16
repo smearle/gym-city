@@ -27,11 +27,11 @@ class MicropolisMonitor(bench.Monitor):
             append_log = True
             old_log = '{}_old'.format(logfile)
             os.rename(logfile, old_log)
-        info_keywords = (*info_keywords, 'e')
+        info_keywords = (*info_keywords, 'e', 'p')
         super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
         if append_log:
             with open(old_log, newline='') as old:
-                reader = csv.DictReader(old, fieldnames=('r', 'l', 't','e'))
+                reader = csv.DictReader(old, fieldnames=('r', 'l', 't','e', 'p'))
                 h = 0
                 for row in reader:
                     if h > 1:
@@ -63,9 +63,10 @@ class MultiMonitor(MicropolisMonitor):
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards) * self.env.num_proc
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
-                    "e": round(self.dist_entropy, 6)}
+                    "e": round(self.dist_entropy, 6),
+                    "p": round(self.trg_param_vals[0, 0].item(), 6)}
             for k in self.info_keywords:
-                if k != 'e':
+                if k != 'e' and k!= 'p':
                     epinfo[k] = info[k]
             self.episode_rewards.append(eprew)
             self.episode_lengths.append(eplen)

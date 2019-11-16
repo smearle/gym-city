@@ -17,11 +17,13 @@ matplotlib.rcParams.update({'font.size': 8})
 # in envs.py
 header_idxs ={
         'r': 0,
-        'e': 3
+        'e': 3,
+        'p': 4
         }
 header_names = {
         'r': 'Rewards',
-        'e': 'Action Entropy'
+        'e': 'Action Entropy',
+        'p': 'Target Population'
         }
 
 from imutils import paths
@@ -181,7 +183,7 @@ def fix_point(x, y, interval):
     return fx, fy
 
 
-def load_data(indir, smooth, bin_size, col=None, header='r'):
+def load_data(indir, smooth, bin_size, col=None, header='r', dots=False):
     datas = []
     if col is not None:
         infiles = glob.glob(os.path.join(indir, 'col_{}_eval.csv'.format(col)))
@@ -223,7 +225,8 @@ def load_data(indir, smooth, bin_size, col=None, header='r'):
     if smooth == 2:
         y = medfilt(y, kernel_size=9)
 
-    x, y = fix_point(x, y, bin_size)
+    if not dots:
+        x, y = fix_point(x, y, bin_size)
     return [x, y]
 
 
@@ -243,11 +246,12 @@ class Plotter(object):
         self.evl_r_fig = None
         self.trn_r_fig = None
         self.trn_e_fig = None
+        self.trn_p_fig = None
 
 
-    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None,
-            x_lim=None, y_lim=None, man=False,
-            eval=False, header='r'
+    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1,
+            n_graphs=None, x_lim=None, y_lim=None, man=False,
+            eval=False, header='r', dots=False
             ):
         '''
          - n_graphs: specific to fractal columns
@@ -260,6 +264,10 @@ class Plotter(object):
                 fig = self.trn_r_fig
             elif header == 'e':
                 fig = self.trn_e_fig
+            elif header == 'p':
+                fig = self.trn_p_fig
+        if dots:
+            smooth = 0
 
         if man:
             matplotlib.rcParams.update({'font.size': 14})
@@ -291,6 +299,7 @@ class Plotter(object):
         else:
             if not fig:
                 fig = plt.figure()
+
         if isinstance(fld, list):
             j = 0
             for f in fld:
@@ -323,14 +332,17 @@ class Plotter(object):
                     plt.plot(tx, ty, label="col {}".format(i), color=color_defaults[color])
                     color += 1
         else:
-            tx, ty = load_data(folder, smooth, bin_size, header=header)
+            tx, ty = load_data(folder, smooth, bin_size, header=header, dots=dots)
             if tx is None or ty is None:
                 return win
             if evl:
                 color = 3
                 plt.plot(tx, ty, label='det-eval', color=color_defaults[color])
             else:
-                plt.plot(tx, ty, label="non-det")
+                if dots:
+                    plt.scatter(tx, ty, s=1, label='selected target')
+                else:
+                    plt.plot(tx, ty, label="non-det")
 
 
         if x_lim:

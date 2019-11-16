@@ -1585,7 +1585,8 @@ class MicropolisBase_mlp(NNBase):
 class MLPBase(NNBase):
     def __init__(self, recurrent=False, hidden_size=64,
                  map_width=16, num_inputs=1, num_actions=1,
-                 in_w=1, in_h=1, out_w=1, out_h=1):
+                 in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64,
+                 prebuild=False, val_kern=None):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
         self.n_cols = 1
         num_inputs = in_w * in_h * num_inputs

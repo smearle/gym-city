@@ -295,6 +295,7 @@ def main():
     if alp_gmm is None:
         alp_gmm = ALPGMM(env_param_lw_bounds, env_param_hi_bounds)
     params_vec = alp_gmm.sample_task()
+
     params = OrderedDict()
     print('\n env_param_bounds', env_param_bounds)
     print(params_vec)
@@ -418,7 +419,8 @@ def main():
             value_loss, action_loss, dist_entropy, fwd_loss, inv_loss = agent.update(rollouts)
         else:
             value_loss, action_loss, dist_entropy = agent.update(rollouts)
-        envs.dist_entropy = dist_entropy
+        if dist_entropy is not None: # not sure why it's None
+            envs.dist_entropy = dist_entropy
 
         rollouts.after_update()
 
@@ -521,6 +523,8 @@ dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
                                   args.algo, args.num_frames, header='e')
                 win_r = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
                                   args.algo, args.num_frames, header='r')
+                win_r = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
+                                  args.algo, args.num_frames, header='p', dots=True)
             except IOError:
                 pass
 
@@ -586,7 +590,7 @@ class Evaluator(object):
             self.vec_norm.eval()
             self.vec_norm.ob_rms = get_vec_normalize(self.eval_envs).ob_rms
         self.tstart = time.time()
-        fieldnames = ['r', 'l', 't', 'e']
+        fieldnames = ['r', 'l', 't', 'e', 'p']
         model = actor_critic.base
         if args.model == 'FractalNet':
             n_cols = model.n_cols
@@ -616,7 +620,7 @@ class Evaluator(object):
                 setattr(self, 'writer_col_{}'.format(i), writer_col)
                 if merge_col_log:
                     with open(old_log, newline='') as old:
-                        reader = csv.DictReader(old, fieldnames=('r', 'l', 't', 'e'))
+                        reader = csv.DictReader(old, fieldnames=('r', 'l', 't', 'e', 'p'))
                         h = 0
                         try: # in case of null bytes resulting from interrupted logging
                             for row in reader:
