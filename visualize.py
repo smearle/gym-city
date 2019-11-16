@@ -239,6 +239,172 @@ class Plotter(object):
         self.indir = indir
         self.max_steps = max_steps # this shouldn't change during frozen eval
 
+        # keep our figures open and progressively animate new data
+        self.evl_r_fig = None
+        self.trn_r_fig = None
+        self.trn_e_fig = None
+
+
+    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None,
+            x_lim=None, y_lim=None, man=False,
+            eval=False, header='r'
+            ):
+        '''
+         - n_graphs: specific to fractal columns
+        '''
+        if eval:
+            if header == 'r':
+                fig = self.evl_r_fig
+        else:
+            if header == 'r':
+                fig = self.trn_r_fig
+            elif header == 'e':
+                fig = self.trn_e_fig
+
+        if man:
+            matplotlib.rcParams.update({'font.size': 14})
+        if isinstance(folder, list):
+            fld = folder
+            folder = folder[0]
+        else:
+            fld = None
+        if folder.endswith('logs'):
+            evl = False
+        elif folder.endswith('logs_eval'):
+            evl = True
+        if folder.endswith('logs'):
+            evl = False
+        elif folder.endswith('logs_eval'):
+            evl = True
+        if man:
+            tick_fractions = np.array([1/4, 2/4, 3/4, 1])
+        else:
+            tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
+
+        ticks = tick_fractions * num_steps
+        tick_names = ["{:.0e}".format(tick) for tick in ticks]
+        if man:
+            tick_names[0] =''
+            tick_names[2] = ''
+            if not fig:
+                fig = plt.figure(figsize=(5.6,5))
+        else:
+            if not fig:
+                fig = plt.figure()
+        if isinstance(fld, list):
+            j = 0
+            for f in fld:
+                print(f)
+                color = 0
+                tx, ty = load_data(f, smooth, bin_size, col=-1, header=header)
+                if tx is None or ty is None:
+                    #print('could not find x y data columns in csv')
+                    pass
+                   #return win
+
+                else:
+                    if j == 0:
+                        plt.plot(tx, ty, label="FullyConv", color=color_defaults[-1], linestyle='dashed')
+                    else:
+                        plt.plot(tx, ty, label="StrictlyConv", color=color_defaults[color])
+                    color += 1
+                j += 1
+        elif n_graphs is not None:
+            #print('indaplotter')
+            color = 0
+            for i in n_graphs:
+                tx, ty = load_data(folder, smooth, bin_size, col=i, header=header)
+                if tx is None or ty is None:
+                    #print('could not find x y data columns in csv')
+                    pass
+                   #return win
+
+                else:
+                    plt.plot(tx, ty, label="col {}".format(i), color=color_defaults[color])
+                    color += 1
+        else:
+            tx, ty = load_data(folder, smooth, bin_size, header=header)
+            if tx is None or ty is None:
+                return win
+            if evl:
+                color = 3
+                plt.plot(tx, ty, label='det-eval', color=color_defaults[color])
+            else:
+                plt.plot(tx, ty, label="non-det")
+
+
+        if x_lim:
+            plt.xlim(*x_lim)
+        else:
+            plt.xlim(0, num_steps * 1.01)
+        if y_lim:
+            plt.ylim(*y_lim)
+        plt.xticks(ticks, tick_names)
+
+        plt.xlabel('Number of Timesteps')
+        header_name = header_names[header]
+        plt.ylabel(header_name)
+        plt.grid(b=True, which='both')
+        plt.title('{}_{}'.format(game, header))
+        if man:
+            plt.legend(loc='upper left', bbox_to_anchor=(1,1))
+            plt.tight_layout(w_pad=2)
+        else:
+            plt.legend(loc=4)
+        if evl:
+            figfolder = folder.replace('/logs_eval', '/eval_')
+        else:
+            figfolder = folder.replace('/logs', '/train_')
+        print('should be saving graph now as {}'.format(figfolder))
+
+
+        if man:
+            figfile = './{}_{}_fig_man.png'.format(figfolder, header)
+        else:
+            figfile = './{}_{}_fig.png'.format(figfolder, header)
+        plt.savefig(figfile, format='png')
+        plt.show()
+        plt.draw()
+
+        image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
+       #plt.close(fig)
+
+
+
+        # Show it in visdom
+        image = np.transpose(image, (2, 0, 1))
+        return viz.image(image, win=win)
+
+def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=20, x_lim=None, y_lim=None,
+        title='', smooth=1):
+    plotter = Plotter(n_cols=n_cols, indir=indir, n_proc=n_proc)
+
+    from visdom import Visdom
+    viz = Visdom()
+    win = None
+    if isinstance(indir, list):
+        print('copy man\n')
+        i = 0
+        for d in indir:
+            indir[i] = '{}/logs_eval'.format(d)
+            i += 1
+    else:
+        indir = "{}/logs_eval".format(indir)
+    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps,
+        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim, man=True, bin_size=100, smooth=smooth)
+    return win
+
+if __name__ == "__main__":
+    from visdom import Visdom
+    import argparse
+    viz = Visdom()
+    win = None
+    parser = argparse.ArgumentParser(description='viz')
+    parser.add_argument('--load-dir', default=None,
+            help='directory from which to load agent logs (default: ./trained_models/)')
+    visdom_plot(viz, None, '/tmp/gym/', 'BreakOut', 'a2c', bin_size=100, smooth=1)
+
 
     def get_col_avg(self, col=None):
         ''' Also records number of episodes '''
@@ -331,151 +497,3 @@ class Plotter(object):
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
-    def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1, n_graphs=None,
-            x_lim=None, y_lim=None, man=False,
-            header='r'
-            ):
-        '''
-         - n_graphs: specific to fractal columns
-        '''
-        if man:
-            matplotlib.rcParams.update({'font.size': 14})
-        if isinstance(folder, list):
-            fld = folder
-            folder = folder[0]
-        else:
-            fld = None
-        if folder.endswith('logs'):
-            evl = False
-        elif folder.endswith('logs_eval'):
-            evl = True
-        if folder.endswith('logs'):
-            evl = False
-        elif folder.endswith('logs_eval'):
-            evl = True
-        if man:
-            tick_fractions = np.array([1/4, 2/4, 3/4, 1])
-        else:
-            tick_fractions = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
-
-        ticks = tick_fractions * num_steps
-        tick_names = ["{:.0e}".format(tick) for tick in ticks]
-        if man:
-            tick_names[0] =''
-            tick_names[2] = ''
-            fig = plt.figure(figsize=(5.6,5))
-        else:
-            fig = plt.figure()
-        if isinstance(fld, list):
-            j = 0
-            for f in fld:
-                print(f)
-                color = 0
-                tx, ty = load_data(f, smooth, bin_size, col=-1, header=header)
-                if tx is None or ty is None:
-                    #print('could not find x y data columns in csv')
-                    pass
-                   #return win
-
-                else:
-                    if j == 0:
-                        plt.plot(tx, ty, label="FullyConv", color=color_defaults[-1], linestyle='dashed')
-                    else:
-                        plt.plot(tx, ty, label="StrictlyConv", color=color_defaults[color])
-                    color += 1
-                j += 1
-        elif n_graphs is not None:
-            #print('indaplotter')
-            color = 0
-            for i in n_graphs:
-                tx, ty = load_data(folder, smooth, bin_size, col=i, header=header)
-                if tx is None or ty is None:
-                    #print('could not find x y data columns in csv')
-                    pass
-                   #return win
-
-                else:
-                    plt.plot(tx, ty, label="col {}".format(i), color=color_defaults[color])
-                    color += 1
-        else:
-            tx, ty = load_data(folder, smooth, bin_size, header=header)
-            if tx is None or ty is None:
-                return win
-            if evl:
-                color = 3
-                plt.plot(tx, ty, label='det-eval', color=color_defaults[color])
-            else:
-                plt.plot(tx, ty, label="non-det")
-
-
-        if x_lim:
-            plt.xlim(*x_lim)
-        else:
-            plt.xlim(0, num_steps * 1.01)
-        if y_lim:
-            plt.ylim(*y_lim)
-        plt.xticks(ticks, tick_names)
-
-        plt.xlabel('Number of Timesteps')
-        header_name = header_names[header]
-        plt.ylabel(header_name)
-        plt.grid(b=True, which='both')
-        plt.title('{}_{}'.format(game, header))
-        if man:
-            plt.legend(loc='upper left', bbox_to_anchor=(1,1))
-            plt.tight_layout(w_pad=2)
-        else:
-            plt.legend(loc=4)
-        if evl:
-            figfolder = folder.replace('/logs_eval', '/eval_')
-        else:
-            figfolder = folder.replace('/logs', '/train_')
-        print('should be saving graph now as {}'.format(figfolder))
-
-
-        if man:
-            figfile = './{}_{}_fig_man.png'.format(figfolder, header)
-        else:
-            figfile = './{}_{}_fig.png'.format(figfolder, header)
-        plt.savefig(figfile, format='png')
-        plt.show()
-        plt.draw()
-
-        image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-        image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
-        plt.close(fig)
-
-
-
-        # Show it in visdom
-        image = np.transpose(image, (2, 0, 1))
-        return viz.image(image, win=win)
-
-def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=20, x_lim=None, y_lim=None,
-        title='', smooth=1):
-    plotter = Plotter(n_cols=n_cols, indir=indir, n_proc=n_proc)
-
-    from visdom import Visdom
-    viz = Visdom()
-    win = None
-    if isinstance(indir, list):
-        print('copy man\n')
-        i = 0
-        for d in indir:
-            indir[i] = '{}/logs_eval'.format(d)
-            i += 1
-    else:
-        indir = "{}/logs_eval".format(indir)
-    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps,
-        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim, man=True, bin_size=100, smooth=smooth)
-    return win
-
-if __name__ == "__main__":
-    from visdom import Visdom
-    import argparse
-    viz = Visdom()
-    win = None
-    parser = argparse.ArgumentParser(description='viz')
-    parser.add_argument('--load-dir', default=None,
-            help='directory from which to load agent logs (default: ./trained_models/)')
-    visdom_plot(viz, None, '/tmp/gym/', 'BreakOut', 'a2c', bin_size=100, smooth=1)
