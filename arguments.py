@@ -129,10 +129,10 @@ def get_parser():
 ########################################### Micropolis
     parser.add_argument('--power-puzzle', action='store_true',
             help='a minigame: the agent uses wire to efficiently connect zones.')
-    parser.add_argument('--simple-reward', action='store_true',
-            help='reward only for overall population according to game')
-    parser.add_argument('--traffic-only', action='store_true',
-            help='reward only for overall traffic')
+   #parser.add_argument('--simple-reward', action='store_true',
+   #        help='reward only for overall population according to game')
+   #parser.add_argument('--traffic-only', action='store_true',
+   #        help='reward only for overall traffic')
     parser.add_argument('--random-builds', action='store_true',
             help='episode begins with random static (unbulldozable) builds on the map')
     parser.add_argument('--random-terrain', action='store_true',
@@ -166,6 +166,7 @@ def get_parser():
 
     parser.add_argument(
             '--poet',
-            action='store_true',
+            type=bool,
+            default=True,
             help='set targets for environment, replaces fixed reward function')
     return parser

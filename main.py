@@ -110,7 +110,8 @@ def main():
             in_w = 1
             in_h = 1
         num_inputs = observation_space_shape[0]
-    if isinstance(envs.action_space, gym.spaces.Discrete):
+    if isinstance(envs.action_space, gym.spaces.Discrete) or\
+        isinstance(envs.action_space, gym.spaces.Box):
         out_w = args.map_width
         out_h = args.map_width
         if 'Micropolis' in args.env_name: #otherwise it's set
@@ -344,16 +345,16 @@ def main():
             dist_entropy = 0
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
-            print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n \
-dist entropy {:.1f}, val/act loss {:.1f}/{:.1f},".
+            print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.6f}/{:.6f}, min/max reward {:.6f}/{:.6f}\n \
+dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                 format(j, total_num_steps,
                        int((total_num_steps - past_steps * args.num_processes * args.num_steps) / (end - start)),
                        len(episode_rewards),
-                       np.mean(episode_rewards),
-                       np.median(episode_rewards),
-                       np.min(episode_rewards),
-                       np.max(episode_rewards), dist_entropy,
-                       value_loss, action_loss))
+                       round(np.mean(episode_rewards), 6),
+                       round(np.median(episode_rewards), 6),
+                       round(np.min(episode_rewards), 6),
+                       round(np.max(episode_rewards), 6), round(dist_entropy, 6),
+                       round(value_loss, 6), round(action_loss, 6)))
             if args.curiosity:
                 print("fwd/inv icm loss {:.1f}/{:.1f}\n".
                 format(

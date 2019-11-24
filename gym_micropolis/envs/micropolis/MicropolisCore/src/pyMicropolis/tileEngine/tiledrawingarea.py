@@ -130,8 +130,8 @@ class TileDrawingArea(gtk.DrawingArea):
         print(tilesFileName)
         if tilesFileName is None:
             tilesFileName = os.path.join(
-                                os.path.join(os.path.basename(__file__), os.pardir),
-                                'gym_micropolis/envs/micropolis/MicropolisCore/src/images/tileEngine/tiles.png')
+                                os.path.dirname(__file__),
+                                '../../images/tileEngine/tiles.png')
             tilesFileName = os.path.abspath(tilesFileName)
 
         self.tengine = tengine
@@ -201,7 +201,7 @@ class TileDrawingArea(gtk.DrawingArea):
         print('creating engine')
         self.createEngine()
         print('done creating engine')
-   
+
         self.set_can_focus(True)
 
         from gi.repository import Gdk as gdk
@@ -355,7 +355,7 @@ class TileDrawingArea(gtk.DrawingArea):
 
 
     def loadSurfaceFromPNG(self, fileName):
-        print(fileName)
+        print('attempting to load surface from png at: {}'.format(fileName))
         surface = cairo.ImageSurface.create_from_png(fileName)
         return (
             surface,
@@ -1037,7 +1037,7 @@ class TileDrawingArea(gtk.DrawingArea):
         tileY = ((winHeight / 2) - self.panY) / tileSize
 
         #print "getCenterTile", "tile", tileX, tileY, "tileSize", self.tileSize, "scale", self.scale
-     
+
         return tileX, tileY
 
 

@@ -114,7 +114,8 @@ class MicropolisControl():
             self.engine.setPasses(1)
             self.engine.resume()
 
-        self.engine.setFunds(1000000)
+        self.init_funds = 20000
+        self.engine.setFunds(self.init_funds)
         engine.setSpeed(3)
         engine.setPasses(100)
         #engine.simSpeed =99
@@ -218,6 +219,7 @@ class MicropolisControl():
         return power_map
 
     def getFunds(self):
+       #print('getting funds total {}'.format(self.engine.totalFunds))
         return self.engine.totalFunds
 
     def render(self):
@@ -226,6 +228,7 @@ class MicropolisControl():
             gtk.main_iteration()
 
     def setFunds(self, funds):
+       #print('setting funds to {}'.format(funds))
         return self.engine.setFunds(funds)
 
         # called by map module

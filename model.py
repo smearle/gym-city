@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from distributions import Categorical, Categorical2D, DiagGaussian
+from distributions import Categorical, Categorical2D, CategoricalPaint, DiagGaussian
 from utils import init, init_normc_
 from torchsummary import summary
 import math
@@ -39,7 +39,7 @@ class Policy(nn.Module):
         if 'GoLMultiEnv' in args.env_name:
             self.multi_env = True
             num_actions = 1
-
+        self.num_actions = num_actions
         base_kwargs = {**base_kwargs, **{'num_actions': num_actions}}
 
 
@@ -82,9 +82,10 @@ class Policy(nn.Module):
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape
             if self.args.env_name == 'MicropolisPaintEnv-v0':
-                self.dist = None
+                self.dist = CategoricalPaint(self.base.output_size,
+                                                num_outputs)
             else:
-                self.dist = DiagGaussian(self.base.output_size, num_outputs)
+                self.dist = DiagGaussian(self.base.output_size, self.num_actions)
     #           self.dist = Categorical2D(self.base.output_size, num_outputs)
 
         else:
@@ -123,9 +124,11 @@ class Policy(nn.Module):
         ''' assumes player actions can only occur on env rank 0'''
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         if 'paint' in self.args.env_name.lower():#or self.args.prebuild:
-            dist = torch.distributions.binomial.Binomial(1, actor_features)
-            action = dist.sample()
-            action_log_probs = dist.log_prob(action)
+            # we sample over each channel, ending up with an action at each tile
+            dist = self.dist(actor_features)
+            action = self.dist.sample()
+            print(action.shape)
+            action_log_probs = self.dist.log_probs(action).squeeze(0)
 
         else:
             dist = self.dist(actor_features)
@@ -184,10 +187,9 @@ class Policy(nn.Module):
 
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         if 'paint' in self.args.env_name.lower():
-            dist = torch.distributions.binomial.Binomial(1, actor_features)
-            action_log_probs = dist.log_prob(action)
-            dist_entropy = None
-            dist_entropy = (dist.logits * dist.probs).mean()
+            action = action.view(self.args.num_steps, -1)
+            action_log_probs = self.dist.log_probs(action).squeeze(0)
+            dist_entropy = self.dist.entropy().mean()
         else:
             dist = self.dist(actor_features)
 

@@ -1269,11 +1269,13 @@ class MicropolisGenericEngine(micropolisengine.Micropolis):
 
 
     def handle_startEarthquake(self, magnitude):
-        print(("handle_startEarthquake(self, magnitude)", (self, magnitude,)))
+       #print(("handle_startEarthquake(self, magnitude)", (self, magnitude,)))
+        pass
 
 
     def handle_startScenario(self, scenario):
-        print(("handle_startScenario(self, scenario)", (self, scenario)))
+       #print(("handle_startScenario(self, scenario)", (self, scenario)))
+        pass
 
 
     def handle_startLoad(self):

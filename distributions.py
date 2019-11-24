@@ -29,12 +29,51 @@ FixedNormal.entropy = lambda self: entropy(self).sum(-1)
 
 FixedNormal.mode = lambda self: self.mean
 
+class CategoricalPaint(nn.Module):
+    ''' Each channel of a map image is a categorical distribution. Handle
+    reshaping.'''
+    def __init__(self, num_inputs, num_outputs):
+        super(CategoricalPaint, self).__init__()
+        self.obs_shape = None
+
+    def forward(self, x):
+        # put channels last
+        n_chan = x.size(1)
+        self.map_shape = x.shape[-2:]
+        x = x.transpose(1, -1)
+        # batch over all cells
+        x = x.reshape(-1, n_chan)
+        self.dist = torch.distributions.Categorical(logits=x)
+       #self.dist = FixedCategorical(x)
+        return self.dist
+
+    def sample(self):
+        s = self.dist.sample()
+        s = s.view(-1, *self.map_shape)
+        return s
+
+    def log_probs(self, action):
+        print(action.shape)
+        n_batch = action.shape[0]
+        print(n_batch)
+        action = action.view(-1, 1)
+        print(action.shape)
+       #action = action.unsqueeze(-1)
+        lp = self.dist.log_probs(action)
+        lp = lp.view(n_batch, *self.map_shape)
+        return lp
+
+    def entropy(self):
+        # don't need to reshape here atm
+        e = self.dist.entropy()
+        return e
+
+
 class Categorical2D(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(Categorical2D, self).__init__()
 
     def forward(self, x):
-       #print(x)
         x = x.view(x.size(0), -1)
         return FixedCategorical(logits=x)
 

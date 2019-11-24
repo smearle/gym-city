@@ -59,6 +59,7 @@ class GoLMultiEnv(core.Env):
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
                 'pop': 0 # aim for empty board
+               #'prob_life':
                #'pop': max_pop,
                 # aim for max possible pop (roughly?)
                 })
@@ -156,7 +157,8 @@ class GoLMultiEnv(core.Env):
 
 
     def get_curr_param_vals(self):
-        self.curr_param_vals[:, 0] = self.get_pop()
+        self.curr_pop = self.get_pop()
+        self.curr_param_vals[:, 0] = self.curr_pop
 
 
     def get_pop(self):
@@ -192,10 +194,10 @@ class GoLMultiEnv(core.Env):
             # for separate rendering
             self.render(agent=True)
         self.world.state = new_state
-        if self.step_count % self.max_step == 0: # the agent build-turn is over
+        if self.step_count % self.agent_steps == 0: # the agent build-turn is over
             if self.render_gui:
                 self.agent_builds.fill_(0)
-            for i in range(1):
+            for j in range(self.sim_steps):
                 self.world._tick()
                 if self.render_gui:
                     self.render(agent=True)
@@ -219,6 +221,10 @@ class GoLMultiEnv(core.Env):
         info = [{}]
         self.step_count += 1
         obs = self.get_obs()
+        ### OVERRIDE teacher for debuggine
+       #reward = self.curr_pop
+       #reward = 256 - self.curr_pop
+
         reward = reward.unsqueeze(-1)
         return (obs, reward, terminal, info)
 
@@ -265,7 +271,7 @@ class GoLMultiEnv(core.Env):
             rend_state = self.rend_state[self.rend_idx].cpu()
             rend_dels = self.agent_dels[self.rend_idx].cpu()
             rend_builds = self.agent_builds[self.rend_idx].cpu()
-            rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
+            rend_state = np.vstack((rend_state * 1, rend_state * 0.5, rend_state * 1))
             rend_dels = np.vstack((rend_dels * 0, rend_dels * 0, rend_dels * 1))
             rend_builds = np.vstack((rend_builds * 1, rend_builds * 0, rend_builds * 1))
             rend_arr = rend_state + rend_dels + rend_builds

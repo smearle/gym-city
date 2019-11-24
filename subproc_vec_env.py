@@ -34,6 +34,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             env.set_param_bounds(data)
             remote.send(None)
         else:
+            print('invalid command, data: {}, {}'.format(cmd, data))
             raise NotImplementedError
 
 
@@ -72,7 +73,7 @@ class SubprocVecEnv(VecEnv):
 
     def set_param_bounds(self, param_bounds):
         worker = self.remotes[0]
-        worker.send(('set_param_ranges', param_bounds))
+        worker.send(('set_param_bounds', param_bounds))
         worker.recv()
         return
 

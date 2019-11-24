@@ -368,7 +368,7 @@ def main():
 
             player_act = None
             if args.render:
-                if type(infos) is list:
+                if type(infos) is list or type(infos) is tuple:
                     info = infos[0]
                 else:
                     info = infos # when we're dealing with a multi-env

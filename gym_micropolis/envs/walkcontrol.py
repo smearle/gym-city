@@ -12,12 +12,12 @@ import numpy as np
 ## assumes you've downloaded the micropolis-4bots repo into the same directory as this (the gym-micropolis) repo.
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
-MICROPOLISCORE_DIR = GIT_DIR + '/micropolis/MicropolisCore/src'
+MICROPOLISCORE_DIR = GIT_DIR + '/gym_micropolis/envs/micropolis/MicropolisCore/src'
 sys.path.append(MICROPOLISCORE_DIR)
 
 CURR_DIR = os.getcwd()
 # we need to do this so the micropolisgenericengine can access images/micropolisEngine/dataColorMap.png
-os.chdir(MICROPOLISCORE_DIR)   
+os.chdir(MICROPOLISCORE_DIR)
 
 from pyMicropolis.gtkFrontend import main
 
@@ -30,7 +30,7 @@ else:
 class MicroWalkControl():
 
     def __init__(self, MAP_W=12, MAP_H=12):
-        os.chdir(MICROPOLISCORE_DIR)  
+        os.chdir(MICROPOLISCORE_DIR)
         self.SHOW_GUI=False
         engine, win1 = main.train()
         os.chdir(CURR_DIR)
@@ -40,9 +40,9 @@ class MicroWalkControl():
         self.MAP_Y = MAP_H
         self.MAP_XS = 5
         self.MAP_YS = 5
-        self.engineTools = ['Residential', 'Commercial', 'Industrial', 
-                'FireDept', 
-                'PoliceDept', 
+        self.engineTools = ['Residential', 'Commercial', 'Industrial',
+                'FireDept',
+                'PoliceDept',
                 # TODO: implement query (skipped for now by indexing)
                'Query',
                'Wire',
@@ -50,9 +50,9 @@ class MicroWalkControl():
                'Rail',
                'Road',
                 'Stadium',
-                'Park', 
+                'Park',
                  'Seaport',
-                'CoalPowerPlant', 
+                'CoalPowerPlant',
                 'NuclearPowerPlant',
                 'Airport',
                 'Net',
@@ -71,7 +71,7 @@ class MicroWalkControl():
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest
         self.engine.autoBulldoze = True
-        # for bots 
+        # for bots
         win1.playCity()
         self.engine.setFunds(1000000)
         engine.setSpeed(3)
@@ -101,10 +101,10 @@ class MicroWalkControl():
                 # random zones
                 elif ((i + 2 - (i + 4) // w) % 3) ==0 and \
                      ((j + 2 - (j + 1) // h) % 3) ==0:
-     
+
                     tool_i = random.randint(0, 3-1)
                     self.doTool(i, j, ['Residential', 'Commercial', 'Industrial'][tool_i])
-    
+
     def clearMap(self):
         self.engine.clearMap()
         self.map.setEmpty()
@@ -121,18 +121,18 @@ class MicroWalkControl():
 
     def doBotTool(self, x, y, tool):
         '''Takes string for tool'''
-        return self.map.addZone(x, y, tool) 
+        return self.map.addZone(x, y, tool)
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''
-        return self.map.addZone(x, y, tool) 
+        return self.map.addZone(x, y, tool)
 
 
     def toolDown(self, x, y, tool):
         '''Takes int for tool, depending on engine's index'''
-        
+
         self.map.addZone(x, y, self.engineTools[tool])
-        
+
         # called by map module
     def doSimTool(self, x, y, tool):
 
@@ -188,7 +188,7 @@ class MicroWalkControl():
    #    gtk.mainiteration()
         self.engine.simTick()
 
- 
+
     def close(self):
     #   self.engine.doReallyQuit()
         del(self.engine)

@@ -2,20 +2,20 @@ import numpy as np
 import gym.spaces
 import bisect
 
-### Ideally, this should depend on the tilecharacter assignment in 
+### Ideally, this should depend on the tilecharacter assignment in
 ### src/MicropolisEngine/micropolis.h
 
 def zoneFromInt(i):
-    zone_bps = [('Land', None), ('Water', 1), ('Forest', 22), ('Rubble', 44), 
+    zone_bps = [('Land', None), ('Water', 1), ('Forest', 22), ('Rubble', 44),
             ('Flood', 48), ('Radioactive', 52), ('Trash', 53), ('Fire', 56),
-            ('Bridge', 64), ('Road', 66), ('RoadWire', 77), ('Road', 79), 
+            ('Bridge', 64), ('Road', 66), ('RoadWire', 77), ('Road', 79),
             ('Wire', 208), ('RailWire', 221), ('Trash', 223), ('Rail', 224),
-            ('RoadRail', 237), ('RoadRail', 238), ('Residential', 240), 
-            ('Hospital', 405), ('Church', 410), ('Commercial', 423), 
-            ('Industrial', 610), ('Seaport', 693), ('Airport', 709), ('Radar', 711), 
+            ('RoadRail', 237), ('RoadRail', 238), ('Residential', 240),
+            ('Hospital', 405), ('Church', 410), ('Commercial', 423),
+            ('Industrial', 610), ('Seaport', 693), ('Airport', 709), ('Radar', 711),
             ('Airport', 709), ('CoalPowerPlant', 745), ('FireDept', 761), ('PoliceDept', 770), ('Stadium', 779),
             ('NuclearPowerPlant', 811), ('Lightning', 827), ('Bridge', 828), ('Radar', 832), ('Park', 840),
-            ('Net', 844), ('Industrial', 852), ('Rubble', 860), ('Industrial', 888), ('CoalPowerPlant', 916), ('Stadium', 932), ('Bridge', 948), 
+            ('Net', 844), ('Industrial', 852), ('Rubble', 860), ('Industrial', 888), ('CoalPowerPlant', 916), ('Stadium', 932), ('Bridge', 948),
             ('NuclearPowerPlant', 952), ('Church', 956)]
     zones = [z[0] for z in zone_bps]
     breakpoints = [z[1] for z in zone_bps[1:]]
@@ -56,7 +56,7 @@ def zoneFromInt_A(i):
     if 828 <= i <= 832 or 948 <= i <= 951: return "Bridge"
     if 840 <= i <= 843: return "Park"
     if 844 <= i <= 851: return "Net"
-    else: 
+    else:
         print("TILEMAP KEY ERROR")
         return "???"
 
@@ -77,28 +77,29 @@ class TileMap(object):
         if self.walker:
             self.walker_pos = [self.MAP_X // 2, self.MAP_Y // 2]
 
-        self.zoneSize = {'Residential': 3, 
-                'Commercial' : 3, 
-                'Industrial' : 3, 
-                'Seaport' : 4, 
-                'Stadium' : 4, 
-                'PoliceDept' : 3, 
-                'FireDept' : 3, 
-                'Airport' : 5, 
-                'NuclearPowerPlant' : 4, 
-                'CoalPowerPlant' : 4, 
-                'Road' : 1, 
-                'Rail' : 1, 
-                'Park' : 1, 
-                'Wire' : 1, 
+        self.zoneSize = {'Residential': 3,
+                'Commercial' : 3,
+                'Industrial' : 3,
+                'Seaport' : 4,
+                'Stadium' : 4,
+                'PoliceDept' : 3,
+                'FireDept' : 3,
+                'Airport' : 5,
+                'NuclearPowerPlant' : 4,
+                'CoalPowerPlant' : 4,
+                'Road' : 1,
+                'Rail' : 1,
+                'Park' : 1,
+                'Wire' : 1,
                 'Rubble': 1,
-                'Net': 1, 
-                'Water': 1, 
-                'Land': 1, 
+                'Net': 1,
+                'Water': 1,
+                'Land': 1,
                 'Forest': 1,
                 'Church': 3,
                 'Hospital': 3,
-               #'Radioactive': 1,
+                'Radioactive': 1,
+                'Flood': 1,
                 'Fire': 1
                }
         # if this feature, then another
@@ -109,7 +110,7 @@ class TileMap(object):
                 }
         # a distinct feature expressed as the conjunction of existing features
         composite_zones = {
-                "RoadWire": ["Road", "Wire"], 
+                "RoadWire": ["Road", "Wire"],
                 "RailWire": ["Rail", "Wire"],
                 "Bridge": ["Road", "Water"],
                 "RoadRail": ["Road", "Rail"],
@@ -146,7 +147,7 @@ class TileMap(object):
             if feature_ints is None:
                 feature_ints = [zone_int]
             if self.walker:
-                zone_square = np.zeros((self.num_features + 1, width, width), dtype=int)          
+                zone_square = np.zeros((self.num_features + 1, width, width), dtype=int)
             else:
                 zone_square = np.zeros((self.num_features + 1, width, width), dtype=int)
             zone_square[-1,:,:] = zone_int
@@ -158,7 +159,7 @@ class TileMap(object):
         square_sizes = [1, 3,4,5,6]
         self.zoneSquares = {}
         for z in self.zones:
-            z_size = self.zoneSize[z] 
+            z_size = self.zoneSize[z]
             if z == 'Rubble':
                 # make different-size rubble squares
                 for s in square_sizes:
@@ -168,7 +169,7 @@ class TileMap(object):
             else:
                 zone_int = self.zoneInts[z]
                 if z in composite_zones.keys():
-                    feature_ints = [self.zoneInts[z1] for z1 in composite_zones[z]]             
+                    feature_ints = [self.zoneInts[z1] for z1 in composite_zones[z]]
                 elif z in link_features.keys():
                     feature_ints = [self.zoneInts[z1] for z1 in link_features[z]]
                 else:
@@ -185,13 +186,13 @@ class TileMap(object):
         for zone in self.zones:
             self.zoneCols[zone] = self.zoneSquares[zone][:, 0:1, 0:1]
         self.road_labels = list(range(1, int(self.MAP_X * self.MAP_Y / 2) + 1)) # for potential one-hot encoding, for ex.,
-        self.num_road_nets = 0 
+        self.num_road_nets = 0
         self.road_net_sizes = {} # using unique road net numbers as keys
         self.num_roads = 0
         self.num_plants = 0
         self.priority_road_net = None
         # number of surrounding roads for road-tiles, updated on road bld/del
-       #self.road_crowding_map = np.zeros(0, self.MAP_X, self.MAP_Y) 
+       #self.road_crowding_map = np.zeros(0, self.MAP_X, self.MAP_Y)
         self.numPlants = 0 # power plants
 
 
@@ -285,7 +286,7 @@ class TileMap(object):
                    #assert cnx > 1
                     pass # we have flipped this cnxn while visiting another
                 else:
-                    # flip all the connected subnets until none belongs to 
+                    # flip all the connected subnets until none belongs to
                     # the former network
                     new_net = self.road_labels.pop()
                     self.num_road_nets += 1
@@ -342,7 +343,7 @@ class TileMap(object):
         if (not static_build) and self.static_builds[0][x][y] == 1:
             return
 
-        if zone == 'Clear': 
+        if zone == 'Clear':
             zone = 'Land'
 
         result = self.clearPatch(x, y, zone, static_build=static_build)

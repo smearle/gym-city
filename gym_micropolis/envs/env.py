@@ -91,6 +91,7 @@ class MicropolisEnv(core.Env):
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
             power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False):
+        self.PADDING = PADDING
         self.render_gui = render_gui
         self.rank = rank
         self.random_builds = random_builds
@@ -113,8 +114,8 @@ class MicropolisEnv(core.Env):
         self.win1 = self.micro.win1
         self.micro.SHOW_GUI=self.SHOW_GUI
         self.num_step = 0
-        self.minFunds = 5000
-        self.initFunds = 10000000
+        self.minFunds = 0
+        self.initFunds = self.micro.init_funds
         self.num_tools = self.micro.num_tools
         self.num_zones = self.micro.num_zones
         # res, com, ind pop, demand
@@ -201,7 +202,7 @@ class MicropolisEnv(core.Env):
         lst_epi = 500
 #       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)
 #       num_static = max(0, max_static)
-        self.micro.setFunds(10000000)
+        self.micro.setFunds(self.micro.init_funds)
         if num_static > 0:
             num_static = self.np_random.randint(0, num_static + 1)
         for i in range(num_static):
@@ -213,7 +214,7 @@ class MicropolisEnv(core.Env):
 
     def randomStart(self):
         r = self.np_random.randint(0, 100)
-        self.micro.setFunds(10000000)
+        self.micro.setFunds(self.micro.init_funds)
         for i in range(r):
             self.step(self.action_space.sample())
 #       i = np.random.randint(0, (self.obs_width * self.obs_width / 3))
@@ -248,7 +249,7 @@ class MicropolisEnv(core.Env):
         if self.random_builds:
             self.randomStaticStart()
         self.micro.engine.simTick()
-        self.micro.setFunds(self.initFunds)
+        self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
        #curr_pop = self.getPop()
         self.state = self.getState()
@@ -271,6 +272,8 @@ class MicropolisEnv(core.Env):
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
         scalars = [res_pop, com_pop, ind_pop, resDemand, comDemand, indDemand]
         if self.poet:
+            for j in range(3):
+                scalars[j] = scalars[j] / self.param_ranges[j]
             trg_metrics = [v for k, v in self.city_trgs.items()]
             for i in range(len(trg_metrics)):
                 trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
@@ -329,7 +332,7 @@ class MicropolisEnv(core.Env):
 
     def set_param_bounds(self, bounds):
         print('setting visual param bounds (TODO: forreal')
-        if win1 is not None:
+        if self.win1:
             self.win1.agentPanel.setMetricRanges(bounds)
 
 
@@ -376,6 +379,9 @@ class MicropolisEnv(core.Env):
        #    a = 0
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
+        self.poststep()
+
+    def poststep(self):
         self.state = self.getState()
        #print(self.state[-2])
         self.city_metrics = self.get_city_metrics()
@@ -431,19 +437,7 @@ class MicropolisEnv(core.Env):
                 i += 1
 
         reward = (self.max_loss - loss) * max_reward / self.max_loss
-        self.curr_reward = reward
-       #self.curr_reward = math.log10(self.loss * max_reward)
-       #if self.render_gui:
-       #    print('loss: {}'.format(self.loss))
-       #    print('reward: {}'.format(self.curr_reward))
-       #reward += (max_net_1 / self.micro.map.num_roads) * min(100, reward)
-       #reward += (min(max_net_1, max_net_2) / self.micro.map.num_roads) * min(100, reward) # the avg reward when roads are introduced to boost res, so
-                                            # proportion of max net to total roads *
-       #if not self.traffic_only:
-       #   #pass
-       #    reward -= min((max(1, self.micro.map.num_plants) - 1) * 1,
-       #                 self.curr_pop / 2)
-       #self.last_pop = self.curr_pop
+        reward = reward / self.max_step
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
         terminal = (bankrupt or self.num_step >= self.max_step) and\
@@ -463,8 +457,8 @@ class MicropolisEnv(core.Env):
             self.micro.player_builds = self.micro.player_builds[1:]
             self.player_step = a
         self.num_step += 1
-        reward = reward / self.max_step
-
+       #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
+       #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
         return (self.state, reward, terminal, infos)
 
     def getRating(self):
