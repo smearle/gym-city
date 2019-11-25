@@ -82,8 +82,7 @@ class Policy(nn.Module):
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape
             if self.args.env_name == 'MicropolisPaintEnv-v0':
-                self.dist = CategoricalPaint(self.base.output_size,
-                                                num_outputs)
+                self.dist = CategoricalPaint()
             else:
                 self.dist = DiagGaussian(self.base.output_size, self.num_actions)
     #           self.dist = Categorical2D(self.base.output_size, num_outputs)
@@ -127,7 +126,6 @@ class Policy(nn.Module):
             # we sample over each channel, ending up with an action at each tile
             dist = self.dist(actor_features)
             action = self.dist.sample()
-            print(action.shape)
             action_log_probs = self.dist.log_probs(action).squeeze(0)
 
         else:
@@ -187,6 +185,7 @@ class Policy(nn.Module):
 
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         if 'paint' in self.args.env_name.lower():
+            dist = self.dist(actor_features)
             action = action.view(self.args.num_steps, -1)
             action_log_probs = self.dist.log_probs(action).squeeze(0)
             dist_entropy = self.dist.entropy().mean()
@@ -195,6 +194,7 @@ class Policy(nn.Module):
 
             action_log_probs = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()
+        print(value)
         return value, action_log_probs, dist_entropy, rnn_hxs
 
 
@@ -321,11 +321,12 @@ class FullyConv(NNBase):
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
         x = F.relu(self.k3(x))
-        act = self.act(x)
+        act = F.relu(self.act(x))
         for i in range(int(math.log(self.map_width, 2))):
             x = F.relu(self.val_shrink(x))
         val = self.val(x)
        #print(act.shape)
+        assert torch.min(act) >= 0
         return val.view(val.shape[0], -1), act, rhxs
 
 class FullyConv_linVal(NNBase):

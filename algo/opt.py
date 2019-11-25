@@ -7,7 +7,7 @@ if sys.version[0] == '3':
     from .kfac import KFACOptimizer
 
 
-class A2C():
+class A2C_ACKTR_NOREWARD():
     def __init__(self,
                  actor_critic,
                  value_loss_coef,
@@ -47,16 +47,16 @@ class A2C():
             action_shape = rollouts.actions.size()[-1]
             actions = rollouts.actions.view(-1, action_shape)
 
-        if 'LSTM' in self.args.model:
-            rec_size = self.actor_critic.base.get_recurrent_state_size()
-            rec_states = rollouts.recurrent_hidden_states[:-1].view(2, -1, *rec_size)
-        else:
-            rec_states = rollouts.recurrent_hidden_states[:-1].view(-1, 1)
+            if 'LSTM' in self.args.model:
+                rec_size = self.actor_critic.base.get_recurrent_state_size()
+                rec_states = rollouts.recurrent_hidden_states[:-1].view(2, -1, *rec_size)
+            else:
+                rec_states = rollouts.recurrent_hidden_states[:-1].view(-1, 1)
         values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
-        rollouts.obs[:-1].view(-1, *obs_shape),
-        rec_states,
-        rollouts.masks[:-1].view(-1, 1),
-        actions)
+            rollouts.obs[:-1].view(-1, *obs_shape),
+            rec_states,
+            rollouts.masks[:-1].view(-1, 1),
+            actions)
 
         if self.curiosity:
            #action_dist_shape = rollouts.action_dists.size()[2:]
@@ -64,20 +64,20 @@ class A2C():
            #action_size = sum(action_dist_shape)
            #action_bin = torch.zeros((num_processes * num_steps, action_size)).cuda()
            #action_bin.fill_(0)
-           #action_i = torch.cat((torch.Tensor(list(range(num_processes * num_steps))).cuda().unsqueeze(1).long(), actions), 1)
+           #action_i = torch.cat((torch.Tensor(list(range(num_processes * num_steps))).cuda().unsqueeze(1).long(), actions), 1)   
            #action_bin[action_i[:,0], action_i[:,1]] = 1
 
             feature_states, feature_state_preds, action_preds = self.actor_critic.evaluate_icm(
-                    (rollouts.obs[:-1].view(-1, *obs_shape),
-                     rollouts.obs[1:].view(-1, *obs_shape),
+                    (rollouts.obs[:-1].view(-1, *obs_shape), 
+                     rollouts.obs[1:].view(-1, *obs_shape), 
                      rollouts.action_bins.view(-1, *act_shape))
                     )
             forward_err = feature_states[:] - feature_state_preds[:]
             forward_loss = forward_err.pow(2).sum().cpu()
 
             inverse_loss = - (rollouts.action_bins.view(-1, *act_shape).cpu() * torch.log(action_preds + 1e-15).cpu()).sum()
-
-
+            
+            
 
         values = values.view(num_steps, num_processes, 1)
         if 'paint' in self.args.env_name.lower():
