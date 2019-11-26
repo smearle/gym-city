@@ -300,35 +300,38 @@ class MicropolisEnv(core.Env):
             state = np.concatenate((state, self.micro.map.static_builds), 0)
         return state
 
-#   def getPop(self):
-#       self.resPop, self.comPop, self.indPop = self.micro.getResPop(), \
-#                                    self.micro.getComPop(), \
-#                                    self.micro.getIndPop()
+    def getPop(self):
+        self.resPop, self.comPop, self.indPop = self.micro.getResPop(), \
+                                     self.micro.getComPop(), \
+                                     self.micro.getIndPop()
 
-#       curr_pop = resPop + \
-#                  comPop + \
-#                  indPop
+        curr_pop = resPop + \
+                   comPop + \
+                   indPop
 
-#       return curr_pop
+        return curr_pop
+
+    def getReward(self):
+        return self.getPopReward()
 
 
-#   def getPopReward(self):
-#       if self.simple_reward:
-#           return self.micro.getTotPop()
-#       else:
-#           resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
-#           curr_pop = resPop + comPop + indPop
-#           zone_variety = 0
-#           if resPop > 0:
-#               zone_variety += 1
-#           if comPop > 0:
-#               zone_variety += 1
-#           if indPop > 0:
-#               zone_variety += 1
-#           zone_bonus = (zone_variety - 1) * 50
-#           curr_pop += max(0, zone_bonus)
+    def getPopReward(self):
+        if self.simple_reward:
+            return self.micro.getTotPop()
+        else:
+            resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
+            curr_pop = resPop + comPop + indPop
+            zone_variety = 0
+            if resPop > 0:
+                zone_variety += 1
+            if comPop > 0:
+                zone_variety += 1
+            if indPop > 0:
+                zone_variety += 1
+            zone_bonus = (zone_variety - 1) * 50
+            curr_pop += max(0, zone_bonus)
 
-#           return curr_pop
+            return curr_pop
 
     def set_param_bounds(self, bounds):
         print('setting visual param bounds (TODO: forreal')

@@ -82,7 +82,7 @@ class Policy(nn.Module):
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape
             if self.args.env_name == 'MicropolisPaintEnv-v0':
-                self.dist = CategoricalPaint()
+                self.dist = CategoricalPaint(num_actions=self.num_actions)
             else:
                 self.dist = DiagGaussian(self.base.output_size, self.num_actions)
     #           self.dist = Categorical2D(self.base.output_size, num_outputs)
@@ -122,7 +122,12 @@ class Policy(nn.Module):
             player_act=None, icm_enabled=False):
         ''' assumes player actions can only occur on env rank 0'''
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+       #assert (actor_features >= 0).all()
         if 'paint' in self.args.env_name.lower():#or self.args.prebuild:
+            smax = torch.nn.Softmax2d()
+            actor_features = smax(actor_features)
+       #    assert (actor_features >= 0).all()
+       #    assert (actor_features > 0).all()
             # we sample over each channel, ending up with an action at each tile
             dist = self.dist(actor_features)
             action = self.dist.sample()
@@ -194,7 +199,6 @@ class Policy(nn.Module):
 
             action_log_probs = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()
-        print(value)
         return value, action_log_probs, dist_entropy, rnn_hxs
 
 
@@ -284,14 +288,11 @@ class FullyConv_Atari(NNBase):
        #x = F.relu(self.k3(x))
        #x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
        #val = self.val(x_lin)
-       #print(x.shape, self.n_sqz)
         for i in range(self.n_sqz):
             x = F.hardtanh(self.sqz(x))
-           #print(x.shape)
         act = self.act(x)
        #val = x
         val = self.val(x)
-       #print(act.shape)
         return val.view(val.shape[0], -1), act, rhxs
 
 class FullyConv(NNBase):
@@ -321,12 +322,13 @@ class FullyConv(NNBase):
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
         x = F.relu(self.k3(x))
+       #x = self.act_soft(self.k3(x))
         act = F.relu(self.act(x))
+       #assert (act > 0).all
         for i in range(int(math.log(self.map_width, 2))):
             x = F.relu(self.val_shrink(x))
         val = self.val(x)
-       #print(act.shape)
-        assert torch.min(act) >= 0
+       #assert (act > 0).all
         return val.view(val.shape[0], -1), act, rhxs
 
 class FullyConv_linVal(NNBase):
@@ -398,7 +400,6 @@ class FullyConvLSTM(NNBase):
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
        #TODO: problem here when evaluating ConvLSTM
-       #print(x.shape, rhxs.shape)
         x, rhxs = self.k3(x, rhxs)
         x = F.relu(x)
        #x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
@@ -505,7 +506,6 @@ class FractalNet(NNBase):
         self.n_cols += 1
 
     def forward(self, x, rnn_hxs=None, masks=None):
-       #print(x[0][-2])
        #x = self.bn(x)
         for i in range(self.num_blocks):
             block = getattr(self, 'block_{}'.format(i))
@@ -812,7 +812,6 @@ class SubFractal(nn.Module):
         if x is None: return None
         x_c, x_c1 = x, x
 
-       #print(self.active_column, col)
         if self.join_masks['skip']:
             for i in range(1):
                 x_c1 = F.relu(

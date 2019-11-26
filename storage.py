@@ -76,13 +76,16 @@ class RolloutStorage(object):
         self.value_preds = self.value_preds.to(device)
         self.returns = self.returns.to(device)
         self.action_log_probs = self.action_log_probs.to(device)
+        assert (self.actions >= 0).all()
         self.actions = self.actions.to(device)
+        assert (self.actions >= 0).all()
         self.masks = self.masks.to(device)
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks):
         self.obs[self.step + 1].copy_(obs)
         self.recurrent_hidden_states[self.step + 1] = (recurrent_hidden_states)
         self.actions[self.step].copy_(actions)
+        assert (actions >= 0).all()
         self.action_log_probs[self.step].copy_(action_log_probs)
         self.value_preds[self.step].copy_(value_preds)
         self.rewards[self.step].copy_(rewards)

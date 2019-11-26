@@ -44,6 +44,8 @@ class MicropolisPaintEnv(MicropolisEnv):
                 static_build=False
             self.player_step = None
         self.micro.takeAction(a, static_build)
-        return self.poststep()
+        state, dummy_rew, terminal, infos = self.poststep()
+        reward = self.getReward()
+        return state, reward, terminal, infos
 
 

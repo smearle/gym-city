@@ -32,19 +32,22 @@ FixedNormal.mode = lambda self: self.mean
 class CategoricalPaint(nn.Module):
     ''' Each channel of a map image is a categorical distribution. Handle
     reshaping.'''
-    def __init__(self):
+    def __init__(self, num_actions=19):
         super(CategoricalPaint, self).__init__()
         self.obs_shape = None
+        self.num_actions = num_actions
 
     def forward(self, x):
         # put channels last
+       #assert (x>=0).all()
+       #assert (x>0).all()
         n_chan = x.size(1)
         self.map_shape = x.shape[-2:]
         x = x.transpose(1, -1)
         # batch over all cells
-        x = x.reshape(-1, n_chan)
+        x = x.reshape(-1, self.num_actions)
        #self.dist = torch.distributions.Categorical(logits=x)
-       #assert min(x) > 0
+       #assert (x>0).all()
         self.dist = FixedCategorical(x)
        #assert min(self.dist.probs) > 0
         return self.dist

@@ -166,7 +166,7 @@ def main():
        #print('\n')
        #print(checkpoint['model_state_dict'])
         actor_critic.to(device)
-        actor_critic.cuda()
+       #actor_critic.cuda()
        #agent = init_agent(actor_critic, saved_args)
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         if args.auto_expand:
@@ -212,7 +212,11 @@ def main():
         saved_args.n_chan = args.n_chan
         saved_args.prebuild = args.prebuild
         args = saved_args
+    print('network weights before moving actor_critic to cuda: {}'.format(
+            actor_critic.base.embed.weight))
     actor_critic.to(device)
+    print('network weights after moving actor_critic to cuda: {}'.format(
+            actor_critic.base.embed.weight))
 
     if 'LSTM' in args.model:
         recurrent_hidden_state_size = actor_critic.base.get_recurrent_state_size()

@@ -335,6 +335,8 @@ class TileMap(object):
 
     def addZoneBot(self, x, y, tool, static_build=False):
        #print("BUILD: ", tool, x, y)
+        if tool == 'Nil':
+            return
         zone = tool
         old_zone = self.zones[self.zoneMap[-1][x][y]]
         if  (zone in self.zone_compat and (old_zone in self.zone_compat[zone] or (old_zone in self.composite_zones and zone in self.composite_zones[old_zone]))) and zone != 'Water':

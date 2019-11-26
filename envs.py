@@ -178,13 +178,12 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 obs_shape) == 1 and str(env).find('TimeLimit') > -1:
             env = AddTimestep(env)
 
-        if log_dir is not None:
-            if multi_env:
-                env = MultiMonitor(env, os.path.join(log_dir, str(rank)),
-                                allow_early_resets=True)
-            else:
-                env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
-                                allow_early_resets=True)
+        if multi_env:
+            env = MultiMonitor(env, os.path.join(log_dir, str(rank)),
+                            allow_early_resets=True)
+        else:
+            env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
+                            allow_early_resets=True)
 
            #print(log_dir)
            #
@@ -200,6 +199,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = TransposeImage(env)
 
+        assert env is not None
         return env
 
     return _thunk

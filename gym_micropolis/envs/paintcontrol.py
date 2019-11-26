@@ -35,17 +35,42 @@ class MicropolisPaintControl(MicropolisControl):
 
     def __init__(self, env, **kwargs):
         super(MicropolisPaintControl, self).__init__(env, **kwargs)
+        self.env = env
+        # have we built on each tile already? No deleting previous builds during
+        # single pass over map!
+        MAP_W = kwargs['MAP_W']
+        MAP_H = kwargs['MAP_H']
+        self.acted = np.zeros((MAP_W, MAP_H))
 
 
     def takeAction(self, a, static_build=False):
         '''tool int depends on self.tools indexing
          - a: has shape (w, h), provides index of action taken at each tile'''
-        for i in range(self.MAP_X):
-            for j in range(self.MAP_Y):
-                t = a[i][j]
-                tool = self.tools[t] # get string
-                self.doBotTool(i, j, tool, static_build)
-        self.engine.simTick()
+        reward = 0
+        i = 0
+        while i in range(self.MAP_X):
+            j = 0
+            while j in range(self.MAP_Y):
+                if j >= self.MAP_Y - 1 or i >= self.MAP_X:
+                    break
+                t_i = a[i][j]
+                tool = self.tools[t_i] # get string
+                if self.acted[i, j] == 0:
+                    self.doBotTool(i, j, tool, static_build)
+                    self.engine.simTick()
+                    self.env.render()
+                if not tool in ['Nil', 'Clear']:
+                    zone_size = self.map.zoneSize[tool]
+                else:
+                    zone_size = 1
+                # increment i and j by (zone_size - 1)
+                i_1 = i + zone_size - 1
+                j_1 = j + zone_size - 1
+                self.acted[i-1:i_1, j-1:j_1] = 1
+                j += 1
+            i += 1
+        self.acted.fill(0)
+
 #       gtk.mainiteration()
 
 

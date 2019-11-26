@@ -95,6 +95,7 @@ class MicropolisControl():
                     'Water',
                     'Land',
                     'Forest',
+                    'Nil' # the agent takes no action
                     ]
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
@@ -245,6 +246,8 @@ class MicropolisControl():
 
     def doTool(self, x, y, tool):
         '''Takes string for tool'''
+        if tool == 'Nil':
+            return
         return self.map.addZoneBot(x, y, tool)
 
     def playerToolDown(self, tool_int, x, y):
