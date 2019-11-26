@@ -69,7 +69,7 @@ class TileMap(object):
         # no good if we encounter a fixed optimal state / are on a budget
         self.no_change = False
         self.walker = walker
-        self.paint = paint
+        self.paint = False
         self.centers = np.full((MAP_X, MAP_Y), None)
 
         self.MAP_X = MAP_X
@@ -376,7 +376,7 @@ class TileMap(object):
                 for j in range(y0, y1):
                     if self.static_builds[0][i][j] == 1:
                         return 0
-                    if self.acted[i][j] == 1:
+                    if self.paint and self.acted[i][j] == 1:
                         return 0
                     else:
                         self.clearTile(i, j, static_build=static_build)
@@ -434,7 +434,8 @@ class TileMap(object):
             center = (x, y)
         if zone_size == 1:
             self.updateTile(x, y, zone, center, static_build)
-            self.acted[x, y] = 1
+            if self.paint:
+                self.acted[x, y] = 1
             return
         else:
             x0, y0 = max(0, x - 1), max(0, y - 1)
@@ -442,7 +443,8 @@ class TileMap(object):
             for i in range(x0, x1):
                 for j in range(y0, y1):
                     self.updateTile(i, j, zone, center, static_build)
-                    self.acted[i, j] = 1
+                    if self.paint:
+                        self.acted[i, j] = 1
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
         ''' static_build should be None when simply updating from map,

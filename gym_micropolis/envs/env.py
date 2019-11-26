@@ -123,7 +123,9 @@ class MicropolisEnv(core.Env):
         self.num_density_maps = 3
         num_user_features = 1 # static builds
         # traffic, power, density
-        self.num_obs_channels = self.micro.map.num_features + self.num_scalars + self.num_density_maps + num_user_features
+        print('num map features: {}'.format(self.micro.map.num_features))
+        self.num_obs_channels = self.micro.map.num_features + self.num_scalars \
+                + self.num_density_maps + num_user_features
         self.poet = poet
         if self.poet:
             self.num_obs_channels += len(self.city_trgs)
@@ -384,7 +386,7 @@ class MicropolisEnv(core.Env):
        #    a = 0
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
-        self.poststep()
+        return self.poststep()
 
     def poststep(self):
         self.state = self.getState()
@@ -465,6 +467,10 @@ class MicropolisEnv(core.Env):
        #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
        #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
         return (self.state, reward, terminal, infos)
+
+    def terrorize(self):
+        ''' Cause some kind of extinction event to occur.'''
+        self.micro.engine.disasterEvent()
 
     def getRating(self):
         return self.micro.engine.cityYes

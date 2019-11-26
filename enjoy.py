@@ -17,6 +17,7 @@ parser.add_argument('--non-det', action='store_true', default=False,
                     help='whether to use a non-deterministic policy')
 parser.add_argument('--active-column', default=None, type=int, help='Run only one vertical column of a fractal model to see what it has learnt independently')
 parser.add_argument('--evaluate', action='store_true', default=False, help= 'record trained network\'s performance')
+parser.add_argument('--terrorize', action='store_true', default=False, help= 'terrorize agent')
 args = parser.parse_args()
 args.render = True
 
@@ -58,9 +59,10 @@ if not args.evaluate:
     args.num_proc = 1
 dummy_args = args
 env = make_vec_envs(env_name, args.seed + 1000, 1,
-                    None, None, args.add_timestep, device=device,
+                    None, args.load_dir, args.add_timestep, device=device,
                     allow_early_resets=False,
                     args=dummy_args)
+print(args.load_dir)
 
 # Get a render function
 # render_func = get_render_func(env)
@@ -177,6 +179,8 @@ while True:
         num_step = 0
     # Obser reward and next obs
     obs, reward, done, infos = env.step(action)
+    if args.terrorize:
+        env.terrorize()
     env_done = done[0] # assume we have only one env.
     env.venv.venv.envs[0].render()
 
