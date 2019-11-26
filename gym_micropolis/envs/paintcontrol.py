@@ -38,9 +38,6 @@ class MicropolisPaintControl(MicropolisControl):
         self.env = env
         # have we built on each tile already? No deleting previous builds during
         # single pass over map!
-        MAP_W = kwargs['MAP_W']
-        MAP_H = kwargs['MAP_H']
-        self.acted = np.zeros((MAP_W, MAP_H))
 
 
     def takeAction(self, a, static_build=False):
@@ -55,21 +52,19 @@ class MicropolisPaintControl(MicropolisControl):
                     break
                 t_i = a[i][j]
                 tool = self.tools[t_i] # get string
-                if self.acted[i, j] == 0:
-                    self.doBotTool(i, j, tool, static_build)
-               #    self.engine.simTick()
-               #    self.env.render()
-                    if not tool in ['Nil', 'Clear']:
-                        zone_size = self.map.zoneSize[tool]
-                    else:
-                        zone_size = 1
-                    # increment i and j by (zone_size - 1)
-                    i_1 = i + zone_size - 1
-                    j_1 = j + zone_size - 1
-                    self.acted[i-1:i_1, j-1:j_1] = 1
+                if self.map.acted[i, j] == 0:
+                   #print('BUILD', i, j, tool)
+                    self.doBotTool(i, j, tool, static_build=False)
+                    self.engine.simTick()
+                    self.env.render()
+                   #print(self.map.static_builds)
+                    print(self.map.acted)
+                else:
+                    pass
+                   #print('FAIL', i, j, tool)
                 j += 1
             i += 1
-        self.acted.fill(0)
+        self.map.acted.fill(0)
 
 #       gtk.mainiteration()
 

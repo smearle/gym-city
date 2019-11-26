@@ -64,16 +64,19 @@ def zoneFromInt_A(i):
 
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
-    def __init__(self, micro, MAP_X, MAP_Y, walker=False):
+    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True):
         # whether or not the latest call to addZone has any effect on our map
         # no good if we encounter a fixed optimal state / are on a budget
         self.no_change = False
         self.walker = walker
+        self.paint = paint
         self.centers = np.full((MAP_X, MAP_Y), None)
 
         self.MAP_X = MAP_X
         self.MAP_Y = MAP_Y
         self.num_empty = self.MAP_X * self.MAP_Y
+        if self.paint:
+            self.acted = np.zeros((self.MAP_X, self.MAP_Y))
         if self.walker:
             self.walker_pos = [self.MAP_X // 2, self.MAP_Y // 2]
 
@@ -336,14 +339,14 @@ class TileMap(object):
     def addZoneBot(self, x, y, tool, static_build=False):
        #print("BUILD: ", tool, x, y)
         if tool == 'Nil':
-            return
+            return None
         zone = tool
         old_zone = self.zones[self.zoneMap[-1][x][y]]
         if  (zone in self.zone_compat and (old_zone in self.zone_compat[zone] or (old_zone in self.composite_zones and zone in self.composite_zones[old_zone]))) and zone != 'Water':
             if self.static_builds[0][x][y] == 1:
                 static_build = True
         if (not static_build) and self.static_builds[0][x][y] == 1:
-            return
+            return False
 
         if zone == 'Clear':
             zone = 'Land'
@@ -352,7 +355,8 @@ class TileMap(object):
         if result == 1:
             result = self.micro.doSimTool(x, y, tool)
         if result == 1:
-            self.addZone(x, y, zone, static_build)
+            result = self.addZone(x, y, zone, static_build)
+        return True
 
 
 
@@ -371,6 +375,8 @@ class TileMap(object):
             for i in range(x0, x1):
                 for j in range(y0, y1):
                     if self.static_builds[0][i][j] == 1:
+                        return 0
+                    if self.acted[i][j] == 1:
                         return 0
                     else:
                         self.clearTile(i, j, static_build=static_build)
@@ -428,6 +434,7 @@ class TileMap(object):
             center = (x, y)
         if zone_size == 1:
             self.updateTile(x, y, zone, center, static_build)
+            self.acted[x, y] = 1
             return
         else:
             x0, y0 = max(0, x - 1), max(0, y - 1)
@@ -435,6 +442,7 @@ class TileMap(object):
             for i in range(x0, x1):
                 for j in range(y0, y1):
                     self.updateTile(i, j, zone, center, static_build)
+                    self.acted[i, j] = 1
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
         ''' static_build should be None when simply updating from map,
@@ -478,6 +486,7 @@ class TileMap(object):
             self.num_plants -= 1
         elif not was_plant and is_plant:
             self.num_plants += 1
+
 
 
 

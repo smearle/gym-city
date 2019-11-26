@@ -35,7 +35,7 @@ class MicropolisPaintEnv(MicropolisEnv):
                 rank=self.rank, gui=self.render_gui,
                 power_puzzle=self.power_puzzle)
 
-    def step(self, a, static_build=True):
+    def step(self, a, static_build=False):
         '''
          - a: has shape (w, h)
         '''

@@ -111,14 +111,14 @@ class MicropolisControl():
         if win1:
            win1.playCity()
         else:
-            self.engine.setSpeed(2)
-            self.engine.setPasses(1)
+           #self.engine.setSpeed(1)
+           #self.engine.setPasses(1)
             self.engine.resume()
 
         self.init_funds = 20000
         self.engine.setFunds(self.init_funds)
         engine.setSpeed(3)
-        engine.setPasses(100)
+        engine.setPasses(1)
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0
@@ -276,8 +276,8 @@ class MicropolisControl():
         return self.engine.getTile(x, y) & 1023
 
     def doSimToolInt(self, x, y, tool):
-
-        return self.engine.toolDown(tool, x, y)
+       #print('calling engine doTool')
+        return self.engine.doTool(tool, x, y)
 
     def getResPop(self):
         return self.engine.resPop

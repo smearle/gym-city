@@ -251,7 +251,8 @@ class MicropolisEnv(core.Env):
         self.micro.engine.simTick()
         self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
-       #curr_pop = self.getPop()
+        self.curr_pop = 0
+        self.curr_reward = self.getPopReward()
         self.state = self.getState()
         self.last_pop=0
         self.micro.num_roads = 0
@@ -317,7 +318,8 @@ class MicropolisEnv(core.Env):
 
     def getPopReward(self):
         if self.simple_reward:
-            return self.micro.getTotPop()
+            curr_pop = self.micro.getTotPop()
+            self.curr_pop = curr_pop
         else:
             resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
             curr_pop = resPop + comPop + indPop
@@ -330,8 +332,8 @@ class MicropolisEnv(core.Env):
                 zone_variety += 1
             zone_bonus = (zone_variety - 1) * 50
             curr_pop += max(0, zone_bonus)
-
-            return curr_pop
+            self.curr_pop = curr_pop
+        return curr_pop
 
     def set_param_bounds(self, bounds):
         print('setting visual param bounds (TODO: forreal')
@@ -474,6 +476,7 @@ class MicropolisEnv(core.Env):
            #    static_map = None
             np.set_printoptions(threshold=np.inf)
             zone_map = self.micro.map.zoneMap[-1]
+            zone_map = zone_map.transpose(1,0)
             zone_map = np.array_repr(zone_map).replace(',  ','  ').replace('],\n', ']\n').replace(',\n', ',').replace(', ', ' ').replace('        ',' ').replace('         ','  ')
             print('{} \n population: {}, traffic: {}, episode: {}, step: {}, reward: {} \n'.format(zone_map, self.curr_pop, self.micro.total_traffic, self.num_episode, self.num_step, self.curr_reward#, static_map
                 ))
