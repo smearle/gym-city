@@ -323,7 +323,7 @@ class FullyConv(NNBase):
         x = F.relu(self.k5(x))
         x = F.relu(self.k3(x))
        #x = self.act_soft(self.k3(x))
-        act = F.relu(self.act(x))
+        act = self.act(x)
        #assert (act > 0).all
         for i in range(int(math.log(self.map_width, 2))):
             x = F.relu(self.val_shrink(x))
