@@ -42,7 +42,11 @@ class MicropolisMonitor(bench.Monitor):
                     if h > 1:
                         row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
                         # TODO: logger or results_writer, what's going on here?
-                        self.logger.writerow(row)
+                        if hasattr(self, 'logger'):
+                            self.logger.writerow(row)
+                        else:
+                            assert hasattr(self, 'row_writer')
+                            self.results_writer.write_row(epinfo)
                     h += 1
             os.remove(old_log)
 
@@ -69,6 +73,9 @@ class MicropolisMonitor(bench.Monitor):
             if hasattr(self, 'logger'):
                 self.logger.writerow(epinfo)
                 self.f.flush()
+            else:
+                assert hasattr(self, 'results_writer')
+                self.results_writer.write_row(epinfo)
             info['episode'] = epinfo
         self.total_steps += 1
        #print('dones: {}'.format(done))
@@ -103,6 +110,9 @@ class MultiMonitor(MicropolisMonitor):
             if hasattr(self, 'logger'):
                 self.logger.writerow(epinfo)
                 self.f.flush()
+            else:
+                assert hasattr(self, 'results_writer')
+                self.results_writer.write_row(epinfo)
             info[0]['episode'] = epinfo
         self.total_steps += 1
        #print('dones: {}'.format(done))
