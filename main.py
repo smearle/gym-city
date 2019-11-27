@@ -344,7 +344,8 @@ def main():
         if not dist_entropy:
             dist_entropy = 0
        #print(episode_rewards)
-       #print(rollouts.rewards)
+       #if torch.max(rollouts.rewards) > 0:
+       #    print(rollouts.rewards)
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.6f}/{:.6f}, min/max reward {:.6f}/{:.6f}\n \

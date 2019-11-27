@@ -321,19 +321,18 @@ class MicropolisEnv(core.Env):
 
     def getReward(self):
         reward = self.getPopReward()
-        reward = reward / self.max_step
+        reward = reward
         self.curr_reward = reward
         return reward
 
 
     def getPopReward(self):
         if self.simple_reward and False:
-            curr_pop = self.micro.getTotPop()
-            self.curr_pop = curr_pop
+            pop_reward = self.micro.getTotPop()
 
-        else:
-            resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
-            curr_pop = resPop + comPop + indPop
+        else: resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
+        if False:
+            pop_reward = resPop + comPop + indPop
             zone_variety = 0
             if resPop > 0:
                 zone_variety += 1
@@ -342,9 +341,10 @@ class MicropolisEnv(core.Env):
             if indPop > 0:
                 zone_variety += 1
             zone_bonus = (zone_variety - 1) * 50
-            curr_pop += max(0, zone_bonus)
-            self.curr_pop = curr_pop
-        return curr_pop
+            pop_reward += max(0, zone_bonus)
+        else:
+            pop_reward = resPop * comPop * indPop
+        return pop_reward
 
     def set_param_bounds(self, bounds):
         print('setting visual param bounds (TODO: forreal')
@@ -400,6 +400,7 @@ class MicropolisEnv(core.Env):
     def postact(self):
         if np.random.rand() <= self.terror_prob:
             self.terrorize()
+       #print('rank {} tickin'.format(self.rank))
         self.micro.engine.simTick()
         self.state = self.getState()
        #print(self.state[-2])
@@ -480,6 +481,8 @@ class MicropolisEnv(core.Env):
         self.num_step += 1
        #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
        #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
+       #if reward > 0:
+       #    print('rank {} reward {}'.format(self.rank, reward))
         return (self.state, reward, terminal, infos)
 
     def terrorize(self):
