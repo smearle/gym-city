@@ -71,7 +71,9 @@ class TileMap(object):
         self.terror = terror
         if self.terror:
             # track age of build structures
-            self.age = np.array((MAP_X, MAP_Y))
+            print('initializing AGES')
+            self.ages = np.zeros((MAP_X, MAP_Y), dtype=int)
+            self.ages.fill(-1)
         self.no_change = False
         self.walker = walker
         self.paint = paint
@@ -106,8 +108,8 @@ class TileMap(object):
                 'Forest': 1,
                 'Church': 3,
                 'Hospital': 3,
-                'Radioactive': 1,
-                'Flood': 1,
+               #'Radioactive': 1,
+               #'Flood': 1,
                 'Fire': 1
                }
         # if this feature, then another
@@ -365,7 +367,7 @@ class TileMap(object):
             else:
                 pass
                 #TODO: Why is result == 0 here, even when build is successful?
-                #print('failed doSimTool')
+               #print('failed doSimTool w/ result {}'.format(result))
         else:
            #print('failed to clear patch')
             pass
@@ -457,6 +459,8 @@ class TileMap(object):
             self.updateTile(x, y, zone, center, static_build)
             if self.paint:
                 self.acted[x, y] = 1
+            if self.terror:
+                self.ages[x][y] = self.micro.env.num_step
             return
         else:
             x0, y0 = max(0, x - 1), max(0, y - 1)
@@ -466,6 +470,8 @@ class TileMap(object):
                     self.updateTile(i, j, zone, center, static_build)
                     if self.paint:
                         self.acted[i, j] = 1
+                    if self.terror:
+                        self.ages[i][j] = self.micro.env.num_step
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
         ''' static_build should be None when simply updating from map,
@@ -493,6 +499,13 @@ class TileMap(object):
         self.centers[x][y] = center
         is_road = self.zoneMap[self.road_int][x][y] == 1
         is_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
+        if self.terror:
+            is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
+                         self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
+                         self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
+                         self.zoneMap[self.zoneInts['Forest']][x][y] == 1
+            if is_natural:
+                self.ages[x, y] = -1
 
         net = None
         if was_road and not is_road:

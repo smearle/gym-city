@@ -485,11 +485,33 @@ class MicropolisEnv(core.Env):
        #    print('rank {} reward {}'.format(self.rank, reward))
         return (self.state, reward, terminal, infos)
 
-    def terrorize(self):
+    def terrorize(self, extinction_type='age'):
         ''' Cause some kind of extinction event to occur.'''
-        extinction_type = 'disaster'
         if extinction_type == 'Monster':
             self.micro.engine.makeMonster()
+        if extinction_type == 'age':
+            ages = self.micro.map.ages
+            eldest = np.max(ages)
+           #print(ages)
+            print('Ageist Action!')
+            ages[ages < 0] = 2*eldest
+           #for i in range(20):
+            for i in range((self.MAP_X * self.MAP_Y) // 30):
+                ages[ages < 0] = 2*eldest
+                xy = np.argmin(ages)
+                x = xy // self.MAP_X
+                y = xy % self.MAP_X
+                x = int(x)
+                y = int(y)
+               #print('deleting {} {}'.format(x, y))
+                result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+                self.render()
+               #print('result {}'.format(result))
+            ages -= np.min(ages)
+            ages[ages>eldest] = -1
+            # otherwise it's over!
+            self.micro.engine.setFunds(9999999)
+
 
     def getRating(self):
         return self.micro.engine.cityYes

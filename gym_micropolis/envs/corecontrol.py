@@ -41,6 +41,7 @@ class MicropolisControl():
         engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
                 gui=gui)
        #os.chdir(CURR_DIR)
+        self.env = env
         self.engine = engine
         self.engine.setGameLevel(2)
         self.MAP_X = MAP_W
@@ -100,7 +101,12 @@ class MicropolisControl():
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)
-        self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING, paint=paint)
+        if env.terror_prob:
+            terror = True
+        else:
+            terror = False
+        self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING,
+                paint=paint, terror=terror)
         self.zones = self.map.zones
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest

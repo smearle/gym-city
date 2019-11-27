@@ -45,8 +45,8 @@ class MicropolisMonitor(bench.Monitor):
                         if hasattr(self, 'logger'):
                             self.logger.writerow(row)
                         else:
-                            assert hasattr(self, 'row_writer')
-                            self.results_writer.write_row(epinfo)
+                            assert hasattr(self, 'results_writer')
+                            self.results_writer.write_row(row)
                     h += 1
             os.remove(old_log)
 
