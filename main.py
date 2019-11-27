@@ -343,6 +343,8 @@ def main():
 
         if not dist_entropy:
             dist_entropy = 0
+       #print(episode_rewards)
+       #print(rollouts.rewards)
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.6f}/{:.6f}, min/max reward {:.6f}/{:.6f}\n \
@@ -483,7 +485,7 @@ class Evaluator(object):
         self.args = args
         self.actor_critic = actor_critic
         self.num_eval_processes = 1
-        if envs and True:
+        if envs and False:
             self.eval_envs = envs
             self.vec_norm = vec_norm
             self.num_eval_processes = args.num_processes

@@ -1,0 +1,2 @@
+python3 main_teacher.py --env MicropolisEnv-v0 --num-proc 200 --algo a2c --log-interval 40 --experiment popTeach_test_1  --model FullyConv --num-frames 100000000 --eval-interval 500 --map-width 16  --random-t --random-b
+

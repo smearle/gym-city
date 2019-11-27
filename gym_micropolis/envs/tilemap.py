@@ -356,11 +356,18 @@ class TileMap(object):
             result = self.micro.doSimTool(x, y, tool)
             if result == 1:
                 result = self.addZone(x, y, zone, static_build)
+            else:
+                pass
+                #TODO: Why is result == 0 here, even when build is successful?
+                #print('failed doSimTool')
+        else:
+           #print('failed to clear patch')
+            pass
         if result == 1:
             return True
         else:
+           #print('failed to add zone {} {} {}'.format(x, y, zone))
             return False
-            print('failed to add zone {} {} {}'.format(x, y, zone))
 
 
 
@@ -380,8 +387,10 @@ class TileMap(object):
             for i in range(x0, x1):
                 for j in range(y0, y1):
                     if self.static_builds[0][i][j] == 1:
+                       #print('static build encountered - clear failed')
                         return 0
                     if self.paint and self.acted[i][j] == 1:
+                       #print('not overwriting build from same turn - clear failed')
                         return 0
                     else:
                         self.clearTile(i, j, static_build=static_build)

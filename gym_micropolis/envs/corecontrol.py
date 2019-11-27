@@ -36,7 +36,7 @@ from pyMicropolis.gtkFrontend import main
 class MicropolisControl():
 
     def __init__(self, env, MAP_W=12, MAP_H=12, PADDING=13, gui=False, rank=None,
-            power_puzzle=False):
+            power_puzzle=False, paint=False):
         env.micro = self # attach ourselves to our parent before we start
         engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
                 gui=gui)
@@ -100,7 +100,7 @@ class MicropolisControl():
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)
-        self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING)
+        self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING, paint=paint)
         self.zones = self.map.zones
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest
@@ -117,8 +117,8 @@ class MicropolisControl():
 
         self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
-        engine.setSpeed(3)
-        engine.setPasses(50)
+        self.engine.setSpeed(3)
+        self.engine.setPasses(100)
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0

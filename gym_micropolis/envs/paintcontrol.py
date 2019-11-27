@@ -34,8 +34,10 @@ os.chdir(CURR_DIR)
 class MicropolisPaintControl(MicropolisControl):
 
     def __init__(self, env, **kwargs):
+        kwargs['paint'] = True
         super(MicropolisPaintControl, self).__init__(env, **kwargs)
         self.env = env
+        self.engine.setPasses(100)
         # have we built on each tile already? No deleting previous builds during
         # single pass over map!
 
@@ -55,8 +57,9 @@ class MicropolisPaintControl(MicropolisControl):
                 if self.map.acted[i, j] == 0:
                    #print('BUILD', i, j, tool)
                     self.doBotTool(i, j, tool, static_build=False)
-                    self.engine.simTick()
-                   #self.env.render()
+                   #self.engine.simTick()
+                   #if self.env.render_gui:
+                   #    self.env.render()
                    #print(self.map.static_builds)
                    #print(self.map.acted)
                 else:

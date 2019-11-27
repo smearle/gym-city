@@ -86,5 +86,6 @@ def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20, gui=False):
         win1.show_all()
     else:
         win1 = None
+        pass
 
     return engine, win1

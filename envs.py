@@ -159,8 +159,11 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 if args.power_puzzle:
                     power_puzzle = True
                 if rank == 0:
+                    print_map = args.print_map
                     render = render_gui
-                else:render = False
+                else:
+                    print_map = False
+                    render = False
                 env.setMapSize(map_width, print_map=print_map, render_gui=render,
                         empty_start=not args.random_terrain, max_step=max_step,
                         rank=rank,

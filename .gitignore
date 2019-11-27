@@ -11,3 +11,4 @@ notes*
 
 *.pyc
 *.o
+*.so

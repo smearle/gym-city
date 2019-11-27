@@ -315,13 +315,17 @@ class MicropolisEnv(core.Env):
         return curr_pop
 
     def getReward(self):
-        return self.getPopReward()
+        reward = self.getPopReward()
+        reward = reward / self.max_step
+        self.curr_reward = reward
+        return reward
 
 
     def getPopReward(self):
-        if self.simple_reward:
+        if self.simple_reward and False:
             curr_pop = self.micro.getTotPop()
             self.curr_pop = curr_pop
+
         else:
             resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
             curr_pop = resPop + comPop + indPop
@@ -386,9 +390,10 @@ class MicropolisEnv(core.Env):
        #    a = 0
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
-        return self.poststep()
+        return self.postact()
 
-    def poststep(self):
+    def postact(self):
+        self.micro.engine.simTick()
         self.state = self.getState()
        #print(self.state[-2])
         self.city_metrics = self.get_city_metrics()
@@ -447,12 +452,11 @@ class MicropolisEnv(core.Env):
             reward = (self.max_loss - loss) * max_reward / self.max_loss
         else:
             reward = self.getReward()
-        reward = reward / self.max_step
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
         terminal = (bankrupt or self.num_step >= self.max_step) and\
             self.auto_reset
-        if self.render_gui and self.print_map:
+        if self.print_map:
            #if static_build:
            #    print('STATIC BUILD')
             self.printMap()
