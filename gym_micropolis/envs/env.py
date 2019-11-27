@@ -433,17 +433,20 @@ class MicropolisEnv(core.Env):
        #for k, v in self.city_trgs.items():
        #    if k!= 'name':
        #        reward += v * self.city_metrics[k]
-        max_reward = self.max_reward
-        loss = 0
-        i = 0
-        for k, v in self.city_trgs.items():
-            if i == self.num_params:
-                break
-            else:
-                loss += abs(v - self.city_metrics[k])
-                i += 1
+        if self.poet:
+            max_reward = self.max_reward
+            loss = 0
+            i = 0
+            for k, v in self.city_trgs.items():
+                if i == self.num_params:
+                    break
+                else:
+                    loss += abs(v - self.city_metrics[k])
+                    i += 1
 
-        reward = (self.max_loss - loss) * max_reward / self.max_loss
+            reward = (self.max_loss - loss) * max_reward / self.max_loss
+        else:
+            reward = self.getReward()
         reward = reward / self.max_step
         curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds

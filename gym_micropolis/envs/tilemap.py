@@ -337,9 +337,9 @@ class TileMap(object):
 
 
     def addZoneBot(self, x, y, tool, static_build=False):
-       #print("BUILD: ", tool, x, y)
+       #print("ADDZONEBOT: ", tool, x, y)
         if tool == 'Nil':
-            return None
+            return True
         zone = tool
         old_zone = self.zones[self.zoneMap[-1][x][y]]
         if  (zone in self.zone_compat and (old_zone in self.zone_compat[zone] or (old_zone in self.composite_zones and zone in self.composite_zones[old_zone]))) and zone != 'Water':
@@ -356,12 +356,16 @@ class TileMap(object):
             result = self.micro.doSimTool(x, y, tool)
         if result == 1:
             result = self.addZone(x, y, zone, static_build)
-        return True
+        if result == 1:
+            return True
+        else:
+            return False
 
 
 
 
     def clearPatch(self, x, y, zone, static_build=False):
+       #print('clearing patch {} {} {}'.format(x, y, zone))
         old_zone = self.zones[self.zoneMap[-1][x][y]]
         if zone in self.zone_compat and (old_zone in self.zone_compat[zone]):
             return 1 # do not prevent composite build
@@ -385,6 +389,7 @@ class TileMap(object):
 
     def clearTile(self, x, y, static_build=False):
         ''' This ultimately calls itself until the tile is clear'''
+       #print('clearing tile {} {}'.format(x, y))
         old_zone = self.zoneMap[-1][x][y]
         if old_zone in ['Land']:
             return

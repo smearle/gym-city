@@ -118,7 +118,7 @@ class MicropolisControl():
         self.init_funds = 20000
         self.engine.setFunds(self.init_funds)
         engine.setSpeed(3)
-        engine.setPasses(1)
+        engine.setPasses(50)
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0
@@ -250,8 +250,10 @@ class MicropolisControl():
             return
         return self.map.addZoneBot(x, y, tool)
 
+    # called from mictopolistool.py in micropoliengine
     def playerToolDown(self, tool_int, x, y):
         if not x < self.MAP_X and y < self.MAP_Y:
+            print('build site out of range')
             return
        #x += self.MAP_XS
        #y += self.MAP_YS
@@ -276,8 +278,8 @@ class MicropolisControl():
         return self.engine.getTile(x, y) & 1023
 
     def doSimToolInt(self, x, y, tool):
-       #print('calling engine doTool')
-        return self.engine.doTool(tool, x, y)
+       #print('calling engine doTool {} {} {}'.format(x, y, tool))
+        return self.engine.toolDown(tool, x, y)
 
     def getResPop(self):
         return self.engine.resPop
@@ -303,6 +305,7 @@ class MicropolisControl():
         tool = self.tools[a[0]]
         x = int(a[1])
         y = int(a[2])
+       #print('taking action {} {} {}'.format(x + self.MAP_XS, y + self.MAP_YS, tool))
         self.doBotTool(x, y, tool, static_build)
        #gtk.main_iteration() # for observation or recording
        #time.sleep(1/60)

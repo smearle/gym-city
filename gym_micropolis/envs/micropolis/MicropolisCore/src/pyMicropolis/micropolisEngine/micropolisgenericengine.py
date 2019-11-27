@@ -1217,7 +1217,8 @@ class MicropolisGenericEngine(micropolisengine.Micropolis):
 
     def handle_didTool(self, name, x, y):
         pass
-      # print "handle_didTool(self, name, x, y)", (self, name, x, y)
+       #self.builderBot.render()
+       #print("handle_didTool(self, name, x, y)", (self, name, x, y))
 
 
     def handle_didntLoadCity(self, msg):

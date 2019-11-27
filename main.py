@@ -212,11 +212,7 @@ def main():
         saved_args.n_chan = args.n_chan
         saved_args.prebuild = args.prebuild
         args = saved_args
-    print('network weights before moving actor_critic to cuda: {}'.format(
-            actor_critic.base.embed.weight))
     actor_critic.to(device)
-    print('network weights after moving actor_critic to cuda: {}'.format(
-            actor_critic.base.embed.weight))
 
     if 'LSTM' in args.model:
         recurrent_hidden_state_size = actor_critic.base.get_recurrent_state_size()
@@ -577,7 +573,7 @@ class Evaluator(object):
 
         i = 0
         done = np.array([False])
-        while not done.all():
+        while not (done.all() or i > self.args.max_step):
        #while len(eval_episode_rewards) < self.num_eval_processes:
        #while i < self.args.max_step:
             with torch.no_grad():

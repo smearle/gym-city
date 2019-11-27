@@ -56,9 +56,9 @@ class MicropolisPaintControl(MicropolisControl):
                    #print('BUILD', i, j, tool)
                     self.doBotTool(i, j, tool, static_build=False)
                     self.engine.simTick()
-                    self.env.render()
+                   #self.env.render()
                    #print(self.map.static_builds)
-                    print(self.map.acted)
+                   #print(self.map.acted)
                 else:
                     pass
                    #print('FAIL', i, j, tool)

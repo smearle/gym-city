@@ -141,6 +141,7 @@ def get_parser():
     parser.add_argument('--val-kern', default=3)
     parser.add_argument('--prebuild', default=False, help='GoL mini-game \
             encouraging blossoming structures')
+    parser.add_argument('--terrorize', action='store_true', default=False, help= 'terrorize agent')
 ########################################### Game of Life
     parser.add_argument('--prob-life', type=int, default=20,
             help='percent chance each tile is alive on reset')
@@ -167,6 +168,6 @@ def get_parser():
     parser.add_argument(
             '--poet',
             type=bool,
-            default=True,
+            default=False,
             help='set targets for environment, replaces fixed reward function')
     return parser
