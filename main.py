@@ -493,9 +493,11 @@ class Evaluator(object):
 
            #print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
            #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
+            eval_args = copy.deepcopy(args)
+            eval_args.render = False
             self.eval_envs = make_vec_envs(
                         self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
-                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=self.args)
+                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=eval_args)
             self.vec_norm = get_vec_normalize(self.eval_envs)
         if self.vec_norm is not None:
             self.vec_norm.eval()
