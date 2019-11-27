@@ -90,11 +90,16 @@ class MicropolisEnv(core.Env):
     def setMapSize(self, size, max_step=None, rank=None, print_map=False,
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
-            power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False):
+            power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False,
+            terror_prob=False, terror_type='disaster'):
+        '''
+         -terror: None if no terrors, otherwise a probability of terror occuring each step
+        '''
         self.PADDING = PADDING
         self.render_gui = render_gui
         self.rank = rank
         self.random_builds = random_builds
+        self.terror_prob = terror_prob
         self.traffic_only = traffic_only
         if record: raise NotImplementedError
         self.max_step = max_step
@@ -393,6 +398,8 @@ class MicropolisEnv(core.Env):
         return self.postact()
 
     def postact(self):
+        if np.random.rand() <= self.terror_prob:
+            self.terrorize()
         self.micro.engine.simTick()
         self.state = self.getState()
        #print(self.state[-2])
@@ -477,7 +484,9 @@ class MicropolisEnv(core.Env):
 
     def terrorize(self):
         ''' Cause some kind of extinction event to occur.'''
-        self.micro.engine.disasterEvent()
+        extinction_type = 'disaster'
+        if extinction_type == 'Monster':
+            self.micro.engine.makeMonster()
 
     def getRating(self):
         return self.micro.engine.cityYes

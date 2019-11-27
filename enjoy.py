@@ -179,8 +179,6 @@ while True:
         num_step = 0
     # Obser reward and next obs
     obs, reward, done, infos = env.step(action)
-    if args.terrorize:
-        env.terrorize()
     env_done = done[0] # assume we have only one env.
     env.venv.venv.envs[0].render()
 

@@ -1503,7 +1503,7 @@ ToolResult Micropolis::toolDown(EditingTool tool, short tileX, short tileY)
 
     simPass = 0;
     invalidateMaps();
-// for bots storing an externam representation of the game map 
+// for bots storing an external representation of the game map 
 // (until i figure out how to reference c arrays directly from python)
     return result;
 }
