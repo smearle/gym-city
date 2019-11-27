@@ -64,9 +64,14 @@ def zoneFromInt_A(i):
 
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
-    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True):
+    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True,
+            terror=False):
         # whether or not the latest call to addZone has any effect on our map
         # no good if we encounter a fixed optimal state / are on a budget
+        self.terror = terror
+        if self.terror:
+            # track age of build structures
+            self.age = np.array((MAP_X, MAP_Y))
         self.no_change = False
         self.walker = walker
         self.paint = paint
@@ -353,6 +358,7 @@ class TileMap(object):
 
         result = self.clearPatch(x, y, zone, static_build=static_build)
         if result == 1:
+            # call the engine
             result = self.micro.doSimTool(x, y, tool)
             if result == 1:
                 result = self.addZone(x, y, zone, static_build)
@@ -435,7 +441,7 @@ class TileMap(object):
 
 
     def addZone(self, x, y, zone, static_build=False):
-        ''' Assume the bot has succeeded in its build (so we can lay the centers) '''
+        ''' Assume the bot has already succeeded in its build (so we can lay the centers) '''
         trg_zone = zone
         tile_int = self.micro.getTile(x, y)
         map_zone = zoneFromInt(tile_int)
