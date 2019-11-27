@@ -69,7 +69,7 @@ class TileMap(object):
         # no good if we encounter a fixed optimal state / are on a budget
         self.no_change = False
         self.walker = walker
-        self.paint = False
+        self.paint = paint
         self.centers = np.full((MAP_X, MAP_Y), None)
 
         self.MAP_X = MAP_X
@@ -354,12 +354,13 @@ class TileMap(object):
         result = self.clearPatch(x, y, zone, static_build=static_build)
         if result == 1:
             result = self.micro.doSimTool(x, y, tool)
-        if result == 1:
-            result = self.addZone(x, y, zone, static_build)
+            if result == 1:
+                result = self.addZone(x, y, zone, static_build)
         if result == 1:
             return True
         else:
             return False
+            print('failed to add zone {} {} {}'.format(x, y, zone))
 
 
 

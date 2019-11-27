@@ -17,7 +17,7 @@ parser.add_argument('--non-det', action='store_true', default=False,
                     help='whether to use a non-deterministic policy')
 parser.add_argument('--active-column', default=None, type=int, help='Run only one vertical column of a fractal model to see what it has learnt independently')
 parser.add_argument('--evaluate', action='store_true', default=False, help= 'record trained network\'s performance')
-parser.add_argument('--terrorize', action='store_true', default=False, help= 'terrorize agent')
+
 args = parser.parse_args()
 args.render = True
 

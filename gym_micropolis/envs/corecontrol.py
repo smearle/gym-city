@@ -115,7 +115,7 @@ class MicropolisControl():
            #self.engine.setPasses(1)
             self.engine.resume()
 
-        self.init_funds = 20000
+        self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
         engine.setSpeed(3)
         engine.setPasses(50)
@@ -279,7 +279,9 @@ class MicropolisControl():
 
     def doSimToolInt(self, x, y, tool):
        #print('calling engine doTool {} {} {}'.format(x, y, tool))
-        return self.engine.toolDown(tool, x, y)
+        result = self.engine.toolDown(tool, x, y)
+       #print('result in SimToolIne: {}'.format(result))
+        return result
 
     def getResPop(self):
         return self.engine.resPop
