@@ -179,7 +179,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         rank=rank,
                         power_puzzle=power_puzzle,
                         record=record, random_builds=args.random_builds, poet=args.poet,
-                        terror_prob=args.terror_prob)
+                        terror_prob=args.terror_prob, terror_type=args.terror_type)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:

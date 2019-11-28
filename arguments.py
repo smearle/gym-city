@@ -142,6 +142,8 @@ def get_parser():
     parser.add_argument('--prebuild', default=False, help='GoL mini-game \
             encouraging blossoming structures')
     parser.add_argument('--terror-prob', type=float, default=0.0, help= 'probability of terrorizing agent')
+    parser.add_argument('--terror-type', type=str, default='disaster',
+            help= 'type of terror wrought upon agent')
 ########################################### Game of Life
     parser.add_argument('--prob-life', type=int, default=20,
             help='percent chance each tile is alive on reset')

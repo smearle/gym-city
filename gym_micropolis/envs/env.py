@@ -93,8 +93,8 @@ class MicropolisEnv(core.Env):
             power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False,
             terror_prob=False, terror_type='disaster'):
         '''
-         -terror: None if no terrors, otherwise a probability of terror occuring each step
         '''
+        self.terror_type = terror_type
         self.PADDING = PADDING
         self.render_gui = render_gui
         self.rank = rank
@@ -399,7 +399,7 @@ class MicropolisEnv(core.Env):
 
     def postact(self):
         if np.random.rand() <= self.terror_prob:
-            self.terrorize()
+            self.terrorize(self.terror_type)
        #print('rank {} tickin'.format(self.rank))
         self.micro.engine.simTick()
         self.state = self.getState()
@@ -489,28 +489,45 @@ class MicropolisEnv(core.Env):
         ''' Cause some kind of extinction event to occur.'''
         if extinction_type == 'Monster':
             self.micro.engine.makeMonster()
-        if extinction_type == 'age':
-            ages = self.micro.map.ages
-            eldest = np.max(ages)
-           #print(ages)
-            print('Ageist Action!')
+        elif extinction_type == 'age':
+            return self.elderCleanse()
+        elif extinction_type == 'spatial':
+            return self.localWipe()
+
+    def localWipe(self):
+        # assume square map
+        w = self.MAP_X // 3
+        x = np.random.randint(0, self.MAP_X)
+        y = np.random.randint(0, self.MAP_Y)
+        self.micro.map.clearPatch(x, y, patch_size=w, static_build=False)
+
+    def ranDemolish(self):
+        pass
+       #for i in range()
+
+
+    def elderCleanse(self):
+        ages = self.micro.map.ages
+        eldest = np.max(ages)
+       #print(ages)
+        print('\n AGEIST VIOLENCE')
+        ages[ages < 0] = 2*eldest
+       #for i in range(20):
+        for i in range((self.MAP_X * self.MAP_Y) // 30):
             ages[ages < 0] = 2*eldest
-           #for i in range(20):
-            for i in range((self.MAP_X * self.MAP_Y) // 30):
-                ages[ages < 0] = 2*eldest
-                xy = np.argmin(ages)
-                x = xy // self.MAP_X
-                y = xy % self.MAP_X
-                x = int(x)
-                y = int(y)
-               #print('deleting {} {}'.format(x, y))
-                result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-                self.render()
-               #print('result {}'.format(result))
-            ages -= np.min(ages)
-            ages[ages>eldest] = -1
-            # otherwise it's over!
-            self.micro.engine.setFunds(9999999)
+            xy = np.argmin(ages)
+            x = xy // self.MAP_X
+            y = xy % self.MAP_X
+            x = int(x)
+            y = int(y)
+            print('deleting {} {}'.format(x, y))
+            result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+            self.render()
+           #print('result {}'.format(result))
+        ages -= np.min(ages)
+        ages[ages>eldest] = -1
+        # otherwise it's over!
+        self.micro.engine.setFunds(9999999)
 
 
     def getRating(self):
