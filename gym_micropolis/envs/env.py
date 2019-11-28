@@ -259,7 +259,7 @@ class MicropolisEnv(core.Env):
         self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
         self.curr_pop = 0
-        self.curr_reward = self.getPopReward()
+        self.curr_reward = self.getPop()
         self.state = self.getState()
         self.last_pop=0
         self.micro.num_roads = 0
@@ -313,9 +313,9 @@ class MicropolisEnv(core.Env):
                                      self.micro.getComPop(), \
                                      self.micro.getIndPop()
 
-        curr_pop = resPop + \
-                   comPop + \
-                   indPop
+        curr_pop = self.resPop + \
+                   self.comPop + \
+                   self.indPop
 
         return curr_pop
 
@@ -343,7 +343,7 @@ class MicropolisEnv(core.Env):
             zone_bonus = (zone_variety - 1) * 50
             pop_reward += max(0, zone_bonus)
         else:
-            pop_reward = resPop * comPop * indPop
+            pop_reward = (resPop + 1) * (comPop + 1) * (indPop + 1) - 1
         return pop_reward
 
     def set_param_bounds(self, bounds):
@@ -401,9 +401,11 @@ class MicropolisEnv(core.Env):
         if np.random.rand() <= self.terror_prob:
             self.terrorize()
        #print('rank {} tickin'.format(self.rank))
+        # TODO: BROKEN!
         self.micro.engine.simTick()
         self.state = self.getState()
        #print(self.state[-2])
+        self.curr_pop = self.getPop()
         self.city_metrics = self.get_city_metrics()
         if self.render_gui:
             self.display_city_metrics()
@@ -481,8 +483,8 @@ class MicropolisEnv(core.Env):
         self.num_step += 1
        #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
        #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
-       #if reward > 0:
-       #    print('rank {} reward {}'.format(self.rank, reward))
+        if reward > 0:
+            print('rank {} reward {}'.format(self.rank, reward))
         return (self.state, reward, terminal, infos)
 
     def terrorize(self, extinction_type='age'):

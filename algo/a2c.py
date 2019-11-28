@@ -80,10 +80,7 @@ class A2C():
 
 
         values = values.view(num_steps, num_processes, 1)
-        if 'paint' in self.args.env_name.lower():
-            action_log_probs = None
-        else:
-            action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+        action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         returns =rollouts.returns
         returns = returns - returns.mean()
@@ -91,10 +88,7 @@ class A2C():
         advantages = returns[:-1] - values
         value_loss = advantages.pow(2).mean()
 
-        if 'paint' in self.args.env_name.lower():
-            action_loss = -advantages.detach().mean()
-        else:
-            action_loss = -(advantages.detach() * action_log_probs).mean()
+        action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014

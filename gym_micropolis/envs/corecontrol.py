@@ -114,12 +114,14 @@ class MicropolisControl():
         # for bots
         self.land_value = 0
 
+       #win1.playCity()
         if win1:
            win1.playCity()
         else:
-           #self.engine.setSpeed(1)
-           #self.engine.setPasses(1)
+            self.engine.setSpeed(2)
+            self.engine.setPasses(1)
             self.engine.resume()
+            self.engine.setGameMode('play')
 
         self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
@@ -317,7 +319,7 @@ class MicropolisControl():
         self.doBotTool(x, y, tool, static_build)
        #gtk.main_iteration() # for observation or recording
        #time.sleep(1/60)
-        self.engine.simTick()
+       #self.engine.simTick()
        #time.sleep(1/60)
 #       gtk.mainiteration()
 
