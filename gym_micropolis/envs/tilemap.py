@@ -65,11 +65,11 @@ def zoneFromInt_A(i):
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
     def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True,
-            terror=False):
+            ages=False):
         # whether or not the latest call to addZone has any effect on our map
         # no good if we encounter a fixed optimal state / are on a budget
-        self.terror = terror
-        if self.terror:
+        self.ages = ages
+        if self.ages:
             # track age of build structures
             print('initializing AGES')
             self.ages = np.zeros((MAP_X, MAP_Y), dtype=int)
@@ -358,7 +358,7 @@ class TileMap(object):
         if zone == 'Clear':
             zone = 'Land'
 
-        result = self.clearPatch(x, y, zone, static_build=static_build)
+        result = self.clearForZone(x, y, zone, static_build=static_build)
         if result == 1:
             # call the engine
             result = self.micro.doSimTool(x, y, tool)
@@ -380,18 +380,21 @@ class TileMap(object):
 
 
 
-    def clearPatch(self, x, y, zone, static_build=False):
+    def clearForZone(self, x, y, zone, static_build=False):
        #print('clearing patch {} {} {}'.format(x, y, zone))
         old_zone = self.zones[self.zoneMap[-1][x][y]]
         if zone in self.zone_compat and (old_zone in self.zone_compat[zone]):
             return 1 # do not prevent composite build
         zone_size = self.zoneSize[zone]
-        if zone_size == 1 and not ((static_build == False) and self.static_builds[0][x][y] == 1):
+        return self.clearPatch(x, y, patch_size=zone_size, static_build=static_build)
+
+    def clearPatch(self, x, y, patch_size, static_build=False):
+        if patch_size == 1 and not ((static_build == False) and self.static_builds[0][x][y] == 1):
             self.clearTile(x, y, static_build=static_build)
             return 1
         else:
-            x0, x1 = max(x-1, 0), min(x-1+zone_size, self.MAP_X)
-            y0, y1 = max(y-1, 0), min(y-1+zone_size, self.MAP_Y)
+            x0, x1 = max(x-1, 0), min(x-1+patch_size, self.MAP_X)
+            y0, y1 = max(y-1, 0), min(y-1+patch_size, self.MAP_Y)
             for i in range(x0, x1):
                 for j in range(y0, y1):
                     if self.static_builds[0][i][j] == 1:
@@ -459,7 +462,7 @@ class TileMap(object):
             self.updateTile(x, y, zone, center, static_build)
             if self.paint:
                 self.acted[x, y] = 1
-            if self.terror:
+            if self.ages:
                 self.ages[x][y] = self.micro.env.num_step
             return
         else:
@@ -470,7 +473,7 @@ class TileMap(object):
                     self.updateTile(i, j, zone, center, static_build)
                     if self.paint:
                         self.acted[i, j] = 1
-                    if self.terror:
+                    if self.ages:
                         self.ages[i][j] = self.micro.env.num_step
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
@@ -499,7 +502,7 @@ class TileMap(object):
         self.centers[x][y] = center
         is_road = self.zoneMap[self.road_int][x][y] == 1
         is_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
-        if self.terror:
+        if self.ages:
             is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
                          self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
                          self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
