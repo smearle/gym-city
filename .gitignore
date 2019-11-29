@@ -7,7 +7,7 @@
 
 trained_models*
 runs*
-notes*
+# notes*
 
 *.pyc
 *.o
