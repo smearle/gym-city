@@ -78,7 +78,7 @@ def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20, gui=False):
     w = 800
     h = 600
 
-    if gui:
+    if gui and True:
         win1 = micropoliswindow.MicropolisPanedWindow(engine=engine)
         win1.set_default_size(w, h)
         win1.set_size_request(w, h)

@@ -27,7 +27,9 @@ class GoLMultiEnv(core.Env):
         self.player_step = False
         self.player_builds = []
         self.action_bin = None
-        self.rend_idx = 0
+        self.rend_idx = -1
+        self.agent_steps = 1
+        self.sim_steps = 1
 
     def configure(self, render=False, map_width=16, prob_life=20,
              max_step=200, num_proc=1, record=None, cuda=False):
@@ -55,12 +57,12 @@ class GoLMultiEnv(core.Env):
                 'pop': (0, max_pop)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
-        max_loss = sum(self.param_ranges)
+        max_loss = sum(self.param_ranges) / 2
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
-                'pop': 0 # aim for empty board
+               #'pop': 0 # aim for empty board
                #'prob_life':
-               #'pop': max_pop,
+                'pop': max_pop,
                 # aim for max possible pop (roughly?)
                 })
         num_params = len(self.params)
@@ -171,7 +173,7 @@ class GoLMultiEnv(core.Env):
             flattened output space)
         '''
         a = a.long()
-       #a.fill_(0)
+        a.fill_(0)
         actions = self.action_idx_to_tensor(a)
         acted_state = self.world.state + actions
         new_state = self.world.state.long() ^ actions.long()
@@ -222,7 +224,7 @@ class GoLMultiEnv(core.Env):
         self.step_count += 1
         obs = self.get_obs()
         ### OVERRIDE teacher for debuggine
-       #reward = self.curr_pop
+        reward = self.curr_pop
        #reward = 256 - self.curr_pop
 
         reward = reward.unsqueeze(-1)
@@ -271,9 +273,9 @@ class GoLMultiEnv(core.Env):
             rend_state = self.rend_state[self.rend_idx].cpu()
             rend_dels = self.agent_dels[self.rend_idx].cpu()
             rend_builds = self.agent_builds[self.rend_idx].cpu()
-            rend_state = np.vstack((rend_state * 1, rend_state * 0.5, rend_state * 1))
+            rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_dels = np.vstack((rend_dels * 0, rend_dels * 0, rend_dels * 1))
-            rend_builds = np.vstack((rend_builds * 1, rend_builds * 0, rend_builds * 1))
+            rend_builds = np.vstack((rend_builds * 0, rend_builds * 1, rend_builds * 0))
             rend_arr = rend_state + rend_dels + rend_builds
         rend_arr = rend_arr.transpose(2, 1, 0)
         cv2.imshow("Game of Life", rend_arr)

@@ -101,12 +101,9 @@ class MicropolisControl():
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)
-        if env.terror_prob:
-            terror = True
-        else:
-            terror = False
+        ages = self.env.terror_type == 'age'
         self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING,
-                paint=paint, terror=terror)
+                paint=paint, ages=ages)
         self.zones = self.map.zones
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest
@@ -117,11 +114,10 @@ class MicropolisControl():
        #win1.playCity()
         if win1:
            win1.playCity()
-        else:
-            self.engine.setSpeed(2)
-            self.engine.setPasses(1)
-            self.engine.resume()
-            self.engine.setGameMode('play')
+       #self.engine.setSpeed(2)
+       #self.engine.setPasses(1)
+        self.engine.resume()
+        self.engine.setGameMode('play')
 
         self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
@@ -137,12 +133,19 @@ class MicropolisControl():
     def displayRewardWeights(self, reward_weights):
         self.win1.agentPanel.displayRewardWeights(reward_weights)
 
+    def simTick(self):
+       #self.engine.resume()
+        self.engine.simTick()
+        self.engine.updateHeads()
+        self.engine.updateDate()
+        self.engine.simUpdate()
+
     def layGrid(self, w, h):
 
         for i in range(self.MAP_X):
             for j in range(self.MAP_Y):
             #   gtk.mainiteration()
-                self.engine.simTick()
+                self.simTick()
                 # vertical road
                 if ((i + 4) % w == 0):
                     self.doTool(i, j,'Road')
@@ -232,8 +235,8 @@ class MicropolisControl():
         return self.engine.totalFunds
 
     def render(self):
-        while gtk.events_pending():
-       #for i in range(2):
+       #while gtk.events_pending():
+        for i in range(2):
             gtk.main_iteration()
 
     def setFunds(self, funds):

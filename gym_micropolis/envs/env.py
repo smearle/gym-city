@@ -255,7 +255,7 @@ class MicropolisEnv(core.Env):
             self.powerPuzzle()
         if self.random_builds:
             self.randomStaticStart()
-        self.micro.engine.simTick()
+        self.micro.simTick()
         self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
         self.curr_pop = 0
@@ -402,7 +402,7 @@ class MicropolisEnv(core.Env):
             self.terrorize(self.terror_type)
        #print('rank {} tickin'.format(self.rank))
         # TODO: BROKEN!
-        self.micro.engine.simTick()
+        self.micro.simTick()
         self.state = self.getState()
        #print(self.state[-2])
         self.curr_pop = self.getPop()
