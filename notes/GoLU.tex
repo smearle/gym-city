@@ -52,6 +52,9 @@
 \pgfplotsset{possible/.style={double, ultra thick, samples=100, color =PineGreen}}
 \pgfplotsset{width=13cm, height=4cm}
 
+
+\section{Game of Life Unit Activation Function}
+
 \begin{align*}
 	\boldsymbol{\mathrm{w}} = \begin{bmatrix}
 		1& 1& 1\\
@@ -59,9 +62,6 @@
 		1& 1& 1\\
 	\end{bmatrix}
 \end{align*}
-
-\section{Game of Life Unit Activation Function}
-
 % GoLU
 \begin{tikzpicture}[every mark/.append style={mark size=1.5pt}]
     \pgfmathsetlengthmacro\MajorTickLength{\pgfkeysvalueof{/pgfplots/major tick length} * 2
