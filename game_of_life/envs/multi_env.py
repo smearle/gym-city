@@ -179,7 +179,7 @@ class GoLMultiEnv(core.Env):
         new_state = self.world.state.long() ^ actions.long()
         if self.render_gui:
             # where cells are already alive
-            self.agent_dels = torch.where(acted_state == 2, self.world.y1, self.world.y0)
+            self.agent_dels = self.world.state.long() & actions.long()
             agent_builds = actions - self.agent_dels
             assert(agent_builds >= 0).all()
             assert torch.sum(self.agent_dels + agent_builds) == self.num_proc
@@ -225,6 +225,7 @@ class GoLMultiEnv(core.Env):
         obs = self.get_obs()
         ### OVERRIDE teacher for debuggine
         reward = self.curr_pop
+        reward = self.curr_pop / (self.max_step * self.num_proc)
        #reward = 256 - self.curr_pop
 
         reward = reward.unsqueeze(-1)
@@ -277,6 +278,7 @@ class GoLMultiEnv(core.Env):
             rend_dels = np.vstack((rend_dels * 0, rend_dels * 0, rend_dels * 1))
             rend_builds = np.vstack((rend_builds * 0, rend_builds * 1, rend_builds * 0))
             rend_arr = rend_state + rend_dels + rend_builds
+       #print(rend_arr)
         rend_arr = rend_arr.transpose(2, 1, 0)
         cv2.imshow("Game of Life", rend_arr)
         if self.record and not self.gif_writer.done:

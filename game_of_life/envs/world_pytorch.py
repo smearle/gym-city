@@ -42,7 +42,8 @@ class World(nn.Module):
         device = torch.device("cuda:0" if cuda else "cpu")
         self.conv_init_ = lambda m: init(m,
             nn.init.dirac_, None,
-            nn.init.calculate_gain('relu'))
+           #nn.init.calculate_gain('relu')
+            )
 
         conv_weights = [[[[1, 1, 1],
                         [1, 9, 1],
@@ -51,10 +52,9 @@ class World(nn.Module):
         self.conv_init_(self.transition_rule)
         self.transition_rule.to(device)
         self.populate_cells()
+        conv_weights = torch.FloatTensor(conv_weights)
         if cuda:
-            conv_weights = torch.cuda.FloatTensor(conv_weights)
-        else:
-            conv_weights = torch.FloatTensor(conv_weights)
+            conv_weights.cuda()
         conv_weights = conv_weights
         self.transition_rule.weight = torch.nn.Parameter(conv_weights, requires_grad=False)
         self.to(device)
@@ -97,7 +97,9 @@ class World(nn.Module):
             if self.cuda:
                 x = x.cuda()
             x = pad_circular(x, 1)
+            print(x[0])
             x = x.float()
+            print(x[0])
             x = self.transition_rule(x)
             x = self.GoLu(x)
             return x
@@ -105,6 +107,9 @@ class World(nn.Module):
     def GoLu(self, x):
         '''
         Applies the Game of Life Unit activation function, element-wise:
+                   _
+        __/\______/ \_____
+       0 2 4 6 8 0 2 4 6 8
         '''
         # TODO: make this a piecewise linear, or piecewise smooth function
         x_out = copy.deepcopy(x).fill_(0).float()
