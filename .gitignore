@@ -12,3 +12,8 @@ runs*
 *.pyc
 *.o
 *.so
+
+# LaTex
+*.aux
+*.log
+*.out

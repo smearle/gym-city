@@ -97,10 +97,13 @@ class World(nn.Module):
             if self.cuda:
                 x = x.cuda()
             x = pad_circular(x, 1)
-            print(x[0])
             x = x.float()
-            print(x[0])
+           #print(x[0])
             x = self.transition_rule(x)
+           #print(x[0])
+            # Mysterious leakages appear here if we increase the batch size enough.
+            x = x.round() # so we hack them back into shape
+           #print(x[0])
             x = self.GoLu(x)
             return x
 
@@ -111,21 +114,24 @@ class World(nn.Module):
         __/\______/ \_____
        0 2 4 6 8 0 2 4 6 8
         '''
-        # TODO: make this a piecewise linear, or piecewise smooth function
         x_out = copy.deepcopy(x).fill_(0).float()
-        ded_0 = (x < 3).float()
-        bth_0 = ded_0 * (x > 2).float()
+        ded_0 = (x >= 2).float()
+        bth_0 = ded_0 * (x < 3).float()
         x_out = x_out + (bth_0 * (x - 2).float())
         ded_1 = (x >= 3).float()
         bth_1 = ded_1 * (x < 4).float()
         x_out = x_out + abs(bth_1 * (x - 4).float())
         alv_0 = (x >= 10).float()
-        lif_0 = alv_0 * (x <= 11.5).float()
+        lif_0 = alv_0 * (x < 11).float()
         x_out = x_out + (lif_0 * (x - 10).float())
-        alv_1 = (x >= 11.5).float()
-        lif_1 = alv_1 * (x < 13).float()
-        x_out = x_out + abs(lif_1 * (x -13).float())
-        x_out = torch.clamp(x_out, 0, 1)
+        alv_1 = (x >= 11).float()
+        lif_1 = alv_1 * (x < 12).float()
+        x_out = x_out + lif_1
+        alv_2 = (x >= 12).float()
+        lif_2 = alv_2 * (x < 13).float()
+        x_out = x_out + abs(lif_2 * (x -13).float())
+        assert (x_out >= 0).all() and (x_out <=1).all()
+       #x_out = torch.clamp(x_out, 0, 1)
         return x_out
 
     def seed(self, seed=None):
