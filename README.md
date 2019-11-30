@@ -1,10 +1,10 @@
 The work in this repo was presented and demoed at the 2019 Experimental A.I. in Games (EXAG) workshop, an AIIDE workshop. You can read the paper here: http://www.exag.org/papers/EXAG_2019_paper_21.pdf
 
-
 # gym-city
+
 A Reinforcement Learning interface for variable-scale city-planing-type gym environments, including [Micropolis](https://github.com/simhacker/micropolis/) (open-source SimCity 1) and an interactive version of Conway's Game of Life.
 
-# Example
+## Micropolis (SimCity 1)
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
  *Interacting with a trained agent*
