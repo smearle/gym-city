@@ -1,8 +1,10 @@
 The work in this repo was presented and demoed at the 2019 Experimental A.I. in Games (EXAG) workshop, an AIIDE workshop. You can read the paper here: http://www.exag.org/papers/EXAG_2019_paper_21.pdf
 
+Feel free to join the conversation surrounding this work via my [Twitter](https://twitter.com/Smearle_RH), and on [r/MachineLearning](https://www.reddit.com/r/MachineLearning/comments/d346e9/r_using_fractal_neural_networks_to_play_simcity_1/).
+
 # gym-city
 
-A Reinforcement Learning interface for variable-scale city-planing-type gym environments, including [Micropolis](https://github.com/simhacker/micropolis/) (open-source SimCity 1) and an interactive version of Conway's Game of Life.
+A Reinforcement Learning interface for variable-scale city-planing-type gym environments, including [Micropolis](https://github.com/simhacker/micropolis/) (open-source SimCity 1) and a 1-player version of Conway's Game of Life.
 
 ## Micropolis (SimCity 1)
 
@@ -11,7 +13,7 @@ The player builds places urban structures on a 2D map. In certain configurations
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
  *Calmly encouraging the agent*
 
-![]() *bullying the agent to incite exploration of city-space*
+![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif) *bullying the agent to incite exploration of city-space*
 
 ## 1-Player Game of Life
 
