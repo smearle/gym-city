@@ -173,7 +173,7 @@ class GoLMultiEnv(core.Env):
             flattened output space)
         '''
         a = a.long()
-        a.fill_(0)
+       #a.fill_(0)
         actions = self.action_idx_to_tensor(a)
         acted_state = self.world.state + actions
         new_state = self.world.state.long() ^ actions.long()
