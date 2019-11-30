@@ -6,8 +6,22 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 
 ## Micropolis (SimCity 1)
 
+The player builds places urban structures on a 2D map. In certain configurations, these structures invite population and vertical development. Reinforcement Learning agents are rewarded for this population.
+
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
- *Interacting with a trained agent*
+ *Calmly encouraging the agent*
+
+![]() *bullying the agent to incite exploration of city-space*
+
+## 1-Player Game of Life
+
+Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
+
+## Power Puzzle
+
+Like SimCity, but the map spawns with one power plant, and several residential zones, all randomly placed, and the bot is restricted to building power lines.
+
+![blindLonging](https://github.com/smearle/gym-micropolis/blob/master/gifs/blindLonging.gif)*an agent's approach to the Power Puzzle enables it to scale up to larger map-sizes only insofar as a strategy of blindly extending networks until unpowered zones are encountered*
 
 # Installation
 
@@ -60,7 +74,7 @@ python3 enjoy.py --load-dir <directory/containing/MicropolisEnv-v0.tar> --map-wi
 
 Generally, agents quickly discover the power-plant + residential zone pairing that creates initial populations, then spend very long at a local minima consisting of a gameboard tiled by residential zones, surrounding a single power plant. On more successful runs, the agent will make the leap toward a smattering of lone road tiles place next to zones, at least one per zone to maximize population density. 
 
-I'm interested in emergent transport networks, though it does not seem that the simulation is complex enough for population-optimizing builds to require large-scale transport networks. 
+I'm interested in emergent transport networks, though I'm not sure the simulation is complex enough for population-optimizing builds to require large-scale transport networks. 
 
 We can, however, reward traffic density just enough for continuous/traffic-producing roads to be drawn between zones, but not so much that they billow out into swaths of traffic-exploiting asphalt badlands.
 
