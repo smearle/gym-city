@@ -16,11 +16,13 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 ![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif)  
 
-*bullying the agent to incite exploration of city-space*
+*Bullying the agent to incite exploration of city-space*
 
 ## 1-Player Game of Life
 
 Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
+
+![entomb]()
 
 ## Power Puzzle
 
