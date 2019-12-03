@@ -320,7 +320,7 @@ class MicropolisEnv(core.Env):
         return curr_pop
 
     def getReward(self):
-        if True or self.poet:
+        if self.poet:
             max_reward = self.max_reward
             loss = 0
             i = 0
@@ -343,8 +343,10 @@ class MicropolisEnv(core.Env):
             pop_reward = self.micro.getTotPop()
 
         else: resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
-        if False:
+        if True:
             pop_reward = resPop + comPop + indPop
+            # population density per 16x16 section of map
+            pop_reward = pop_reward / (self.MAP_X*self.MAP_Y / 16**2)
             zone_variety = 0
             if resPop > 0:
                 zone_variety += 1
