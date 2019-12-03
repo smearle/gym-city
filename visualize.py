@@ -388,34 +388,9 @@ class Plotter(object):
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
-def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=20, x_lim=None, y_lim=None,
-        title='', smooth=1):
-    plotter = Plotter(n_cols=n_cols, indir=indir, n_proc=n_proc)
 
-    from visdom import Visdom
-    viz = Visdom()
-    win = None
-    if isinstance(indir, list):
-        print('copy man\n')
-        i = 0
-        for d in indir:
-            indir[i] = '{}/logs_eval'.format(d)
-            i += 1
-    else:
-        indir = "{}/logs_eval".format(indir)
-    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps,
-        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim, man=True, bin_size=100, smooth=smooth)
-    return win
 
-if __name__ == "__main__":
-    from visdom import Visdom
-    import argparse
-    viz = Visdom()
-    win = None
-    parser = argparse.ArgumentParser(description='viz')
-    parser.add_argument('--load-dir', default=None,
-            help='directory from which to load agent logs (default: ./trained_models/)')
-    visdom_plot(viz, None, '/tmp/gym/', 'BreakOut', 'a2c', bin_size=100, smooth=1)
+
 
 
     def get_col_avg(self, col=None):
@@ -509,3 +484,31 @@ if __name__ == "__main__":
         image = np.transpose(image, (2, 0, 1))
         return viz.image(image, win=win)
 
+def man_eval_plot(indir, n_cols=5, num_steps=200000000, n_proc=20, x_lim=None, y_lim=None,
+        title='', smooth=1):
+    plotter = Plotter(n_cols=n_cols, indir=indir, n_proc=n_proc)
+
+    from visdom import Visdom
+    viz = Visdom()
+    win = None
+    if isinstance(indir, list):
+        print('copy man\n')
+        i = 0
+        for d in indir:
+            indir[i] = '{}/logs_eval'.format(d)
+            i += 1
+    else:
+        indir = "{}/logs_eval".format(indir)
+    win = plotter.visdom_plot(viz, win, indir, title,  "Fractal Net", num_steps=num_steps,
+        n_graphs=range(-1,n_cols), x_lim=x_lim, y_lim=y_lim, man=True, bin_size=100, smooth=smooth)
+    return win
+
+if __name__ == "__main__":
+    from visdom import Visdom
+    import argparse
+    viz = Visdom()
+    win = None
+    parser = argparse.ArgumentParser(description='viz')
+    parser.add_argument('--load-dir', default=None,
+            help='directory from which to load agent logs (default: ./trained_models/)')
+    visdom_plot(viz, None, '/tmp/gym/', 'BreakOut', 'a2c', bin_size=100, smooth=1)

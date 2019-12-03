@@ -320,7 +320,7 @@ class MicropolisEnv(core.Env):
         return curr_pop
 
     def getReward(self):
-        if self.poet:
+        if True or self.poet:
             max_reward = self.max_reward
             loss = 0
             i = 0

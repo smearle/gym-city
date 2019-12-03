@@ -495,7 +495,7 @@ class Evaluator(object):
            #print('making envs in Evaluator: ', self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
            #            self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, True, self.args)
             eval_args = copy.deepcopy(args)
-            eval_args.render = False
+            eval_args.render = args.render
             self.eval_envs = make_vec_envs(
                         self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
                         self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=eval_args)
