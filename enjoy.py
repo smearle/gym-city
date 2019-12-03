@@ -139,6 +139,7 @@ if args.env_name.find('Bullet') > -1:
         if (p.getBodyInfo(i)[0].decode() == "torso"):
             torsoId = i
 
+# You may need to fiddle with this when loading old models
 if args.evaluate:
     env.close() # only needed it to probe obs/act space shape
    #saved_args.num_processes = args.num_processes
@@ -146,7 +147,7 @@ if args.evaluate:
    #saved_args.render = args.render
    #saved_args.prob_life = args.prob_life
    #saved_args.record = args.record
-    args.poet = saved_args.poet
+   #args.poet = saved_args.poet
     args.env_name = saved_args.env_name
     args.log_dir = args.load_dir
     args.model = saved_args.model
