@@ -246,6 +246,13 @@ def main():
     else:
         n_cols = 0
         col_step = 1
+
+    env_param_bounds = envs.get_param_bounds()
+    # in case we want to change this dynamically in the future (e.g., we may
+    # not know how much traffic the agent can possibly produce in Micropolis)
+    envs.set_param_bounds(env_param_bounds) # start with default bounds
+
+
     # Main training loop
     for j in range(past_steps, num_updates):
         if reset_eval:

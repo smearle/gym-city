@@ -510,7 +510,7 @@ class MicropolisEnv(core.Env):
 
 
     def elderCleanse(self):
-        ages = self.micro.map.ages
+        ages = self.micro.map.age_order
         eldest = np.max(ages)
         print('\n AGEIST VIOLENCE')
         ages[ages < 0] = 2*eldest
