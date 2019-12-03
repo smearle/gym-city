@@ -112,10 +112,10 @@ class MicropolisControl():
         self.land_value = 0
 
        #win1.playCity()
-        if win1:
-           win1.playCity()
-       #self.engine.setSpeed(2)
-       #self.engine.setPasses(1)
+       #if win1:
+       #   win1.playCity()
+        self.engine.setSpeed(2)
+        self.engine.setPasses(1)
         self.engine.resume()
         self.engine.setGameMode('play')
 
@@ -135,10 +135,14 @@ class MicropolisControl():
 
     def simTick(self):
        #self.engine.resume()
+       #self.engine.cityEvaluation()
+        self.engine.tickEngine()
         self.engine.simTick()
-        self.engine.updateHeads()
-        self.engine.updateDate()
-        self.engine.simUpdate()
+       #self.engine.updateHeads()
+       #self.engine.updateDate()
+       #self.engine.changeCensus()
+       #self.engine.simUpdate()
+       #self.engine.doTimeStuff()
 
     def layGrid(self, w, h):
 

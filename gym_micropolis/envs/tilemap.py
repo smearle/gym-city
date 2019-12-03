@@ -72,8 +72,8 @@ class TileMap(object):
         if self.ages:
             # track age of build structures
             print('initializing AGES')
-            self.ages = np.zeros((MAP_X, MAP_Y), dtype=int)
-            self.ages.fill(-1)
+            self.age_order = np.zeros((MAP_X, MAP_Y), dtype=int)
+            self.age_order.fill(-1)
         self.no_change = False
         self.walker = walker
         self.paint = paint
@@ -463,7 +463,7 @@ class TileMap(object):
             if self.paint:
                 self.acted[x, y] = 1
             if self.ages:
-                self.ages[x][y] = self.micro.env.num_step
+                self.age_order[x][y] = self.micro.env.num_step
             return
         else:
             x0, y0 = max(0, x - 1), max(0, y - 1)
@@ -474,7 +474,7 @@ class TileMap(object):
                     if self.paint:
                         self.acted[i, j] = 1
                     if self.ages:
-                        self.ages[i][j] = self.micro.env.num_step
+                        self.age_order[i][j] = self.micro.env.num_step
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
         ''' static_build should be None when simply updating from map,
@@ -508,7 +508,7 @@ class TileMap(object):
                          self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
                          self.zoneMap[self.zoneInts['Forest']][x][y] == 1
             if is_natural:
-                self.ages[x, y] = -1
+                self.age_order[x][y] = -1
 
         net = None
         if was_road and not is_road:

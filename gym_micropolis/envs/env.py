@@ -511,7 +511,6 @@ class MicropolisEnv(core.Env):
     def elderCleanse(self):
         ages = self.micro.map.ages
         eldest = np.max(ages)
-       #print(ages)
         print('\n AGEIST VIOLENCE')
         ages[ages < 0] = 2*eldest
        #for i in range(20):
@@ -522,7 +521,7 @@ class MicropolisEnv(core.Env):
             y = xy % self.MAP_X
             x = int(x)
             y = int(y)
-            print('deleting {} {}'.format(x, y))
+           #print('deleting {} {}'.format(x, y))
             result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
             self.render()
            #print('result {}'.format(result))
