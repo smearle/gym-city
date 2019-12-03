@@ -46,7 +46,7 @@ class MicropolisEnv(core.Env):
                 'num_plants': (0, 100),
                 'mayor_rating': (0, 100)
                 })
-        self.num_params = 1
+        self.num_params = 6
         # not necessarily true but should take care of most cases
         self.max_loss = 0
         i = 0
@@ -320,8 +320,20 @@ class MicropolisEnv(core.Env):
         return curr_pop
 
     def getReward(self):
-        reward = self.getPopReward()
-        reward = reward
+        if self.poet:
+            max_reward = self.max_reward
+            loss = 0
+            i = 0
+            for k, v in self.city_trgs.items():
+                if i == self.num_params:
+                    break
+                else:
+                    loss += abs(v - self.city_metrics[k])
+                    i += 1
+
+            reward = (self.max_loss - loss) * max_reward / self.max_loss
+        else:
+            reward = self.getPopReward()
         self.curr_reward = reward
         return reward
 
@@ -445,24 +457,11 @@ class MicropolisEnv(core.Env):
        #           #elif n > max_net_2:
        #           #    max_net_2 = n
         reward = 0
-       #for k, v in self.city_trgs.items():
-       #    if k!= 'name':
-       #        reward += v * self.city_metrics[k]
-        if self.poet:
-            max_reward = self.max_reward
-            loss = 0
-            i = 0
-            for k, v in self.city_trgs.items():
-                if i == self.num_params:
-                    break
-                else:
-                    loss += abs(v - self.city_metrics[k])
-                    i += 1
 
-            reward = (self.max_loss - loss) * max_reward / self.max_loss
-        else:
-            reward = self.getReward()
-        curr_funds = self.micro.getFunds()
+
+        reward = self.getReward()
+        reward = reward / (self.max_step)
+        self.curr_funds = curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
         terminal = (bankrupt or self.num_step >= self.max_step) and\
             self.auto_reset
@@ -474,6 +473,7 @@ class MicropolisEnv(core.Env):
            #pass
             self.micro.render()
         infos = {}
+        # Get the next player-build ready, if there is one in the queue
         if self.micro.player_builds:
             b = self.micro.player_builds[0]
             a = self.actionsToInts[b]
@@ -481,10 +481,11 @@ class MicropolisEnv(core.Env):
             self.micro.player_builds = self.micro.player_builds[1:]
             self.player_step = a
         self.num_step += 1
+        # Override Reward
        #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
        #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
-        if reward > 0:
-            print('rank {} reward {}'.format(self.rank, reward))
+        if reward > 0 and self.rank > 0:
+            print('rank {} reward {} you did it you fixed this demon'.format(self.rank, reward))
         return (self.state, reward, terminal, infos)
 
     def terrorize(self, extinction_type='age'):
