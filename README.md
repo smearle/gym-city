@@ -10,20 +10,27 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 
 The player builds places urban structures on a 2D map. In certain configurations, these structures invite population and vertical development. Reinforcement Learning agents are rewarded for this population.
 
-![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)
+![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)  
+
  *Calmly encouraging the agent*
 
-![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif) *bullying the agent to incite exploration of city-space*
+![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif)  
+
+*Bullying the agent to incite exploration of city-space.*
 
 ## 1-Player Game of Life
 
 Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
 
+![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.mp4)
+
 ## Power Puzzle
 
 Like SimCity, but the map spawns with one power plant, and several residential zones, all randomly placed, and the bot is restricted to building power lines.
 
-![blindLonging](https://github.com/smearle/gym-micropolis/blob/master/gifs/blindLonging.gif)*an agent's approach to the Power Puzzle enables it to scale up to larger map-sizes only insofar as a strategy of blindly extending networks until unpowered zones are encountered*
+![blindLonging](https://github.com/smearle/gym-micropolis/blob/master/gifs/blindLonging.gif) 
+
+*An agent plays on a larger map than trained upon, with mixed results.*
 
 # Installation
 
