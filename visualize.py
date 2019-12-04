@@ -6,8 +6,9 @@ import glob
 import os
 
 import matplotlib
-import matplotlib.pyplot as plt
-plt.switch_backend('agg')
+# these two lines cause the micropolis gui to crash for some reason
+#import matplotlib.pyplot as plt
+#plt.switch_backend('agg')
 import numpy as np
 from scipy.signal import medfilt
 matplotlib.rcParams.update({'font.size': 8})
@@ -253,6 +254,8 @@ class Plotter(object):
             n_graphs=None, x_lim=None, y_lim=None, man=False,
             eval=False, header='r', dots=False
             ):
+        import matplotlib.pyplot as plt
+        plt.switch_backend('agg')
         '''
          - n_graphs: specific to fractal columns
         '''
@@ -454,6 +457,8 @@ class Plotter(object):
 
 
     def bar_plot(self, viz, win, folder, game, name, num_steps, n_cols=None):
+        import matplotlib.pyplot as plt
+        plt.switch_backend('agg')
         fig = plt.figure()
         x = [i for i in range(-1, n_cols)]
 

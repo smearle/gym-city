@@ -3,6 +3,7 @@ from multiprocessing import Process, Pipe
 from baselines.common.vec_env import VecEnv, CloudpickleWrapper
 
 
+
 def worker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
     env = env_fn_wrapper.x()
@@ -33,9 +34,18 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd == 'set_param_bounds':
             env.set_param_bounds(data)
             remote.send(None)
+        elif cmd == 'render':
+            env.render()
+            remote.send(None)
+        elif hasattr(env, cmd):
+            cmd_fn = getattr(env, cmd)
+            print(data)
+            ret_val = cmd_fn(**data)
+            remote.send(ret_val)
         else:
             print('invalid command, data: {}, {}'.format(cmd, data))
             raise NotImplementedError
+
 
 
 class SubprocVecEnv(VecEnv):

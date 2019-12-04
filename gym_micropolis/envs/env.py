@@ -102,6 +102,8 @@ class MicropolisEnv(core.Env):
         self.terror_prob = terror_prob
         self.traffic_only = traffic_only
         if record: raise NotImplementedError
+        if max_step is None:
+            max_step = size * size
         self.max_step = max_step
         self.empty_start = empty_start
         self.simple_reward = simple_reward
@@ -343,7 +345,7 @@ class MicropolisEnv(core.Env):
             pop_reward = self.micro.getTotPop()
 
         else: resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
-        if True:
+        if False:
             pop_reward = resPop + comPop + indPop
             # population density per 16x16 section of map
             pop_reward = pop_reward / (self.MAP_X*self.MAP_Y / 16**2)
@@ -483,11 +485,9 @@ class MicropolisEnv(core.Env):
             self.micro.player_builds = self.micro.player_builds[1:]
             self.player_step = a
         self.num_step += 1
-        # Override Reward
+       ## Override Reward
        #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
        #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
-        if reward > 0 and self.rank > 0:
-            print('rank {} reward {} you did it you fixed this demon'.format(self.rank, reward))
         return (self.state, reward, terminal, infos)
 
     def terrorize(self, extinction_type='age'):
@@ -517,7 +517,8 @@ class MicropolisEnv(core.Env):
         print('\n AGEIST VIOLENCE')
         ages[ages < 0] = 2*eldest
        #for i in range(20):
-        for i in range((self.MAP_X * self.MAP_Y) // 30):
+        for i in range(30):
+       #for i in range((self.MAP_X * self.MAP_Y) // 90):
             ages[ages < 0] = 2*eldest
             xy = np.argmin(ages)
             x = xy // self.MAP_X
@@ -552,7 +553,8 @@ class MicropolisEnv(core.Env):
 
 
     def render(self, mode='human'):
-        self.micro.render()
+        if self.rank > 0:
+            self.micro.render()
 
     def test(self):
         env = MicropolisEnv()

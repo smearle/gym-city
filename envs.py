@@ -173,7 +173,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     render = render_gui
                 else:
                     print_map = False
-                    render = False
+                    render = render_gui
+                   #render = False
                 env.setMapSize(map_width, print_map=print_map, render_gui=render,
                         empty_start=not args.random_terrain, max_step=max_step,
                         rank=rank,
@@ -233,6 +234,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
         return envs[0]()
 
     if len(envs) > 1:
+        print(envs)
         envs = SubprocVecEnv(envs)
     else:
         if sys.version[0] =='2':
