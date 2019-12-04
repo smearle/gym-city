@@ -112,8 +112,8 @@ class MicropolisControl():
         self.land_value = 0
 
        #win1.playCity()
-       #if win1:
-       #   win1.playCity()
+        if win1:
+           win1.playCity()
         self.engine.setSpeed(2)
         self.engine.setPasses(1)
         self.engine.resume()
@@ -239,8 +239,8 @@ class MicropolisControl():
         return self.engine.totalFunds
 
     def render(self):
-       #while gtk.events_pending():
-        for i in range(2):
+        while gtk.events_pending():
+       #for i in range(2):
             gtk.main_iteration()
 
     def setFunds(self, funds):

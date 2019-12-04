@@ -87,17 +87,23 @@ class MicropolisEnv(core.Env):
         np.random.seed(seed)
         return [seed1, seed2]
 
-    def setMapSize(self, size, max_step=None, rank=None, print_map=False,
+    def setMapSize(self, size, **kwargs):
+        '''
+        '''
+        self.pre_gui(size, **kwargs)
+        self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
+                rank=self.rank, power_puzzle=self.power_puzzle, gui=self.render_gui)
+        self.post_gui()
+
+    def pre_gui(self, size, max_step=None, rank=None, print_map=False,
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
             power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False,
             terror_prob=False, terror_type='disaster'):
-        '''
-        '''
         self.terror_type = terror_type
         self.PADDING = PADDING
-        self.render_gui = render_gui
         self.rank = rank
+        self.render_gui = render_gui
         self.random_builds = random_builds
         self.terror_prob = terror_prob
         self.traffic_only = traffic_only
@@ -115,9 +121,11 @@ class MicropolisEnv(core.Env):
             self.MAP_X = size[0]
             self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
-        self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, PADDING,
-                rank=rank, power_puzzle=power_puzzle, gui=render_gui)
         self.static_builds = True
+        self.poet = poet
+        self.print_map = print_map
+
+    def post_gui(self):
         self.win1 = self.micro.win1
         self.micro.SHOW_GUI=self.SHOW_GUI
         self.num_step = 0
@@ -133,7 +141,6 @@ class MicropolisEnv(core.Env):
         print('num map features: {}'.format(self.micro.map.num_features))
         self.num_obs_channels = self.micro.map.num_features + self.num_scalars \
                 + self.num_density_maps + num_user_features
-        self.poet = poet
         if self.poet:
             self.num_obs_channels += len(self.city_trgs)
         #ac_low = np.zeros((3))
@@ -142,10 +149,8 @@ class MicropolisEnv(core.Env):
         self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
         self.last_state = None
         self.metadata = {'runtime.vectorized': True}
-        # TODO: TOTALLY WRONG! IS THIS NOT CLIPPING OUR SCALAR OBSERVATION CHANNELS?!
         low_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=-1)
         high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
-        # TODO: can/should we use Tuples of MultiBinaries instead, for greater efficiency?
         self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = float)
         self.state = None
         self.intsToActions = {}
@@ -154,12 +159,13 @@ class MicropolisEnv(core.Env):
         self.last_pop = 0
         self.last_num_roads = 0
 #       self.past_actions = np.full((self.num_tools, self.MAP_X, self.MAP_Y), False)
-        self.print_map = print_map
         self.auto_reset = True
         self.mayor_rating = 50
         self.last_mayor_rating = self.mayor_rating
         self.last_priority_road_net_size = 0
         self.display_city_trgs()
+        if self.render_gui:
+            self.render()
 
     def get_param_bounds(self):
         return self.param_bounds
@@ -553,8 +559,8 @@ class MicropolisEnv(core.Env):
 
 
     def render(self, mode='human'):
-        if self.rank > 0:
-            self.micro.render()
+        print('rrend')
+        self.micro.render()
 
     def test(self):
         env = MicropolisEnv()

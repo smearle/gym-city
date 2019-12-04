@@ -23,17 +23,19 @@ class MicropolisPaintEnv(MicropolisEnv):
     def __init__(self, MAP_X=20, MAP_Y=20, PADDING=0):
         super(MicropolisPaintEnv, self).__init__(MAP_X, MAP_Y, PADDING)
 
-    def setMapSize(self, size, **kw_args):
-        super().setMapSize(size, **kw_args)
-        ac_low = np.zeros((self.MAP_X, self.MAP_Y))
-        ac_high = np.zeros((self.MAP_X, self.MAP_Y))
-        ac_high.fill(self.num_tools - 1)
-        self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
-
+    def setMapSize(self, size, **kwargs):
+        # but when we do this, we construct another control
+        self.pre_gui(size, **kwargs)
+        # build our own controller
         self.micro = MicropolisPaintControl(self, MAP_W=self.MAP_X,
                 MAP_H=self.MAP_Y, PADDING=self.PADDING,
                 rank=self.rank, gui=self.render_gui,
                 power_puzzle=self.power_puzzle)
+        self.post_gui()
+        ac_low = np.zeros((self.MAP_X, self.MAP_Y))
+        ac_high = np.zeros((self.MAP_X, self.MAP_Y))
+        ac_high.fill(self.num_tools - 1)
+        self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
 
     def step(self, a, static_build=False):
         '''

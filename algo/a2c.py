@@ -34,6 +34,7 @@ class A2C():
         else:
             self.optimizer = optim.RMSprop(
                 actor_critic.parameters(), lr, eps=eps, alpha=alpha)
+        self.paint = 'paint' in args.env_name.lower()
 
     def update(self, rollouts):
         obs_shape = rollouts.obs.size()[2:]
@@ -80,7 +81,10 @@ class A2C():
 
 
         values = values.view(num_steps, num_processes, 1)
-        action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+        if self.paint:
+            action_log_probs = action_log_probs.view(num_steps, num_processes, -1)
+        else:
+            action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         returns =rollouts.returns
         returns = returns - returns.mean()
