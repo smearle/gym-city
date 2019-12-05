@@ -29,8 +29,8 @@ class MicropolisMonitor(bench.Monitor):
             old_log = '{}_old'.format(logfile)
             os.rename(logfile, old_log)
         else:
-            print('no old logfile {}'.format(log_file))
-            raise Exception
+            print('no old logfile {}'.format(logfile))
+           #raise Exception
         info_keywords = (*info_keywords, 'e', 'p')
         super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
         if append_log:

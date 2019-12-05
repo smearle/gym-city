@@ -554,7 +554,7 @@ class Evaluator(object):
                                     row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
                                     writer_col.writerow(row)
                                 h += 1
-                        except csv.Error:
+                        except csv.Error: # I guess this error happens at most once then?
                             h_i = 0
                             for row in reader:
                                 if h_i > h:
