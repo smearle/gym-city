@@ -23,11 +23,14 @@ class MicropolisMonitor(bench.Monitor):
         self.dist_entropy = 0
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
         if os.path.exists(logfile):
             append_log = True
             old_log = '{}_old'.format(logfile)
             os.rename(logfile, old_log)
-        os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        else:
+            print('no old logfile {}'.format(log_file))
+            raise Exception
         info_keywords = (*info_keywords, 'e', 'p')
         super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
         if append_log:
@@ -40,10 +43,13 @@ class MicropolisMonitor(bench.Monitor):
                         # TODO: logger or results_writer, what's going on here?
                         if hasattr(self, 'logger'):
                             self.logger.writerow(row)
+                            self.f.flush()
                         else:
                             assert hasattr(self, 'results_writer')
                             self.results_writer.write_row(row)
+                            self.results_writer.flush()
                     h += 1
+            print('boutta remove')
             os.remove(old_log)
 
     def step(self, action):
@@ -60,7 +66,7 @@ class MicropolisMonitor(bench.Monitor):
             if "p" in epinfo.keys():
                 epinfo["p"] = round(self.trg_param_vals[0].item(), 6)
             for k in self.info_keywords:
-                if k != 'e' and k!= 'p':
+                if False and k != 'e' and k!= 'p':
                     epinfo[k] = info[k]
             self.episode_rewards.append(eprew)
             self.episode_lengths.append(eplen)
@@ -72,6 +78,7 @@ class MicropolisMonitor(bench.Monitor):
             else:
                 assert hasattr(self, 'results_writer')
                 self.results_writer.write_row(epinfo)
+                self.results_writer.flush()
             info['episode'] = epinfo
         self.total_steps += 1
        #print('dones: {}'.format(done))
@@ -83,6 +90,7 @@ class MicropolisMonitor(bench.Monitor):
 class MultiMonitor(MicropolisMonitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         super(MultiMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
+        ''' For GoLMultiEnv'''
 
     def step(self, action):
         if self.needs_reset:
