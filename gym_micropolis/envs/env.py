@@ -420,6 +420,8 @@ class MicropolisEnv(core.Env):
         return self.postact()
 
     def postact(self):
+        # never let the agent go broke, for now
+        self.micro.setFunds(self.micro.init_funds)
         if np.random.rand() <= self.terror_prob:
             self.terrorize(self.terror_type)
        #print('rank {} tickin'.format(self.rank))
@@ -538,7 +540,7 @@ class MicropolisEnv(core.Env):
         ages -= np.min(ages)
         ages[ages>eldest] = -1
         # otherwise it's over!
-        self.micro.engine.setFunds(9999999)
+        self.micro.engine.setFunds(self.micro.init_funds)
 
 
     def getRating(self):
@@ -559,7 +561,6 @@ class MicropolisEnv(core.Env):
 
 
     def render(self, mode='human'):
-        print('rrend')
         self.micro.render()
 
     def test(self):
