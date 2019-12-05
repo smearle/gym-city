@@ -88,8 +88,8 @@ if isinstance(env.action_space, gym.spaces.Discrete):
     else:
         num_actions = env.action_space.n
 elif isinstance(env.action_space, gym.spaces.Box):
-    out_w = env.action_space.shape[1]
-    out_h = env.action_space.shape[2]
+    out_w = env.action_space.shape[0]
+    out_h = env.action_space.shape[1]
     num_actions = env.action_space.shape[-1]
 
 #actor_critic, ob_rms = \

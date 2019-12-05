@@ -114,15 +114,13 @@ class MicropolisControl():
        #win1.playCity()
         if win1:
            win1.playCity()
-        self.engine.setSpeed(2)
-        self.engine.setPasses(1)
         self.engine.resume()
         self.engine.setGameMode('play')
 
         self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
         self.engine.setSpeed(3)
-        self.engine.setPasses(100)
+        self.engine.setPasses(400)
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0

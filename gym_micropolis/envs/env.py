@@ -347,11 +347,11 @@ class MicropolisEnv(core.Env):
 
 
     def getPopReward(self):
-        if self.simple_reward and False:
+        if True:
             pop_reward = self.micro.getTotPop()
 
-        else: resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
-        if False:
+        else:
+            resPop, comPop, indPop = (1/4) * self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
             pop_reward = resPop + comPop + indPop
             # population density per 16x16 section of map
             pop_reward = pop_reward / (self.MAP_X*self.MAP_Y / 16**2)
@@ -364,7 +364,7 @@ class MicropolisEnv(core.Env):
                 zone_variety += 1
             zone_bonus = (zone_variety - 1) * 50
             pop_reward += max(0, zone_bonus)
-        else:
+        if False:
             pop_reward = (resPop + 1) * (comPop + 1) * (indPop + 1) - 1
         return pop_reward
 
