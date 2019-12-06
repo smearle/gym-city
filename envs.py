@@ -49,7 +49,6 @@ class MicropolisMonitor(bench.Monitor):
                             self.results_writer.write_row(row)
                             self.results_writer.flush()
                     h += 1
-            print('boutta remove')
             os.remove(old_log)
 
     def step(self, action):

@@ -57,6 +57,11 @@ class Teacher(Trainer):
     def get_fieldnames(self):
         return ['r','l','t','e','p']
 
+    def get_save_dict(self):
+        d = super().get_save_dict()
+        d['alp_gmm'] = self.alp_gmm
+        return d
+
     def __init__(self):
         # have to do above before call to parent to inirialize Evaluator correctly
         super(Teacher, self).__init__()

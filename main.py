@@ -390,6 +390,7 @@ class Trainer():
         plotter = self.plotter
         n_cols = self.n_cols
         model = self.model
+        device = self.device
         if self.reset_eval:
             obs = envs.reset()
             rollouts.obs[0].copy_(obs)
@@ -492,15 +493,12 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             if args.cuda:
                 save_model.cpu()
             optim_save = save_agent.optimizer.state_dict()
-
-            # experimental:
-            torch.save({
-                'past_steps': next(iter(agent.optimizer.state_dict()['state'].values()))['step'],
-                'model_state_dict': save_model.state_dict(),
-                'optimizer_state_dict': optim_save,
-                'ob_rms': ob_rms,
-                'args': args
-                }, os.path.join(save_path, args.env_name + ".tar"))
+            self.agent = agent
+            self.save_model = save_model
+            self.optim_save = optim_save
+            self.args = args
+            self.ob_rms = ob_rms
+            torch.save(self.get_save_dict(), os.path.join(save_path, args.env_name + ".tar"))
 
            #save_model = [save_model,
            #              getattr(get_vec_normalize(envs), 'ob_rms', None)]
@@ -523,6 +521,22 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+
+    def get_save_dict(self):
+        agent = self.agent
+        save_model = self.save_model
+        optim_save = self.optim_save
+        ob_rms = self.ob_rms
+        args = self.args
+        # experimental:
+        d = {
+            'past_steps': next(iter(agent.optimizer.state_dict()['state'].values()))['step'],
+            'model_state_dict': save_model.state_dict(),
+            'optimizer_state_dict': optim_save,
+            'ob_rms': ob_rms,
+            'args': args,
+            }
+        return d
 
 
 if __name__ == "__main__":
