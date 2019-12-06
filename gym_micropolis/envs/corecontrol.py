@@ -120,7 +120,7 @@ class MicropolisControl():
         self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
         self.engine.setSpeed(3)
-        self.engine.setPasses(400)
+        self.engine.setPasses(100)
         #engine.simSpeed =99
         self.total_traffic = 0
         self.last_total_traffic = 0
