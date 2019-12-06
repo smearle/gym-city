@@ -53,10 +53,15 @@ class Teacher():
         pass
 
 class Trainer():
+    def get_fieldnames(self):
+        return ['r','l','t','e']
+
     def __init__(self):
         import random
         import gym_micropolis
         import game_of_life
+
+        self.fieldnames = self.get_fieldnames()
 
         args = get_args()
         args.log_dir = args.save_dir + '/logs'
@@ -89,6 +94,7 @@ class Trainer():
                     pass
         torch.set_num_threads(1)
         device = torch.device("cuda:0" if args.cuda else "cpu")
+        self.device = device
 
         if args.vis:
             from visdom import Visdom
@@ -110,10 +116,11 @@ class Trainer():
         elif isinstance(envs.observation_space, gym.spaces.Box):
             if 'golmulti' in args.env_name.lower():
                 multi_env = True
-                self.multi_env = multi_env
                 observation_space_shape = envs.observation_space.shape[1:]
             else:
+                multi_env = False
                 observation_space_shape = envs.observation_space.shape
+            self.multi_env = multi_env
             if len(observation_space_shape) == 3:
                 in_w = observation_space_shape[1]
                 in_h = observation_space_shape[2]
@@ -157,18 +164,21 @@ class Trainer():
             args.n_recs += 1
 
         evaluator = None
+        self.evaluator = evaluator
 
         if not agent:
             agent = init_agent(actor_critic, args)
 
+        vec_norm = get_vec_normalize(envs)
        #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
         if args.load_dir:
             saved_model = os.path.join(args.load_dir, args.env_name + '.tar')
         else:
             saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
-        vec_norm = get_vec_normalize(envs)
+        self.checkpoint = None
         if os.path.exists(saved_model) and not args.overwrite:
             checkpoint = torch.load(saved_model)
+            self.checkpoint = checkpoint
             saved_args = checkpoint['args']
             actor_critic.load_state_dict(checkpoint['model_state_dict'])
            #for o, l in zip(agent.optimizer.state_dict, checkpoint['optimizer_state_dict']):
@@ -176,7 +186,7 @@ class Trainer():
            #print(agent.optimizer.state_dict()['param_groups'])
            #print('\n')
            #print(checkpoint['model_state_dict'])
-            actor_critic.to(device)
+            actor_critic.to(self.device)
            #actor_critic.cuda()
            #agent = init_agent(actor_critic, saved_args)
             agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -245,7 +255,7 @@ class Trainer():
         episode_rewards = deque(maxlen=10)
 
         start = time.time()
-        model = actor_critic.base
+        self.model = model = actor_critic.base
         self.reset_eval = False
         plotter = None
         env_param_bounds = envs.get_param_bounds()
@@ -366,6 +376,7 @@ class Trainer():
 
 
     def train(self):
+        evaluator = self.evaluator
         episode_rewards = self.episode_rewards
         args = self.args
         actor_critic = self.actor_critic
@@ -378,6 +389,7 @@ class Trainer():
         start = self.start
         plotter = self.plotter
         n_cols = self.n_cols
+        model = self.model
         if self.reset_eval:
             obs = envs.reset()
             rollouts.obs[0].copy_(obs)
@@ -435,8 +447,9 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and n_train % args.eval_interval == 0):
             if evaluator is None:
-                evaluator = Evaluator(args, actor_critic, device, envs=envs, vec_norm=vec_norm)
-
+                evaluator = Evaluator(args, actor_critic, device, envs=envs, vec_norm=vec_norm,
+                        fieldnames=self.fieldnames)
+                self.evaluator = evaluator
 
             model = evaluator.actor_critic.base
 

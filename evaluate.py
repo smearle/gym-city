@@ -26,7 +26,7 @@ import csv
 class Evaluator(object):
     ''' Runs inference on a bunch of envs'''
     def __init__(self, args, actor_critic, device, envs=None, vec_norm=None,
-            frozen=False):
+            frozen=False, fieldnames=['r', 'l', 't']):
         ''' frozen: we are not in the main training loop, but evaluating frozen model separately'''
         if frozen:
             self.win_eval = None
@@ -87,7 +87,6 @@ class Evaluator(object):
             self.vec_norm.eval()
             self.vec_norm.ob_rms = get_vec_normalize(self.eval_envs).ob_rms
         self.tstart = time.time()
-        fieldnames = ['r', 'l', 't']
         model = actor_critic.base
         if args.model == 'FractalNet':
             n_cols = model.n_cols

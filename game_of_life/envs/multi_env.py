@@ -224,8 +224,8 @@ class GoLMultiEnv(core.Env):
         self.step_count += 1
         obs = self.get_obs()
         ### OVERRIDE teacher for debuggine
-        reward = self.curr_pop
-        reward = self.curr_pop / (self.max_step * self.num_proc)
+       #reward = self.curr_pop
+       #reward = self.curr_pop / (self.max_step * self.num_proc)
        #reward = 256 - self.curr_pop
 
         reward = reward.unsqueeze(-1)
