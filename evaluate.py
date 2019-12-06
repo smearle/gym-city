@@ -116,7 +116,7 @@ class Evaluator(object):
                 setattr(self, 'writer_col_{}'.format(i), writer_col)
                 if merge_col_log:
                     with open(old_log, newline='') as old:
-                        reader = csv.DictReader(old, fieldnames=('r', 'l', 't'))
+                        reader = csv.DictReader(old, fieldnames=fieldnames)
                         h = 0
                         try: # in case of null bytes resulting from interrupted logging
                             for row in reader:

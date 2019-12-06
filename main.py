@@ -170,6 +170,7 @@ class Trainer():
             agent = init_agent(actor_critic, args)
 
         vec_norm = get_vec_normalize(envs)
+        self.vec_norm = vec_norm
        #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
         if args.load_dir:
             saved_model = os.path.join(args.load_dir, args.env_name + '.tar')
@@ -272,7 +273,7 @@ class Trainer():
         else:
             n_cols = 0
             col_step = 1
-
+        self.col_step = col_step
         env_param_bounds = envs.get_param_bounds()
         # in case we want to change this dynamically in the future (e.g., we may
         # not know how much traffic the agent can possibly produce in Micropolis)
@@ -391,6 +392,7 @@ class Trainer():
         n_cols = self.n_cols
         model = self.model
         device = self.device
+        vec_norm = self.vec_norm
         if self.reset_eval:
             obs = envs.reset()
             rollouts.obs[0].copy_(obs)
@@ -454,12 +456,14 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
 
             model = evaluator.actor_critic.base
 
-            col_idx = [-1, *range(0, n_cols, col_step)]
+            col_idx = [-1, *range(0, n_cols, self.col_step)]
             for i in col_idx:
                 evaluator.evaluate(column=i)
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
            # making sure the evaluator plots the '-1'st column (the overall net)
-
+            viz = self.viz
+            win_eval = self.win_eval
+            graph_name = self.graph_name
             if args.vis: #and n_train % args.vis_interval == 0:
                 try:
                     # Sometimes monitor doesn't properly flush the outputs
