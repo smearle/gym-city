@@ -26,7 +26,7 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
 
-![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.mp4)
+![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/entomb.gif)
 
 ## Power Puzzle
 
@@ -36,7 +36,7 @@ Like SimCity, but the map spawns with one power plant, and several residential z
 
 *An agent plays on a larger map than trained upon, with mixed results.*
 
-![casual](https://github.com/smearle/gym-micropolis/blob/master/gifs/casual.gif) 
+![casual](https://github.com/smearle/gym-micropolis-notes/blob/master/gifs/casual.gif) 
 
 *Giving pointers to the agent.*
 
