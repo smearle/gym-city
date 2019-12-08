@@ -14,9 +14,15 @@ The player builds places urban structures on a 2D map. In certain configurations
 
  *An agent plays on the 16x16 map on which it was trained. A human player helps satisfy demand.*
 
-![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif)  
+![interBully_0](https://github.com/smearle/gym-city-notes/blob/master/gifs/interBully_0.gif)  
 
-*An agent upscales to a 32x32 map without additional training. A human player incites exploration of city-space via deletion of key features.*
+*An agent upscales to a 32x32 map without additional training.*
+
+
+![interBully_1](https://github.com/smearle/gym-city-notes/blob/master/gifs/interBully_0.gif)  
+
+*(cont'd from above) A human player incites exploration of city-space via deletion of key features.*
+
 
 ![collab](https://github.com/smearle/gym-city-notes/blob/master/gifs/collab.gif)
 
