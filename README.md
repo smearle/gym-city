@@ -36,6 +36,10 @@ Like SimCity, but the map spawns with one power plant, and several residential z
 
 *An agent plays on a larger map than trained upon, with mixed results.*
 
+![casual](https://github.com/smearle/gym-micropolis/blob/master/gifs/casual.gif) 
+
+*Giving pointers to the agent.*
+
 # Installation
 
 ## Ubuntu
