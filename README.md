@@ -12,11 +12,11 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)  
 
- *Helping the agent deal with demand.*
+ *An agent plays on the 16x16 map on which it was trained. A human player helps satisfy demand.*
 
 ![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif)  
 
-*Inciting exploration of city-space via deletion of key features.*
+*An agent upscales to a 32x32 map without additional training. A human player incites exploration of city-space via deletion of key features.*
 
 ![collab](https://github.com/smearle/gym-city-notes/blob/master/gifs/collab.gif)
 
@@ -28,13 +28,12 @@ Like SimCity, but there are only two possible states for each tile (populated or
 
 ![agentGoL](https://github.com/smearle/gym-city-notes/blob/master/gifs/agentGoL.gif)
 
-
-*An agent upscales to a 32x32 map without additional training. Player intervention can sabotage agent by exploiting oscillators.*
+*An agent plays on the 16x16 map on which it was trained.*
 
 
 ![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/entomb.gif)
 
-*An agent upscales to a 32x32 map without additional training. Player intervention can sabotage agent by exploiting oscillators.*
+*An agent upscales to a 32x32 map without additional training. Human player sabotages the agent by exploiting oscillators.*
 
 ## Power Puzzle
 
@@ -46,7 +45,7 @@ Like SimCity, but the map spawns with one power plant, and several residential z
 
 ![casual](https://github.com/smearle/gym-city-notes/blob/master/gifs/casual.gif) 
 
-*Giving pointers to the agent.*
+*Human player gives pointers to the agent.*
 
 # Installation
 
