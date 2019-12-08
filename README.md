@@ -47,7 +47,7 @@ A SimCity map spawns with one power plant, and several residential zones, all ra
 
 ![blindLonging](https://github.com/smearle/gym-micropolis/blob/master/gifs/blindLonging.gif) 
 
-*An agent plays on a larger map than trained upon, with mixed results.*
+*An agent upscales to a 32x32 map without additional training, with mixed results.*
 
 ![casual](https://github.com/smearle/gym-city-notes/blob/master/gifs/casual.gif) 
 
