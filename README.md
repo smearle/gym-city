@@ -8,7 +8,7 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 
 ## Micropolis (SimCity 1)
 
-The player builds places urban structures on a 2D map. In certain configurations, these structures invite population and vertical development. Reinforcement Learning agents are rewarded for this population.
+The player builds places urban structures on a 2D map. In certain configurations, these structures invite population and vertical development. Reinforcement Learning agents are rewarded as a function of population or other city-wide metrics.
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)  
 
@@ -24,7 +24,7 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 ## 1-Player Game of Life
 
-Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
+The agent interacts with a randomly-initialized Conway's Game of Life board, placing or deleting one cell per tick, seeking to maximize population.
 
 ![agentGoL](https://github.com/smearle/gym-city-notes/blob/master/gifs/agentGoL.gif)
 
@@ -33,11 +33,11 @@ Like SimCity, but there are only two possible states for each tile (populated or
 
 ![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/entomb.gif)
 
-*An agent upscales to a 32x32 map without additional training. Human player sabotages the agent by exploiting oscillators.*
+*An agent upscales to a 32x32 map without additional training. A human player sabotages the agent by exploiting oscillators.*
 
 ## Power Puzzle
 
-Like SimCity, but the map spawns with one power plant, and several residential zones, all randomly placed, and the bot is restricted to building power lines.
+A SimCity map spawns with one power plant, and several residential zones, all randomly placed, and the bot is restricted to building power lines.
 
 ![blindLonging](https://github.com/smearle/gym-micropolis/blob/master/gifs/blindLonging.gif) 
 
