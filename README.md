@@ -12,11 +12,11 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)  
 
- *Calmly encouraging the agent*
+ *Helping the agent deal with demand.*
 
 ![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif)  
 
-*Bullying the agent to incite exploration of city-space.*
+*Inciting exploration of city-space via deletion of key features.*
 
 ## 1-Player Game of Life
 
