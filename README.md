@@ -20,7 +20,7 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 ![collab](https://github.com/smearle/gym-city-notes/blob/master/gifs/collab.gif)
 
-*Working with a traffic-hungry agent.*
+*A human player works alongside an agent trained to maximize traffic.*
 
 ## 1-Player Game of Life
 
