@@ -26,7 +26,15 @@ The player builds places urban structures on a 2D map. In certain configurations
 
 Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
 
+![agentGoL](https://github.com/smearle/gym-city-notes/blob/master/gifs/agentGoL.gif)
+
+
+*An agent upscales to a 32x32 map without additional training. Player intervention can sabotage agent by exploiting oscillators.*
+
+
 ![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/entomb.gif)
+
+*An agent upscales to a 32x32 map without additional training. Player intervention can sabotage agent by exploiting oscillators.*
 
 ## Power Puzzle
 
