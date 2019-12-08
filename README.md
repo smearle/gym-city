@@ -19,6 +19,7 @@ The player builds places urban structures on a 2D map. In certain configurations
 *Inciting exploration of city-space via deletion of key features.*
 
 ![collab](https://github.com/smearle/gym-city-notes/blob/master/gifs/collab.gif)
+
 *Working with a traffic-hungry agent.*
 
 ## 1-Player Game of Life
