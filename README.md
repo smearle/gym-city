@@ -19,7 +19,7 @@ The player builds places urban structures on a 2D map. In certain configurations
 *An agent upscales to a 32x32 map without additional training.*
 
 
-![interBully_1](https://github.com/smearle/gym-city-notes/blob/master/gifs/interBully_0.gif)  
+![interBully_1](https://github.com/smearle/gym-city-notes/blob/master/gifs/interBully_1.gif)  
 
 *(cont'd from above) A human player incites exploration of city-space via deletion of key features.*
 
