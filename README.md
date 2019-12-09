@@ -8,29 +8,50 @@ A Reinforcement Learning interface for variable-scale city-planing-type gym envi
 
 ## Micropolis (SimCity 1)
 
-The player builds places urban structures on a 2D map. In certain configurations, these structures invite population and vertical development. Reinforcement Learning agents are rewarded for this population.
+The player builds places urban structures on a 2D map. In certain configurations, these structures invite population and vertical development. Reinforcement Learning agents are rewarded as a function of population or other city-wide metrics.
 
 ![breathy](https://github.com/smearle/gym-micropolis/blob/master/gifs/breathy.gif)  
 
- *Calmly encouraging the agent*
+ *An agent plays on the 16x16 map on which it was trained. A human player helps satisfy demand.*
 
-![lilBully](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.gif)  
+![interBully_0](https://github.com/smearle/gym-city-notes/blob/master/gifs/interBully_0.gif)  
 
-*Bullying the agent to incite exploration of city-space.*
+*An agent upscales to a 32x32 map without additional training.*
+
+
+![interBully_1](https://github.com/smearle/gym-city-notes/blob/master/gifs/interBully_1.gif)  
+
+*(cont'd from above) A human player incites exploration of city-space via deletion of key features.*
+
+
+![collab](https://github.com/smearle/gym-city-notes/blob/master/gifs/collab.gif)
+
+*A human player works alongside an agent trained to maximize traffic.*
 
 ## 1-Player Game of Life
 
-Like SimCity, but there are only two possible states for each tile (populated or not), and one engine tick corresponds to one application of the transition rules of Conway's Game of Life.
+The agent interacts with a randomly-initialized Conway's Game of Life board, placing or deleting one cell per tick, seeking to maximize population.
 
-![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/lilBully.mp4)
+![agentGoL](https://github.com/smearle/gym-city-notes/blob/master/gifs/agentGoL.gif)
+
+*An agent plays on the 16x16 map on which it was trained.*
+
+
+![entomb](https://github.com/smearle/gym-city-notes/blob/master/gifs/entomb.gif)
+
+*An agent upscales to a 32x32 map without additional training. A human player sabotages the agent by exploiting oscillators.*
 
 ## Power Puzzle
 
-Like SimCity, but the map spawns with one power plant, and several residential zones, all randomly placed, and the bot is restricted to building power lines.
+A SimCity map spawns with one power plant, and several residential zones, all randomly placed, and the bot is restricted to building power lines.
 
 ![blindLonging](https://github.com/smearle/gym-micropolis/blob/master/gifs/blindLonging.gif) 
 
-*An agent plays on a larger map than trained upon, with mixed results.*
+*An agent upscales to a 32x32 map without additional training, with mixed results.*
+
+![casual](https://github.com/smearle/gym-city-notes/blob/master/gifs/casual.gif) 
+
+*Human player gives pointers to the agent.*
 
 # Installation
 
