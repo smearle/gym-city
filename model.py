@@ -565,7 +565,7 @@ class FractalBlock(NNBase):
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
         self.embed_chan = nn.Conv2d(num_inputs, n_chan, 1, 1, 0)
-        # TODO: right now, we initialize these only as placeholders to successfully load older models, get rid of these asap
+        # TODO: right now, we initialize these only as placeholders to successfully load older models, get rid of these ASAP
         if False and self.intracol_share:
             # how many columns with distinct sets of layers?
             if self.intercol_share:
@@ -680,6 +680,9 @@ class FractalBlock(NNBase):
 
 
 class SubFractal(nn.Module):
+    '''
+    The recursive part of the network.
+    '''
     def __init__(self, root, f_c, n_rec, n_chan):
         super(SubFractal, self).__init__()
         self.n_recs = root.n_recs
@@ -745,7 +748,7 @@ class SubFractal(nn.Module):
             reach = True
         else:
             # try for natural path to target
-            prob_body = 0.15
+            prob_body = 1
             prob_skip = 0.15
             mask = (np.random.random_sample(2) > [prob_body, prob_skip]).astype(int)
             reach = self.set_child_drops(False, mask)

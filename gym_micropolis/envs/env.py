@@ -405,7 +405,6 @@ class MicropolisEnv(core.Env):
 
     def step(self, a, static_build=False):
        #self.micro.engine.setPasses(np.random.randint(1, 101))
-        print('STEP')
         if self.player_step:
            #if self.player_step == a:
            #    static_build=False
