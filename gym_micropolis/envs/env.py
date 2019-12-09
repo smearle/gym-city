@@ -347,7 +347,7 @@ class MicropolisEnv(core.Env):
 
 
     def getPopReward(self):
-        if True:
+        if False:
             pop_reward = self.micro.getTotPop()
 
         else:
@@ -405,6 +405,7 @@ class MicropolisEnv(core.Env):
 
     def step(self, a, static_build=False):
        #self.micro.engine.setPasses(np.random.randint(1, 101))
+        print('STEP')
         if self.player_step:
            #if self.player_step == a:
            #    static_build=False

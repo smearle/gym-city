@@ -91,7 +91,9 @@ from io import StringIO
 
 
 __version__ = "0.9"
-
+import gym_micropolis
+impath = os.path.abspath(os.path.join(gym_micropolis.__path__[0],
+    'envs/micropolis/MicropolisCore/src/images'))
 
 ########################################################################
 # MicropolisGenericEngine Class
@@ -99,23 +101,21 @@ __version__ = "0.9"
 
 class MicropolisGenericEngine(micropolisengine.Micropolis):
 
-    print(os.getcwd())
-
     dataColorMap = \
         cairo.ImageSurface.create_from_png(
-            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/dataColorMap.png')
+            '{}/micropolisEngine/dataColorMap.png'.format(impath))
 
     rateColorMap = \
         cairo.ImageSurface.create_from_png(
-            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/rateColorMap.png')
+            '{}/micropolisEngine/rateColorMap.png'.format(impath))
 
     powerGridColorMap = \
         cairo.ImageSurface.create_from_png(
-            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/powerGridColorMap.png')
+            '{}/micropolisEngine/powerGridColorMap.png'.format(impath))
 
     terrainColorMap = \
         cairo.ImageSurface.create_from_png(
-            'gym_micropolis/envs/micropolis/MicropolisCore/src/images/micropolisEngine/terrainColorMap.png')
+            '{}/micropolisEngine/terrainColorMap.png'.format(impath))
 
 
     def __init__(

@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 
 import numpy as np
 import torch
@@ -116,7 +117,8 @@ if 'fractal' in args.model.lower():
     for nr in range(new_recs):
         actor_critic.base.auto_expand()
     print('expanded network:\n', actor_critic.base)
-    if args.active_column is not None:
+    if args.active_column is not None \
+            and hasattr(actor_critic.base, 'set_active_column'):
         actor_critic.base.set_active_column(args.active_column)
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
@@ -182,6 +184,7 @@ while True:
     obs, reward, done, infos = env.step(action)
     env_done = done[0] # assume we have only one env.
     env.venv.venv.envs[0].render()
+   #time.sleep(0.08)
 
     player_act = None
     if infos[0]:

@@ -454,8 +454,6 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                         fieldnames=self.fieldnames)
                 self.evaluator = evaluator
 
-            model = evaluator.actor_critic.base
-
             col_idx = [-1, *range(0, n_cols, self.col_step)]
             for i in col_idx:
                 evaluator.evaluate(column=i)

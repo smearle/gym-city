@@ -207,9 +207,9 @@ class GoLMultiEnv(core.Env):
         loss = abs(self.trg_param_vals - self.curr_param_vals)
         loss = loss.squeeze(-1)
         # loss in a 1D tensor of losses of individual envs
-        reward = torch.Tensor((100 * 50 / (loss + 50)))
-        reward = reward / (self.max_loss * self.max_step * self.num_proc)
-       #reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
+       #reward = torch.Tensor((100 * 50 / (loss + 50)))
+       #reward = reward / (self.max_loss * self.max_step * self.num_proc)
+        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
         if self.step_count == self.max_step:
             terminal = np.ones(self.num_proc, dtype=bool)
         else:
