@@ -58,7 +58,7 @@ class Trainer():
 
     def __init__(self):
         import random
-        import gym_micropolis
+        import gym_city
         import game_of_life
 
         self.fieldnames = self.get_fieldnames()

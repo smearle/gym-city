@@ -26,7 +26,7 @@ args.det = not args.non_det
 
 
 import gym
-import gym_micropolis
+import gym_city
 import game_of_life
 
 env_name = args.load_dir.split('/')[-1].split('_')[0]

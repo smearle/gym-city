@@ -27,8 +27,7 @@ from PyTorch_NEAT.pytorch_neat.activations import relu_activation
 from PyTorch_NEAT.pytorch_neat.neat_reporter import LogReporter
 from PyTorch_NEAT.pytorch_neat.adaptive_net import AdaptiveNet
 
-import gym_micropolis
-
+import gym_city
 max_env_steps = 200
 
 batch_size = 1
@@ -104,7 +103,7 @@ def run(n_generations, n_processes):
 
             for (_, genome) in genomes:
                 genome.fitness = evaluator.eval_genome(genome, config)
-    else: 
+    else:
         def eval_genomes(genomes, config):
             for i, (_, genome) in enumerate(genomes):
                 try:
@@ -114,7 +113,7 @@ def run(n_generations, n_processes):
                 except Exception as e:
                     print(genome)
                     raise e
-        
+
 
     pop = neat.Population(config)
     stats = neat.StatisticsReporter()

@@ -1,4 +1,4 @@
-from gym_micropolis.envs.env import MicropolisEnv
+from gym_city.envs.env import MicropolisEnv
 from gi.repository import Gtk
 
 m = MicropolisEnv()

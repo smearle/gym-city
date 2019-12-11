@@ -614,6 +614,7 @@ class FractalBlock(NNBase):
         self.f_c.fixed = copy.deepcopy(self.f_c.fixed)
         self.n_recs += 1
         self.n_cols += 1
+        self.f_c.auto_expand()
 
 
     def forward(self, x, rnn_hxs=None, masks=None):
@@ -707,6 +708,9 @@ class SubFractal(nn.Module):
                 #if self.join_layer and n_rec > 0:
                #    self.join = getattr(root, 'join_{}'.format(j))
 
+    def auto_expand(self):
+        '''just increment n_recs'''
+        self.n_recs += 1
 
     def mutate_copy(self, root):
         ''' Return a copy of myself to be used as my twin.'''
@@ -753,8 +757,8 @@ class SubFractal(nn.Module):
             mask = (np.random.random_sample(2) > [prob_body, prob_skip]).astype(int)
             reach = self.set_child_drops(False, mask)
             if not reach and force: # then force one path down
-                mask = [0, 0]
-                mask[np.random.randint(0, 2)] = 1
+                mask[1] = np.random.randint(0, 1) <= 1 / (self.n_recs - self.n_rec)
+                mask[0] = (mask[1] + 1) % 2
                 assert self.set_child_drops(True, mask) == True
                 reach = True
         return reach
@@ -769,6 +773,7 @@ class SubFractal(nn.Module):
             reach = True
         else:
             self.join_masks['skip'] = False
+        self.join_masks['body'] = False
         if mask[0] == 1:
             reach_a = self.f_c_A.set_local_drop(force)
             if reach_a:
@@ -777,10 +782,7 @@ class SubFractal(nn.Module):
                     self.join_masks['body'] = True
                     reach = True
             else:
-                self.join_masks['body'] = False
                 assert not force
-        else:
-            self.join_masks['body'] = False
         if force:
             assert reach
         return reach
