@@ -23,6 +23,7 @@ class MicropolisMonitor(bench.Monitor):
         self.dist_entropy = 0
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
+        curr_dir = os.curdir
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
         if os.path.exists(logfile):
             append_log = True
@@ -50,6 +51,7 @@ class MicropolisMonitor(bench.Monitor):
                             self.results_writer.flush()
                     h += 1
             os.remove(old_log)
+            os.chdir(curr_dir)
 
     def step(self, action):
         if self.needs_reset:

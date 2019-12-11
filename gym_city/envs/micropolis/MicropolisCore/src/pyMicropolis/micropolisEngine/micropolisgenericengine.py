@@ -91,8 +91,8 @@ from io import StringIO
 
 
 __version__ = "0.9"
-import gym_micropolis
-impath = os.path.abspath(os.path.join(gym_micropolis.__path__[0],
+import gym_city
+impath = os.path.abspath(os.path.join(gym_city.__path__[0],
     'envs/micropolis/MicropolisCore/src/images'))
 
 ########################################################################

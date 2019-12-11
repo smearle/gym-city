@@ -10,7 +10,7 @@ from .corecontrol import MicropolisControl
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 GIT_DIR = os.path.abspath(os.path.join(FILE_DIR, os.pardir, os.pardir))
-MICROPOLISCORE_DIR = GIT_DIR + '/gym_micropolis/envs/micropolis/MicropolisCore/src'
+MICROPOLISCORE_DIR = GIT_DIR + '/gym_city/envs/micropolis/MicropolisCore/src'
 if sys.version_info[0] >= 3:
     sys.path.append(MICROPOLISCORE_DIR)
     from .tilemap import TileMap, zoneFromInt
