@@ -1,5 +1,5 @@
 install:
-	cd gym_micropolis/envs/micropolis/MicropolisCore; make; sudo make install
+	cd gym_city/envs/micropolis/MicropolisCore; make; sudo make install
 
 ######### Micropolis #########
 
