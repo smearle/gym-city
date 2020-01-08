@@ -48,7 +48,7 @@ class MicropolisMonitor(bench.Monitor):
                         else:
                             assert hasattr(self, 'results_writer')
                             self.results_writer.write_row(row)
-                            self.results_writer.flush()
+                           #self.results_writer.flush()
                     h += 1
             os.remove(old_log)
             os.chdir(curr_dir)
@@ -79,7 +79,7 @@ class MicropolisMonitor(bench.Monitor):
             else:
                 assert hasattr(self, 'results_writer')
                 self.results_writer.write_row(epinfo)
-                self.results_writer.flush()
+               #self.results_writer.flush()
             info['episode'] = epinfo
         self.total_steps += 1
        #print('dones: {}'.format(done))

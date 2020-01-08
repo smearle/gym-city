@@ -91,7 +91,7 @@ def get_parser():
                         help='add timestep to observations')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
                         help='use a recurrent policy')
-    parser.add_argument('--vis', action='store_true', default=True,
+    parser.add_argument('--vis', action='store_true', default=False,
                         help='enable visdom visualization')
     parser.add_argument('--port', type=int, default=8097,
                         help='port to run the server on (default: 8097)')
@@ -135,7 +135,7 @@ def get_parser():
    #        help='reward only for overall traffic')
     parser.add_argument('--random-builds', action='store_true',
             help='episode begins with random static (unbulldozable) builds on the map')
-    parser.add_argument('--random-terrain', action='store_true',
+    parser.add_argument('--random-terrain', default=True, type=bool,
             help='episode begins on randomly generated micropolis terrain map')
     parser.add_argument('--n-chan', type=int, default=64)
     parser.add_argument('--val-kern', default=3)

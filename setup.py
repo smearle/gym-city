@@ -6,7 +6,13 @@ with open("README.md", "r") as fh:
 
 setup(name='gym_city',
       version='0.0.0',
-      install_requires=['gym', 'numpy', 'pillow'],
+      install_requires=['gym', 
+          'numpy', 
+          'pillow', 
+          'baselines', 
+          'imutils', 
+          'visdom',
+          'graphviz'],
       author="Sam Earle",
       author_email="smearle93@gmail.com",
       description="An OpenAI Gym interface for Micropolis.",
@@ -19,7 +25,6 @@ setup(name='gym_city',
         "Operating System :: Ubuntu",
       ]
 )
-
 
 
 setup(name='MicropolisEnv-v0',
