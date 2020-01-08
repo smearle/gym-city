@@ -203,7 +203,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                             allow_early_resets=True)
         else:
             print(log_dir, rank)
-            env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
+            if args.vis:
+                env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
                             allow_early_resets=True)
 
            #print(log_dir)

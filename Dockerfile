@@ -56,4 +56,6 @@ RUN make ; exit 0
 RUN make install; exit 0
 CMD python3 -c 'import torch; print(torch.cuda.is_available())'
 CMD python3 -c 'import multiprocessing; print(multiprocessing.cpu_count())'
-CMD python3 main.py
+#RUN export GDK_SUNCHRONIZE=1
+CMD mkdir trained_models; exit 0
+CMD python3 main.py --experiment DockerTest --render
