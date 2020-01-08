@@ -1,6 +1,3 @@
-# Build and run w/ the following command:
-# sudo docker image build -t city:latest . && sudo docker run --gpus all --ipc=host --user="$(id -u):$(id -g)" --volume="$PWD:/app" -e NVIDIA_VISIBLE_DEVICES=0 city:latest 
-
 FROM nvidia/cuda:10.0-base-ubuntu18.04
 USER root
 RUN apt update
