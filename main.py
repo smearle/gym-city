@@ -3,7 +3,6 @@ import glob
 import os
 import time
 from collections import deque
-
 import gym
 import numpy as np
 import torch
@@ -11,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from shutil import copyfile
+import csv
 
 from arguments import get_args
 from envs import make_vec_envs
@@ -20,10 +20,6 @@ from utils import get_vec_normalize
 from visualize import Plotter
 from evaluate import Evaluator
 import algo
-
-import csv
-
-import gym_pcgrl
 
 
 def main():
