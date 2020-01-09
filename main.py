@@ -455,7 +455,7 @@ class Trainer():
        #print(episode_rewards)
        #if torch.max(rollouts.rewards) > 0:
        #    print(rollouts.rewards)
-        if n_train % args.log_interval == 0 and len(episode_rewards) > 1:
+        if args.log and n_train % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
             print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.6f}/{:.6f}, min/max reward {:.6f}/{:.6f}\n \
 dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
@@ -505,7 +505,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
            #                  args.algo, args.num_frames)
             self.reset_eval = True
 
-        if n_train % args.save_interval == 0 and args.save_dir != "":
+        if args.save and n_train % args.save_interval == 0 and args.save_dir != "":
             save_path = os.path.join(args.save_dir)
             try:
                 os.makedirs(save_path)

@@ -11,9 +11,15 @@ trained_models*
 runs*
 # notes*
 
+# Python
 *.pyc
+
+# C objects
 *.o
 *.so
+
+# vim
+*.swp
 
 # LaTex
 *.aux
