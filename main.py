@@ -23,6 +23,8 @@ import algo
 
 import csv
 
+import gym_pcgrl
+
 
 def main():
     trainer = Trainer()
@@ -62,6 +64,7 @@ class Trainer():
         import game_of_life
 
         self.fieldnames = self.get_fieldnames()
+        self.n_frames = 0
 
         args = get_args()
         args.log_dir = args.save_dir + '/logs'
@@ -70,7 +73,6 @@ class Trainer():
             assert args.algo in ['a2c', 'ppo'], \
                     'Recurrent policy is not implemented for ACKTR'
 
-        num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
         torch.manual_seed(args.seed)
         if args.cuda:
@@ -82,7 +84,7 @@ class Trainer():
 
         actor_critic = False
         agent = False
-        past_steps = 0
+        past_frames = 0
         try:
             os.makedirs(args.log_dir)
         except OSError:
@@ -104,8 +106,8 @@ class Trainer():
             self.win = win
             win_eval = None
             self.win_eval = win_eval
+        print('env name: {}'.format(args.env_name))
         if 'GameOfLife' in args.env_name:
-            print('env name: {}'.format(args.env_name))
             num_actions = 1
         envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                 args.gamma, args.log_dir, args.add_timestep, device, False, None,
@@ -160,14 +162,15 @@ class Trainer():
                 'out_w': out_w, 'out_h': out_h},
                          curiosity=args.curiosity, algo=args.algo,
                          model=args.model, args=args)
+        if not agent:
+            agent = init_agent(actor_critic, args)
         if args.auto_expand:
             args.n_recs += 1
 
         evaluator = None
         self.evaluator = evaluator
 
-        if not agent:
-            agent = init_agent(actor_critic, args)
+
 
         vec_norm = get_vec_normalize(envs)
         self.vec_norm = vec_norm
@@ -178,12 +181,28 @@ class Trainer():
             saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
         self.checkpoint = None
         if os.path.exists(saved_model) and not args.overwrite:
+            print('current actor_critic params: {}'.format(actor_critic.parameters()))
             checkpoint = torch.load(saved_model)
             self.checkpoint = checkpoint
             saved_args = checkpoint['args']
             actor_critic.load_state_dict(checkpoint['model_state_dict'])
-           #for o, l in zip(agent.optimizer.state_dict, checkpoint['optimizer_state_dict']):
-           #    print(o, l)
+            opt = agent.optimizer.state_dict()
+            opt_load = checkpoint['optimizer_state_dict']
+            for o, l in zip(opt, opt_load):
+                print(o, l)
+                param = opt[o]
+                param_load = opt_load[l]
+                print('current: {}'.format(param), 'load: {}'.format(param_load))
+               #print(param_load.keys())
+               #params = param_load[0]['params']
+               #param[0]['params'] = params
+               #for m, n in zip(param, param_load):
+               #    for p, q in zip(m, n):
+               #        print(p, q)
+               #        if type(m[p]) == list:
+               #            print(len(m[p]), len(n[q]))
+               #            agent.optimizer[m][p] = m[q]
+
            #print(agent.optimizer.state_dict()['param_groups'])
            #print('\n')
            #print(checkpoint['model_state_dict'])
@@ -197,10 +216,13 @@ class Trainer():
                     raise Exception
                 actor_critic.base.auto_expand()
                 print('expanded net: \n{}'.format(actor_critic.base))
-            past_steps = checkpoint['past_steps']
+                # TODO: Are we losing something crucial here? Probably not ideal.
+                agent = init_agent(actor_critic, args)
+
+            past_frames = checkpoint['n_frames']
             ob_rms = checkpoint['ob_rms']
-            past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
-            print('Resuming from step {}'.format(past_steps))
+           #past_steps = next(iter(agent.optimizer.state_dict()['state'].values()))['step']
+            print('Resuming from frame {}'.format(past_frames))
 
            #print(type(next(iter((torch.load(saved_model))))))
            #actor_critic, ob_rms = \
@@ -236,6 +258,9 @@ class Trainer():
             args = saved_args
         actor_critic.to(device)
 
+        updates_remaining = int(args.num_frames - past_frames) // (args.num_steps * args.num_processes)
+        self.n_frames = self.n_frames + past_frames
+        self.past_frames = past_frames
         if 'LSTM' in args.model:
             recurrent_hidden_state_size = actor_critic.base.get_recurrent_state_size()
         else:
@@ -278,8 +303,7 @@ class Trainer():
         # in case we want to change this dynamically in the future (e.g., we may
         # not know how much traffic the agent can possibly produce in Micropolis)
         envs.set_param_bounds(env_param_bounds) # start with default bounds
-        self.past_steps = past_steps
-        self.num_updates = num_updates
+        self.updates_remaining = updates_remaining
         self.envs = envs
         self.start = start
         self.rollouts = rollouts
@@ -289,11 +313,12 @@ class Trainer():
         self.agent = agent
         self.episode_rewards = episode_rewards
         self.n_cols = n_cols
+        self.n_frames += self.args.num_steps * self.args.num_processes
 
     def main(self):
 
         # Main training loop
-        for self.n_train in range(self.past_steps, self.num_updates):
+        for self.n_train in range(self.updates_remaining):
             self.train()
 
     def render(self):
@@ -386,13 +411,13 @@ class Trainer():
         envs = self.envs
         plotter = self.plotter
         n_train = self.n_train
-        past_steps = self.past_steps
         start = self.start
         plotter = self.plotter
         n_cols = self.n_cols
         model = self.model
         device = self.device
         vec_norm = self.vec_norm
+        n_frames = self.n_frames
         if self.reset_eval:
             obs = envs.reset()
             rollouts.obs[0].copy_(obs)
@@ -435,7 +460,7 @@ class Trainer():
             print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.6f}/{:.6f}, min/max reward {:.6f}/{:.6f}\n \
 dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                 format(n_train, total_num_steps,
-                       int((total_num_steps - past_steps * args.num_processes * args.num_steps) / (end - start)),
+                       int((self.n_frames - self.past_frames) / (end - start)),
                        len(episode_rewards),
                        round(np.mean(episode_rewards), 6),
                        round(np.median(episode_rewards), 6),
@@ -511,6 +536,8 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
            #torch.save(save_agent, os.path.join(save_path, args.env_name + '_agent.pt'))
            #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
 
+            print('model saved at {}'.format(save_path))
+
         if args.vis and n_train % args.vis_interval == 0:
             if plotter is None:
                 plotter = Plotter(n_cols, args.log_dir, args.num_processes)
@@ -532,7 +559,8 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
         args = self.args
         # experimental:
         d = {
-            'past_steps': next(iter(agent.optimizer.state_dict()['state'].values()))['step'],
+           #'past_steps': next(iter(agent.optimizer.state_dict()['state'].values()))['step'],
+            'n_frames': self.n_frames,
             'model_state_dict': save_model.state_dict(),
             'optimizer_state_dict': optim_save,
             'ob_rms': ob_rms,

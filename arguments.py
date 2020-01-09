@@ -17,7 +17,7 @@ def get_args():
     if args.model == 'FractalNet':
         if args.rule != 'extend':
             model_name += '-{}'.format(args.rule)
-        model_name += '-{}recs'.format(args.n_recs)
+       #model_name += '-{}recs'.format(args.n_recs)
         if args.intra_shr: model_name += '_intra'
         if args.inter_shr: model_name += '_inter'
         if args.drop_path: model_name += '_drop'
