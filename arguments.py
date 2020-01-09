@@ -135,8 +135,8 @@ def get_parser():
    #        help='reward only for overall population according to game')
    #parser.add_argument('--traffic-only', action='store_true',
    #        help='reward only for overall traffic')
-    parser.add_argument('--random-builds', action='store_true',
-            help='episode begins with random static (unbulldozable) builds on the map')
+    parser.add_argument('--random-builds', type=bool, default=True,
+            help='episode begins with random, potentially static (unbulldozable) builds on the map')
     parser.add_argument('--random-terrain', default=True, type=bool,
             help='episode begins on randomly generated micropolis terrain map')
     parser.add_argument('--n-chan', type=int, default=64)
