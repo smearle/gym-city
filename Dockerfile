@@ -43,7 +43,7 @@ WORKDIR ./baselines
 RUN pip3 install -e .
 
 WORKDIR /usr/src/app
-COPY ./gym_city ./
+COPY . ./
 RUN mkdir gym_city/envs/micropolis/MicropolisCore/src/TileEngine/objs; exit 0
 RUN mkdir gym_city/envs/micropolis/MicropolisCore/src/CellEngine/objs; exit 0
 RUN mkdir gym_city/envs/micropolis/MicropolisCore/src/MicropolisEngine/objs; exit 0
@@ -51,16 +51,17 @@ RUN make ; exit 0
 RUN make install; exit 0
 CMD python3 -c 'import torch; print(torch.cuda.is_available())'
 CMD python3 -c 'import multiprocessing; print(multiprocessing.cpu_count())'
-#RUN export GDK_SUNCHRONIZE=1
 RUN mkdir trained_models; 
 COPY setup.py README.md ./
 RUN pip3 install -e .
-COPY algo game_of_life ./
-COPY *.py ./
-#COPY . ./
-RUN ls
+#COPY algo game_of_life ./
+#COPY *.py ./
+
+#RUN export GDK_SUNCHRONIZE=1
+#RUN export NO_AT_BRIDGE=1
+#RUN dbus-uuidgen > /var/lib/dbus/machine-id
 
 CMD python3 main.py \
     --experiment DockerTest \ 
     --render \
-    --num_proc 1
+    --overwrite 
