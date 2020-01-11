@@ -1,3 +1,7 @@
 gym
 numpy
 pillow
+baselines
+imutils
+visdom
+graphviz

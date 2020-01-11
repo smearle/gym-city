@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import torch
 from gym.spaces.box import Box
+import csv
 
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
@@ -16,7 +17,8 @@ from dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 import time
 
-import csv
+from gym_city.wrappers import ImRender
+
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         self.env = env
@@ -186,6 +188,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         power_puzzle=power_puzzle,
                         record=record, random_builds=args.random_builds, poet=args.poet,
                         terror_prob=args.terror_prob, terror_type=args.terror_type)
+                if args.im_render:
+                    env = ImRender(env)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
