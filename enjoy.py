@@ -47,9 +47,8 @@ except FileNotFoundError:
 checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
                         map_location=map_location)
 saved_args = checkpoint['args']
-past_steps = checkpoint['past_steps']
-
-args.past_steps = past_steps
+#past_steps = checkpoint['past_steps']
+#args.past_steps = past_steps
 env_name = saved_args.env_name
 
 if 'Micropolis' in env_name:
