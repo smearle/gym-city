@@ -57,7 +57,7 @@ class GoLMultiEnv(core.Env):
                 'pop': (0, max_pop)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
-        max_loss = sum(self.param_ranges) / 2
+        max_loss = sum(self.param_ranges)
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.params = OrderedDict({
                #'pop': 0 # aim for empty board

@@ -309,7 +309,6 @@ class Trainer():
         self.agent = agent
         self.episode_rewards = episode_rewards
         self.n_cols = n_cols
-        self.n_frames += self.args.num_steps * self.args.num_processes
 
     def main(self):
 
@@ -394,6 +393,7 @@ class Trainer():
                             feature_state, feature_state_pred, action_bin, action_dist_pred)
         else:
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks)
+        self.n_frames += self.args.num_steps * self.args.num_processes
 
 
 

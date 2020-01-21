@@ -47,15 +47,15 @@ except FileNotFoundError:
 checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
                         map_location=map_location)
 saved_args = checkpoint['args']
-past_steps = checkpoint['past_steps']
+#past_steps = checkpoint['past_steps']
 
-args.past_steps = past_steps
+#args.past_steps = past_steps
 env_name = saved_args.env_name
 
 if 'Micropolis' in env_name:
     args.power_puzzle = saved_args.power_puzzle
 
-if not args.evaluate:
+if not args.evaluate and not 'GoLMulti' in env_name:
     # assume we just want to observe/interact w/ a single env.
     args.num_proc = 1
 dummy_args = args
@@ -180,11 +180,11 @@ while True:
     if env_done:
         env.reset()
         num_step = 0
-    # Obser reward and next obs
+    # Observe reward and next obs
     obs, reward, done, infos = env.step(action)
     env_done = done[0] # assume we have only one env.
-    env.venv.venv.envs[0].render()
-   #time.sleep(0.08)
+   #env.venv.venv.envs[0].render()
+    time.sleep(0.08)
 
     player_act = None
     if infos[0]:
@@ -193,7 +193,7 @@ while True:
 
     num_step += 1
 
-    masks.fill_(0.0 if done else 1.0)
+   #masks.fill_(0.0 if done else 1.0)
 
     if args.env_name.find('Bullet') > -1:
         if torsoId > -1:

@@ -67,7 +67,7 @@ class MicropolisMonitor(bench.Monitor):
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
                     "e": round(self.dist_entropy, 6)}
             if "p" in epinfo.keys():
-                epinfo["p"] = round(self.trg_param_vals[0].item(), 6)
+                epinfo["p"] = round(self.curr_param_vals[0].item(), 6)
             for k in self.info_keywords:
                 if False and k != 'e' and k!= 'p':
                     epinfo[k] = info[k]
