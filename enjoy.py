@@ -44,11 +44,10 @@ try:
 except FileNotFoundError:
     print('load-dir does not start with valid gym environment id, using command line args')
     env_name = args.env_name
-checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
+    checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
                         map_location=map_location)
 saved_args = checkpoint['args']
 #past_steps = checkpoint['past_steps']
-
 #args.past_steps = past_steps
 env_name = saved_args.env_name
 

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from envs import VecNormalize
 
-
 # Get a render function
 def get_render_func(venv):
     if hasattr(venv, 'envs'):

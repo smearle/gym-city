@@ -475,7 +475,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                         fieldnames=self.fieldnames)
                 self.evaluator = evaluator
 
-            col_idx = [-1, *range(0, n_cols, self.col_step)]
+            col_idx = [-1, range(0, n_cols, self.col_step)]
             for i in col_idx:
                 evaluator.evaluate(column=i)
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step

@@ -1,3 +1,6 @@
+import os
+import shutil
+import gzip
 import gym
 import numpy as np
 import cv2
@@ -5,7 +8,7 @@ import cv2
 class ImRender(gym.Wrapper):
     ''' Render micropolis as simple image.
     '''
-    def __init__(self, env):
+    def __init__(self, env, log_dir):
         super(ImRender, self).__init__(env)
         tile_types = {
             'Residential': 'Residential',
@@ -53,18 +56,25 @@ class ImRender(gym.Wrapper):
                 'Magenta': [1, 0, 1],
                 'Cyan': [1, 1, 0],
                 }
-
+        self.log_dir = os.path.join(log_dir, 'im_render')
+        try:
+            os.mkdir(self.log_dir)
+        except FileExistsError:
+            shutil.rmtree(self.log_dir)
+        # save the image at regular intervals
+        self.save_interval = 10
+        self.n_saved = 0
         self.tile_types = tile_types
         self.type_colors = type_colors
         self.colors = colors
         self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
-        win = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
         self.image = np.transpose(self.image, (1, 0, 2))
-        cv2.imshow('im', self.image)
+        if self.unwrapped.render_gui and self.unwrapped.rank == 0:
+            win = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
+            cv2.imshow('im', self.image)
 
     def step(self, action):
-        if self.unwrapped.render_gui:
-            self.im_render()
+        self.im_render()
         return super().step(action)
 
     def im_render(self):
@@ -79,4 +89,11 @@ class ImRender(gym.Wrapper):
                 color = colors[type_colors[tile_type]]
                 self.image[x][y] = color
         self.image = np.transpose(self.image, (1, 0, 2))
-        cv2.imshow('im', self.image)
+        self.image = self.image * 255
+        if self.unwrapped.render_gui and self.unwrapped.rank == 0:
+            cv2.imshow('im', self.image)
+        if self.unwrapped.num_step % self.save_interval == 0:
+            log_dir = os.path.join(self.log_dir, '{}.jpg'.format(self.n_saved))
+            print(log_dir)
+            cv2.imwrite(log_dir, self.image)
+            self.n_saved += 1
