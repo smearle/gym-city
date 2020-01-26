@@ -1,11 +1,21 @@
-import argparse
-
-import torch
+'''Do inference on a trained agent, for qualitative analysis or interactive play.'''
 import datetime
+import argparse
+import torch
+
+def str2bool(val):
+    '''Interpret relevant strings as boolean values. For argparser.'''
+    if isinstance(val, bool):
+        return val
+    if val.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    if val.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def get_args():
     ''' For training.'''
-    parser =  get_parser()
+    parser = get_parser()
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if not torch.cuda.is_available():
@@ -18,21 +28,27 @@ def get_args():
         if args.rule != 'extend':
             model_name += '-{}'.format(args.rule)
        #model_name += '-{}recs'.format(args.n_recs)
-        if args.intra_shr: model_name += '_intra'
-        if args.inter_shr: model_name += '_inter'
-        if args.drop_path: model_name += '_drop'
+        if args.intra_shr:
+            model_name += '_intra'
+        if args.inter_shr:
+            model_name += '_inter'
+        if args.drop_path:
+            model_name += '_drop'
     if args.load_dir:
         args.save_dir = args.load_dir
         args.log_dir = args.load_dir
     else:
-        args.save_dir = "trained_models/{}_{}/{}_w{}_{}s_{}".format(args.algo,
-                model_name, args.env_name, args.map_width,
-                args.max_step,
-                args.experiment_name)
-   #args.save_interval = args.eval_interval # otherwise we can cut eval graph short by reloading too much
+        args.save_dir = "trained_models/{}_{}/{}_w{}_{}s_{}".format(
+            args.algo,
+            model_name, args.env_name, args.map_width,
+            args.max_step,
+            args.experiment_name)
+    # otherwise we might cut eval graph short by reloading too much
+   #args.save_interval = args.eval_interval
     return args
 
 def get_parser():
+    '''The basic set of arguments pertaining to gym-city.'''
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument('--algo', default='a2c',
                         help='algorithm to use: a2c | ppo | acktr')
@@ -124,7 +140,7 @@ def get_parser():
             help='layers shared within columns')
     parser.add_argument('--auto-expand', default=False, action = 'store_true',
             help='increment fractal recursion of loaded network')
-    parser.add_argument('--rule', default = 'extend',
+    parser.add_argument('--rule', default='extend',
             help='which fractal expansion rule to apply if using a fractal network architecture')
     parser.add_argument('--n-recs', default=3, type=int,
             help='number of times the expansion rule is applied in the construction of a fractal net')
@@ -135,22 +151,26 @@ def get_parser():
    #        help='reward only for overall population according to game')
    #parser.add_argument('--traffic-only', action='store_true',
    #        help='reward only for overall traffic')
-    parser.add_argument('--random-builds', type=bool, default=True,
+    parser.add_argument('--random-builds', type=str2bool, default=True,
             help='episode begins with random, potentially static (unbulldozable) builds on the map')
-    parser.add_argument('--random-terrain', default=True, type=bool,
+    parser.add_argument('--random-terrain', default=True, type=str2bool,
             help='episode begins on randomly generated micropolis terrain map')
     parser.add_argument('--n-chan', type=int, default=64)
     parser.add_argument('--val-kern', default=3)
-    parser.add_argument('--prebuild', default=False, help='GoL mini-game \
-            encouraging blossoming structures')
-    parser.add_argument('--terror-prob', type=float, default=0.0, help= 'probability of terrorizing agent')
-    parser.add_argument('--terror-type', type=str, default='disaster',
-            help= 'type of terror wrought upon agent')
+    parser.add_argument(
+        '--prebuild', default=False, help='GoL mini-game \
+        encouraging blossoming structures')
+    parser.add_argument(
+        '--terror-prob', type=float, default=0.0, help='probability of terrorizing agent')
+    parser.add_argument(
+        '--terror-type', type=str, default='disaster',
+        help='type of terror wrought upon agent')
     parser.add_argument('--im-render', action='store_true',
             help='Render micropolis as a simplistic image')
 ########################################### Game of Life
-    parser.add_argument('--prob-life', type=int, default=20,
-            help='percent chance each tile is alive on reset')
+    parser.add_argument(
+        '--prob-life', type=int, default=20,
+        help='percent chance each tile is alive on reset')
 ########################################### ICM
     parser.add_argument(
         '--eta',
@@ -170,10 +190,9 @@ def get_parser():
         default=0.1,
         metavar='LR',
         help='lambda : balance between A2C & icm')
-
     parser.add_argument(
-            '--poet',
-            type=bool,
-            default=False,
-            help='set targets for environment, replaces fixed reward function')
+        '--poet',
+        type=str2bool,
+        default=False,
+        help='set targets for environment, replaces fixed reward function')
     return parser
