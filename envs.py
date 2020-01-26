@@ -67,7 +67,7 @@ class MicropolisMonitor(bench.Monitor):
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
                     "e": round(self.dist_entropy, 6)}
             if "p" in epinfo.keys():
-                epinfo["p"] = round(self.trg_param_vals[0].item(), 6)
+                epinfo["p"] = round(self.curr_param_vals[0].item(), 6)
             for k in self.info_keywords:
                 if False and k != 'e' and k!= 'p':
                     epinfo[k] = info[k]
@@ -189,7 +189,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         record=record, random_builds=args.random_builds, poet=args.poet,
                         terror_prob=args.terror_prob, terror_type=args.terror_type)
                 if args.im_render:
-                    env = ImRender(env)
+                    env = ImRender(env, log_dir)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:

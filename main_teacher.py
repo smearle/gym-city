@@ -25,32 +25,6 @@ from teachDRL.teachers.algos.alp_gmm import ALPGMM
 from main import init_agent, Trainer
 
 
-#class Teacher():
-#    def __init__(self, env_param_bounds):
-#        '''
-#            - list of tuples corresponding to boundaries of parameters
-#        '''
-#        self.env_param_bounds = env_param_bounds
-#        self.num_env_params = len(env_param_bounds)
-#        env_param_ranges = [abs(env_param_bounds[i][1] - env_param_bounds[i][0])
-#                                for i in range(self.num_env_params)]
-#        self.prm_rew = {}
-#        self.prm_alp = {}
-#        # one episode per trial
-#        self.num_trials = args.num_frames / (args.max_step * args.num_processes)
-#
-#
-#    def teach(self):
-#        env_param_lw_bounds = [b for a, b in self.env_param_bounds]
-#        for i in range(self.num_trials):
-#            env_params = np.random(self.num_env_params) * env_param_ranges + env_param_lw_bounds
-#            epi_rew = self.student.train()
-#
-#
-#
-#class Student():
-#    def __init__(self):
-#        pass
 
 
 class Teacher(Trainer):
