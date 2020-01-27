@@ -22,7 +22,7 @@ from utils import get_vec_normalize
 from visualize import Plotter
 from shutil import copyfile
 from teachDRL.teachers.algos.alp_gmm import ALPGMM
-from main import init_agent, Trainer
+from train import init_agent, Trainer
 
 
 

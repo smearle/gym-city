@@ -77,31 +77,36 @@ class MicropolisControl():
         if power_puzzle:
             self.tools = ['Wire']
         else:
-            self.tools = ['Residential', 'Commercial', 'Industrial',
-                    'FireDept',
-                    'PoliceDept',
-                 # 'Query',
-                    'Clear',
-                   'Wire',
-                  #'Land',
-                   'Rail',
-                   'Road',
-                    'Stadium',
-                    'Park',
-                     'Seaport',
-                    'CoalPowerPlant',
-                    'NuclearPowerPlant',
-                    'Airport',
-                    'Net',
-                    'Water',
-                    'Land',
-                    'Forest',
-                    'Nil' # the agent takes no action
-                    ]
+            self.tools = [
+                'Residential', 'Commercial', 'Industrial',
+                'FireDept',
+                'PoliceDept',
+                # 'Query',
+                'Clear',
+                'Wire',
+                # 'Land',
+                'Rail',
+                'Road',
+                'Stadium',
+                'Park',
+                'Seaport',
+                'CoalPowerPlant',
+                'NuclearPowerPlant',
+                'Airport',
+                'Net',
+                'Water',
+                'Land',
+                'Forest',
+                'Nil' # the agent takes no action
+                ]
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)
-        ages = self.env.terror_type == 'age'
+        # TODO: move age-tracking into wrapper?
+        if hasattr(self.env, 'extinction_type'):
+            ages = self.env.extinction_type == 'age'
+        else:
+            ages = None
         self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING,
                 paint=paint, ages=ages)
         self.zones = self.map.zones

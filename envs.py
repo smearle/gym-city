@@ -1,12 +1,10 @@
 import os
 import sys
-
 import gym
 import numpy as np
 import torch
-from gym.spaces.box import Box
 import csv
-
+from gym.spaces.box import Box
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
@@ -17,7 +15,7 @@ from dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 import time
 
-from gym_city.wrappers import ImRender
+from gym_city.wrappers import ImRender, Extinguisher
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
@@ -186,8 +184,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         empty_start=not args.random_terrain, max_step=max_step,
                         rank=rank,
                         power_puzzle=power_puzzle,
-                        record=record, random_builds=args.random_builds, poet=args.poet,
-                        terror_prob=args.terror_prob, terror_type=args.terror_type)
+                        record=record, random_builds=args.random_builds, poet=args.poet)
+                if args.extinction_type is not None:
+                    env = Extinguisher(env, args.extinction_type, args.extinction_prob)
                 if args.im_render:
                     env = ImRender(env, log_dir)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(

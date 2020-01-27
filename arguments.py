@@ -82,10 +82,10 @@ def get_parser():
                         help='number of batches for ppo (default: 32)')
     parser.add_argument('--clip-param', type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
-    parser.add_argument('--log', action='store_true')
+    parser.add_argument('--log', type=str2bool, default=True)
     parser.add_argument('--log-interval', type=int, default=10,
                         help='log interval, one log per n updates (default: 10)')
-    parser.add_argument('--save', action='store_true')
+    parser.add_argument('--save', type=str2bool, default=True)
     parser.add_argument('--save-interval', type=int, default=100,
                         help='save interval, one save per n updates (default: 100)')
     parser.add_argument('--eval-interval', type=int, default=None,
@@ -109,7 +109,7 @@ def get_parser():
                         help='add timestep to observations')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
                         help='use a recurrent policy')
-    parser.add_argument('--vis', action='store_true', default=False,
+    parser.add_argument('--vis', type=str2bool, default=True,
                         help='enable visdom visualization')
     parser.add_argument('--port', type=int, default=8097,
                         help='port to run the server on (default: 8097)')
@@ -161,10 +161,10 @@ def get_parser():
         '--prebuild', default=False, help='GoL mini-game \
         encouraging blossoming structures')
     parser.add_argument(
-        '--terror-prob', type=float, default=0.0, help='probability of terrorizing agent')
+        '--extinction-prob', type=float, default=0.0, help='probability of extinction event')
     parser.add_argument(
-        '--terror-type', type=str, default='disaster',
-        help='type of terror wrought upon agent')
+        '--extinction-type', type=str, default='disaster',
+        help='type of extinction event')
     parser.add_argument('--im-render', action='store_true',
             help='Render micropolis as a simplistic image')
 ########################################### Game of Life

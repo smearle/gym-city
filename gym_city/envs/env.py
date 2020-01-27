@@ -98,14 +98,11 @@ class MicropolisEnv(core.Env):
     def pre_gui(self, size, max_step=None, rank=None, print_map=False,
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
-            power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False,
-            terror_prob=False, terror_type='disaster'):
-        self.terror_type = terror_type
+            power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False, **kwargs):
         self.PADDING = PADDING
         self.rank = rank
         self.render_gui = render_gui
         self.random_builds = random_builds
-        self.terror_prob = terror_prob
         self.traffic_only = traffic_only
         if record: raise NotImplementedError
         if max_step is None:
@@ -422,8 +419,6 @@ class MicropolisEnv(core.Env):
     def postact(self):
         # never let the agent go broke, for now
         self.micro.setFunds(self.micro.init_funds)
-        if np.random.rand() <= self.terror_prob:
-            self.terrorize(self.terror_type)
        #print('rank {} tickin'.format(self.rank))
         # TODO: BROKEN!
         self.micro.simTick()
@@ -497,51 +492,6 @@ class MicropolisEnv(core.Env):
        #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
        #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
         return (self.state, reward, terminal, infos)
-
-    def terrorize(self, extinction_type='age'):
-        ''' Cause some kind of extinction event to occur.'''
-        if extinction_type == 'Monster':
-            self.micro.engine.makeMonster()
-        elif extinction_type == 'age':
-            return self.elderCleanse()
-        elif extinction_type == 'spatial':
-            return self.localWipe()
-
-    def localWipe(self):
-        # assume square map
-        w = self.MAP_X // 3
-        x = np.random.randint(0, self.MAP_X)
-        y = np.random.randint(0, self.MAP_Y)
-        self.micro.map.clearPatch(x, y, patch_size=w, static_build=False)
-
-    def ranDemolish(self):
-        pass
-       #for i in range()
-
-
-    def elderCleanse(self):
-        ages = self.micro.map.age_order
-        eldest = np.max(ages)
-        print('\n AGEIST VIOLENCE')
-        ages[ages < 0] = 2*eldest
-       #for i in range(20):
-        for i in range(30):
-       #for i in range((self.MAP_X * self.MAP_Y) // 90):
-            ages[ages < 0] = 2*eldest
-            xy = np.argmin(ages)
-            x = xy // self.MAP_X
-            y = xy % self.MAP_X
-            x = int(x)
-            y = int(y)
-           #print('deleting {} {}'.format(x, y))
-            result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-            self.render()
-           #print('result {}'.format(result))
-        ages -= np.min(ages)
-        ages[ages>eldest] = -1
-        # otherwise it's over!
-        self.micro.engine.setFunds(self.micro.init_funds)
-
 
     def getRating(self):
         return self.micro.engine.cityYes

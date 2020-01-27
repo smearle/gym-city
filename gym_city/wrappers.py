@@ -1,9 +1,72 @@
+'''Wrappers to extend the functionality of the gym_city environment.'''
 import os
 import shutil
 import gzip
 import gym
 import numpy as np
 import cv2
+
+class Extinguisher(gym.Wrapper):
+    '''Trigger intermittent extinction events.'''
+    def __init__(self, env, extinction_type=None, extinction_prob=0):
+        super(Extinguisher, self).__init__(env)
+        self.set_extinction_type(extinction_type, extinction_prob)
+        print('CREATE EXTI')
+
+    def set_extinction_type(self, extinction_type, extinction_prob):
+        '''Set parameters relating to the extinction event.'''
+        self.extinction_type = extinction_type
+        self.extinction_prob = extinction_prob
+
+    def postact(self):
+        print('postact in ext')
+        if np.random.rand() <= self.extinction_prob:
+            self.extinguish(self.extinction_type)
+        return super().postact()
+
+    def extinguish(self, extinction_type='age'):
+        ''' Cause some kind of extinction event to occur.'''
+        if extinction_type == 'Monster':
+            return self.micro.engine.makeMonster()
+        if extinction_type == 'age':
+            return self.elderCleanse()
+        if extinction_type == 'spatial':
+            return self.localWipe()
+
+    def localWipe(self):
+        # assume square map
+        w = self.MAP_X // 3
+        x = np.random.randint(0, self.MAP_X)
+        y = np.random.randint(0, self.MAP_Y)
+        self.micro.map.clearPatch(x, y, patch_size=w, static_build=False)
+
+    def ranDemolish(self):
+        pass
+       #for i in range()
+
+    def elderCleanse(self):
+        ages = self.micro.map.age_order
+        eldest = np.max(ages)
+        print('\n AGEIST VIOLENCE')
+        ages[ages < 0] = 2*eldest
+       #for i in range(20):
+        for i in range(30):
+       #for i in range((self.MAP_X * self.MAP_Y) // 90):
+            ages[ages < 0] = 2*eldest
+            xy = np.argmin(ages)
+            x = xy // self.MAP_X
+            y = xy % self.MAP_X
+            x = int(x)
+            y = int(y)
+           #print('deleting {} {}'.format(x, y))
+            result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+            self.render()
+           #print('result {}'.format(result))
+        ages -= np.min(ages)
+        ages[ages>eldest] = -1
+        # otherwise it's over!
+        self.micro.engine.setFunds(self.micro.init_funds)
+
 
 class ImRender(gym.Wrapper):
     ''' Render micropolis as simple image.
@@ -48,15 +111,15 @@ class ImRender(gym.Wrapper):
             'Other': 'Cyan',
             }
         colors = {
-                # [blue, green, red]
-                'Green': [0, 1, 0],
-                'Blue': [1, 0, 0],
-                'Yellow': [0, 1, 1],
-                'Red': [0, 0, 1],
-                'Magenta': [1, 0, 1],
-                'Cyan': [1, 1, 0],
+            # [blue, green, red]
+            'Green': [0, 1, 0],
+            'Blue': [1, 0, 0],
+            'Yellow': [0, 1, 1],
+            'Red': [0, 0, 1],
+            'Magenta': [1, 0, 1],
+            'Cyan': [1, 1, 0],
                 }
-        self.log_dir = os.path.join(log_dir, 'im_render')
+        self.log_dir = os.path.join(log_dir, 'im_render', self.rank)
         try:
             os.mkdir(self.log_dir)
         except FileExistsError:
@@ -70,7 +133,7 @@ class ImRender(gym.Wrapper):
         self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
         self.image = np.transpose(self.image, (1, 0, 2))
         if self.unwrapped.render_gui and self.unwrapped.rank == 0:
-            win = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
+            _ = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
             cv2.imshow('im', self.image)
 
     def step(self, action):

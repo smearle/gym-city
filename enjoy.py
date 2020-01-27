@@ -10,7 +10,7 @@ from envs import VecPyTorch, make_vec_envs
 from utils import get_render_func, get_vec_normalize
 
 from arguments import get_parser
-from main import Evaluator
+from train import Evaluator
 
 
 parser = get_parser()
@@ -183,7 +183,7 @@ while True:
     obs, reward, done, infos = env.step(action)
     env_done = done[0] # assume we have only one env.
    #env.venv.venv.envs[0].render()
-    time.sleep(0.08)
+   #time.sleep(0.08)
 
     player_act = None
     if infos[0]:
