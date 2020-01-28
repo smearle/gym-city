@@ -180,13 +180,19 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     print_map = False
                    #render = render_gui
                     render = False
+                if args.extinction_type is not None:
+                    ages = True
+                else:
+                    ages = False
                 env.setMapSize(map_width, print_map=print_map, render_gui=render,
                         empty_start=not args.random_terrain, max_step=max_step,
                         rank=rank,
                         power_puzzle=power_puzzle,
-                        record=record, random_builds=args.random_builds, poet=args.poet)
+                        record=record, random_builds=args.random_builds, poet=args.poet,
+                        ages=ages)
                 if args.extinction_type is not None:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
+                    env.set_extinction_type(args.extinction_type, args.extinction_prob)
                 if args.im_render:
                     env = ImRender(env, log_dir)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(

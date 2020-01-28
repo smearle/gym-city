@@ -103,12 +103,8 @@ class MicropolisControl():
         # since query is exluded for now:
         self.num_tools = len(self.tools)
         # TODO: move age-tracking into wrapper?
-        if hasattr(self.env, 'extinction_type'):
-            ages = self.env.extinction_type == 'age'
-        else:
-            ages = None
         self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING,
-                paint=paint, ages=ages)
+                paint=paint)
         self.zones = self.map.zones
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest

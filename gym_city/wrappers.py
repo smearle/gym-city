@@ -17,12 +17,14 @@ class Extinguisher(gym.Wrapper):
         '''Set parameters relating to the extinction event.'''
         self.extinction_type = extinction_type
         self.extinction_prob = extinction_prob
+        if self.extinction_type == 'age':
+            self.unwrapped.micro.map.init_age_array()
 
-    def postact(self):
-        print('postact in ext')
+    def step(self, a, static_build=False):
+        out = self.unwrapped.step(a)
         if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
-        return super().postact()
+        return out
 
     def extinguish(self, extinction_type='age'):
         ''' Cause some kind of extinction event to occur.'''

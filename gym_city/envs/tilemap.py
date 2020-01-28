@@ -64,16 +64,10 @@ def zoneFromInt_A(i):
 
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
-    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True,
-            ages=False):
+    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True):
+        self.track_ages = False
         # whether or not the latest call to addZone has any effect on our map
         # no good if we encounter a fixed optimal state / are on a budget
-        self.ages = ages
-        if self.ages:
-            # track age of build structures
-            print('initializing AGES')
-            self.age_order = np.zeros((MAP_X, MAP_Y), dtype=int)
-            self.age_order.fill(-1)
         self.no_change = False
         self.walker = walker
         self.paint = paint
@@ -151,8 +145,6 @@ class TileMap(object):
         self.clear_int = self.zoneInts['Land']
 
 
-
-
         def makeZoneSquare(width, zone_int, feature_ints=None):
             if feature_ints is None:
                 feature_ints = [zone_int]
@@ -205,6 +197,12 @@ class TileMap(object):
        #self.road_crowding_map = np.zeros(0, self.MAP_X, self.MAP_Y)
         self.numPlants = 0 # power plants
 
+    def init_age_array(self):
+        self.track_ages = True
+        # track age of build structures
+        print('initializing AGES')
+        self.age_order = np.zeros((self.MAP_X, self.MAP_Y), dtype=int)
+        self.age_order.fill(-1)
 
     def didRoadBuild(self, x, y):
        #assert self.road_networks[0, x, y] == 0
@@ -462,7 +460,7 @@ class TileMap(object):
             self.updateTile(x, y, zone, center, static_build)
             if self.paint:
                 self.acted[x, y] = 1
-            if self.ages:
+            if self.track_ages:
                 self.age_order[x][y] = self.micro.env.num_step
             return
         else:
@@ -473,7 +471,7 @@ class TileMap(object):
                     self.updateTile(i, j, zone, center, static_build)
                     if self.paint:
                         self.acted[i, j] = 1
-                    if self.ages:
+                    if self.track_ages:
                         self.age_order[i][j] = self.micro.env.num_step
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
@@ -502,7 +500,7 @@ class TileMap(object):
         self.centers[x][y] = center
         is_road = self.zoneMap[self.road_int][x][y] == 1
         is_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
-        if self.ages:
+        if self.track_ages:
             is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
                          self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
                          self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
