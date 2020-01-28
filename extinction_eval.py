@@ -29,8 +29,7 @@ class ExtinctionEvaluator():
                             help='record trained network\'s performance')
         # add any experiment-specific args here
         args = parser.parse_args()
-
-
+       #args.im_render = True
         env_name = args.load_dir.split('/')[-1].split('_')[0]
         if torch.cuda.is_available() and not args.no_cuda:
             args.cuda = True
@@ -55,7 +54,6 @@ class ExtinctionEvaluator():
 
         if 'Micropolis' in env_name:
             args.power_puzzle = saved_args.power_puzzle
-
         if not args.evaluate and not 'GoLMulti' in env_name:
             # assume we just want to observe/interact w/ a single env.
             args.num_proc = 1
@@ -121,40 +119,52 @@ class ExtinctionEvaluator():
             vec_norm.ob_rms = ob_rms
         self.actor_critic = actor_critic
         self.envs = envs
+        self.args = args
 
-    def run_experiment(self, extinction_type):
+    def run_experiment(self, map_width, extinction_type, extinction_prob):
         '''Evaluate the effect of a single type of extinction event (or none).'''
+        args = self.args
         actor_critic = self.actor_critic
         envs = self.envs
+        envs.venv.venv.setMapSize(map_width)
+        envs.venv.venv.set_extinction_type(extinction_type, extinction_prob)
+        envs.venv.venv.reset_episodes()
         recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
         masks = torch.zeros(1, 1)
         obs = envs.reset()
         #obs = torch.Tensor(obs)
-        num_step = 0
         player_act = None
-        envs_done = False
-        n_episodes = 0
-        while n_episodes < 3:
+        n_episode = 0
+        while n_episode < 6:
             with torch.no_grad():
                 value, action, _, recurrent_hidden_states = actor_critic.act(
                     obs, recurrent_hidden_states, masks, deterministic=not args.non_det,
                     player_act=player_act)
-            if envs_done:
-                envs.reset()
-                num_step = 0
-                n_episodes += 1
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
-            envs_done = done.all()
+            if done.any():
+                n_episode += np.sum(done.astype(int))
+            envs_done = done.any()
             player_act = None
             if infos[0]:
                 if 'player_move' in infos[0].keys():
                     player_act = infos[0]['player_move']
-            num_step += 1
            #masks.fill_(0.0 if done else 1.0)
+        envs.reset()
 
 def run_experiments():
-    e = ExtinctionEvaluator()
+    '''Measure compressibility under various conditions.'''
+    map_sizes = [16]
+    extinction_types = [None, 'age']
+    extinction_intervals = [0.01]
+    evaluator = ExtinctionEvaluator()
+    for map_size in map_sizes:
+        for extinction_type in extinction_types:
+            for extinction_interval in extinction_intervals:
+                evaluator.run_experiment(map_size, extinction_type, extinction_interval)
+
+def visualize_data():
+    '''Visualize results from extinction-compressibility experiments.'''
 
 if __name__ == "__main__":
     run_experiments()

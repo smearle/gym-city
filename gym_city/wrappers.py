@@ -8,7 +8,7 @@ import cv2
 
 class Extinguisher(gym.Wrapper):
     '''Trigger intermittent extinction events.'''
-    def __init__(self, env, extinction_type=None, extinction_prob=0):
+    def __init__(self, env, extinction_type=None, extinction_prob=0.1):
         super(Extinguisher, self).__init__(env)
         self.set_extinction_type(extinction_type, extinction_prob)
         print('CREATE EXTI')
@@ -17,12 +17,17 @@ class Extinguisher(gym.Wrapper):
         '''Set parameters relating to the extinction event.'''
         self.extinction_type = extinction_type
         self.extinction_prob = extinction_prob
+        if extinction_prob == 0:
+            self.extinction_interval = -1
+        else:
+            self.extinction_interval = 1 / extinction_prob
         if self.extinction_type == 'age':
             self.unwrapped.micro.map.init_age_array()
 
     def step(self, a, static_build=False):
         out = self.unwrapped.step(a)
-        if np.random.rand() <= self.extinction_prob:
+        if self.num_step % self.extinction_interval == 0:
+       #if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
         return out
 
@@ -121,14 +126,16 @@ class ImRender(gym.Wrapper):
             'Magenta': [1, 0, 1],
             'Cyan': [1, 1, 0],
                 }
-        self.log_dir = os.path.join(log_dir, 'im_render', self.rank)
+        self.log_dir = os.path.join(log_dir, 'imRender/None')
         try:
             os.mkdir(self.log_dir)
         except FileExistsError:
-            shutil.rmtree(self.log_dir)
+            pass
+
         # save the image at regular intervals
         self.save_interval = 10
         self.n_saved = 0
+        self.n_episode = 0
         self.tile_types = tile_types
         self.type_colors = type_colors
         self.colors = colors
@@ -141,6 +148,20 @@ class ImRender(gym.Wrapper):
     def step(self, action):
         self.im_render()
         return super().step(action)
+
+    def reset_episodes(self):
+        self.n_episode = 0
+        self.log_dir = self.log_dir.split('/')[:-1]
+        self.log_dir = '/'.join(self.log_dir)
+        self.log_dir = os.path.join(self.log_dir, str(self.env.extinction_type))
+        try:
+            os.mkdir(self.log_dir)
+        except FileExistsError:
+            pass
+
+    def reset(self):
+        self.n_episode += 1
+        return super().reset()
 
     def im_render(self):
         zone_map = self.unwrapped.micro.map.zoneMap
@@ -158,7 +179,8 @@ class ImRender(gym.Wrapper):
         if self.unwrapped.render_gui and self.unwrapped.rank == 0:
             cv2.imshow('im', self.image)
         if self.unwrapped.num_step % self.save_interval == 0:
-            log_dir = os.path.join(self.log_dir, '{}.jpg'.format(self.n_saved))
+            log_dir = os.path.join(self.log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
+                self.unwrapped.rank, self.n_episode, self.num_step))
             print(log_dir)
             cv2.imwrite(log_dir, self.image)
             self.n_saved += 1

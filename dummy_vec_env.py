@@ -52,6 +52,18 @@ class DummyVecEnv(VecEnv):
         for env in self.envs:
             return env.set_params(params)
 
+    def setMapSize(self, size, **kwargs):
+        for env in self.envs:
+            env.setMapSize(size, **kwargs)
+
+    def set_extinction_type(self, ext_type, ext_prob):
+        for env in self.envs:
+            env.set_extinction_type(ext_type, ext_prob)
+
+    def reset_episodes(self):
+        for env in self.envs:
+            env.reset_episodes()
+
 
     def close(self):
         return

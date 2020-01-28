@@ -31,10 +31,11 @@ class MicropolisEnv(core.Env):
     ### MIXED
         self.city_trgs = OrderedDict({
                 'res_pop': 200,
-                'com_pop': 100,
-                'ind_pop': 100,
-                'traffic': 100,
-                'num_plants': 50,
+                'com_pop': 50,
+                'ind_pop': 50,
+                'traffic': 750,
+                # i believe one plant is worth 12, the other 16?
+                'num_plants': 14,
                 'mayor_rating': 100
                 })
         self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
@@ -88,9 +89,12 @@ class MicropolisEnv(core.Env):
         return [seed1, seed2]
 
     def setMapSize(self, size, **kwargs):
+        '''Do most of the actual initialization.
         '''
-        '''
-        self.pre_gui(size, **kwargs)
+        if hasattr(self, 'micro'):
+            self.micro.close()
+        else:
+            self.pre_gui(size, **kwargs)
         self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
                 rank=self.rank, power_puzzle=self.power_puzzle, gui=self.render_gui)
         self.post_gui()

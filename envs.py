@@ -1,21 +1,24 @@
+import csv
 import os
 import sys
+import time
+
 import gym
 import numpy as np
 import torch
-import csv
-from gym.spaces.box import Box
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
-#from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.vec_normalize import \
+    VecNormalize as VecNormalize_
+from gym.spaces.box import Box
+
 #from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
-import time
+from gym_city.wrappers import Extinguisher, ImRender
+#from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from subproc_vec_env import SubprocVecEnv
 
-from gym_city.wrappers import ImRender, Extinguisher
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
@@ -25,6 +28,7 @@ class MicropolisMonitor(bench.Monitor):
         logfile = filename + '.monitor.csv'
         curr_dir = os.curdir
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
         if os.path.exists(logfile):
             append_log = True
             old_log = '{}_old'.format(logfile)
@@ -33,15 +37,20 @@ class MicropolisMonitor(bench.Monitor):
             print('no old logfile {}'.format(logfile))
            #raise Exception
         info_keywords = (*info_keywords, 'e', 'p')
-        super(MicropolisMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
+        super(MicropolisMonitor, self).__init__(
+            env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords,
+            info_keywords=info_keywords)
+
         if append_log:
             with open(old_log, newline='') as old:
                 reader = csv.DictReader(old, fieldnames=('r', 'l', 't','e', 'p'))
                 h = 0
+
                 for row in reader:
                     if h > 1:
                         row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
                         # TODO: logger or results_writer, what's going on here?
+
                         if hasattr(self, 'logger'):
                             self.logger.writerow(row)
                             self.f.flush()
@@ -58,14 +67,17 @@ class MicropolisMonitor(bench.Monitor):
             raise RuntimeError("Tried to step environment that needs reset")
         ob, rew, done, info = self.env.step(action)
         self.rewards.append(rew)
+
         if done:
             self.needs_reset = True
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards)
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
                     "e": round(self.dist_entropy, 6)}
+
             if "p" in epinfo.keys():
                 epinfo["p"] = round(self.curr_param_vals[0].item(), 6)
+
             for k in self.info_keywords:
                 if False and k != 'e' and k!= 'p':
                     epinfo[k] = info[k]
@@ -73,6 +85,7 @@ class MicropolisMonitor(bench.Monitor):
             self.episode_lengths.append(eplen)
             self.episode_times.append(time.time() - self.tstart)
             epinfo.update(self.current_reset_info)
+
             if hasattr(self, 'logger'):
                 self.logger.writerow(epinfo)
                 self.f.flush()
@@ -98,6 +111,7 @@ class MultiMonitor(MicropolisMonitor):
             raise RuntimeError("Tried to step environment that needs reset")
         ob, rew, done, info = self.env.step(action)
         self.rewards.append(rew.sum())
+
         if done.all():
             self.needs_reset = True
             eprew = float(sum(self.rewards))
@@ -105,6 +119,7 @@ class MultiMonitor(MicropolisMonitor):
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
                     "e": round(self.dist_entropy, 6),
                     "p": round(self.trg_param_vals[0, 0].item(), 6)}
+
             for k in self.info_keywords:
                 if k != 'e' and k!= 'p':
                     epinfo[k] = info[k]
@@ -112,6 +127,7 @@ class MultiMonitor(MicropolisMonitor):
             self.episode_lengths.append(eplen)
             self.episode_times.append(time.time() - self.tstart)
             epinfo.update(self.current_reset_info)
+
             if hasattr(self, 'logger'):
                 self.logger.writerow(epinfo)
                 self.f.flush()
@@ -145,15 +161,18 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
     ''' return a function which starts the environment'''
     def _thunk():
         record = args.record
+
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         else:
             env = gym.make(env_id)
+
             if record:
                 record_dir = log_dir
             else:
                 record_dir = None
+
             if 'gameoflife' in env_id.lower():
                 if rank == 0:
                     render = render_gui
@@ -161,6 +180,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 env.configure(map_width=map_width, render=render,
                         prob_life = args.prob_life, record=record_dir,
                         max_step=max_step)
+
             if 'golmulti' in env_id.lower():
                 multi_env = True
                 env.configure(map_width=map_width, render=render_gui,
@@ -169,10 +189,13 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         num_proc=args.num_processes)
             else:
                 multi_env = False
+
             if 'micropolis' in env_id.lower():
                 power_puzzle = False
+
                 if args.power_puzzle:
                     power_puzzle = True
+
                 if rank == 0:
                     print_map = args.print_map
                     render = render_gui
@@ -180,6 +203,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     print_map = False
                    #render = render_gui
                     render = False
+
                 if args.extinction_type is not None:
                     ages = True
                 else:
@@ -190,13 +214,10 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         power_puzzle=power_puzzle,
                         record=record, random_builds=args.random_builds, poet=args.poet,
                         ages=ages)
-                if args.extinction_type is not None:
-                    env = Extinguisher(env, args.extinction_type, args.extinction_prob)
-                    env.set_extinction_type(args.extinction_type, args.extinction_prob)
-                if args.im_render:
-                    env = ImRender(env, log_dir)
+
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
+
         if is_atari:
             env = make_atari(env_id)
         env.seed(seed + rank)
@@ -212,6 +233,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                             allow_early_resets=True)
         else:
             print(log_dir, rank)
+
             if args.vis:
                 env = MicropolisMonitor(env, os.path.join(log_dir, str(rank)),
                             allow_early_resets=True)
@@ -227,10 +249,20 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
+
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = TransposeImage(env)
 
+        if args.extinction_type is not None:
+            env = Extinguisher(env, args.extinction_type, args.extinction_prob)
+           #env.set_extinction_type(args.extinction_type, args.extinction_prob)
+
+        if args.im_render:
+            print('wrapping id imrender')
+            env = ImRender(env, log_dir)
+
         assert env is not None
+
         return env
 
     return _thunk
@@ -238,6 +270,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None,
                   args=None):
+
     if 'golmultienv' in env_name.lower():
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
@@ -245,6 +278,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
         print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step,
         args=args)
             for i in range(num_processes)]
+
     if 'golmultienv' in env_name.lower():
         return envs[0]()
 
@@ -279,6 +313,7 @@ class MaskGoal(gym.ObservationWrapper):
     def observation(self, observation):
         if self.env._elapsed_steps > 0:
             observation[-2:0] = 0
+
         return observation
 
 
@@ -322,6 +357,7 @@ class VecPyTorch(VecEnvWrapper):
         obs = np.array(obs)
         ### ########## ###
         obs = torch.from_numpy(obs).int().to(self.device)
+
         return obs
 
     def step_async(self, actions):
@@ -335,6 +371,7 @@ class VecPyTorch(VecEnvWrapper):
         ### ########## ###
         obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
+
         return obs, reward, done, info
 
     def get_param_bounds(self):
@@ -352,6 +389,7 @@ class VecNormalize(VecNormalize_):
             if self.training:
                 self.ob_rms.update(obs)
             obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+
             return obs
         else:
             return obs
@@ -388,10 +426,12 @@ class VecPyTorchFrameStack(VecEnvWrapper):
         obs, rews, news, infos = self.venv.step_wait()
         self.stacked_obs[:, :-self.shape_dim0] = \
             self.stacked_obs[:, self.shape_dim0:]
+
         for (i, new) in enumerate(news):
             if new:
                 self.stacked_obs[i] = 0
         self.stacked_obs[:, -self.shape_dim0:] = obs
+
         return self.stacked_obs, rews, news, infos
 
 
@@ -400,6 +440,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
         self.stacked_obs.zero_()
        #print(self.stacked_obs.shape, obs.shape)
         self.stacked_obs[:, -self.shape_dim0:] = obs
+
         return self.stacked_obs
 
     def close(self):
