@@ -33,7 +33,7 @@ class MicropolisEnv(core.Env):
                 'res_pop': 500,
                 'com_pop': 50,
                 'ind_pop': 50,
-                'traffic': 750,
+                'traffic': 2000,
                 # i believe one plant is worth 12, the other 16?
                 'num_plants': 14,
                 'mayor_rating': 100
@@ -43,20 +43,30 @@ class MicropolisEnv(core.Env):
                 'res_pop': (0, 750),
                 'com_pop': (0, 100),
                 'ind_pop': (0, 100),
-                'traffic': (0, 1000),
+                'traffic': (0, 2000),
                 'num_plants': (0, 100),
                 'mayor_rating': (0, 100)
                 })
+        self.weights = OrderedDict({
+                'res_pop': 1,
+                'com_pop': 0,
+                'ind_pop': 0,
+                'traffic': 1,
+                'num_plants': 0,
+                'mayor_rating': 0,
+                })
+
         self.num_params = 6
         # not necessarily true but should take care of most cases
         self.max_loss = 0
         i = 0
         self.param_ranges = []
-        for lb, ub in self.param_bounds.values():
+        for param, (lb, ub) in self.param_bounds.items():
+            weight = self.weights[param]
             rng = abs(ub - lb)
             self.param_ranges += [rng]
             if i < self.num_params:
-                self.max_loss += rng
+                self.max_loss += rng * weight
                 i += 1
    ### MIXED
        #self.city_trgs = {
@@ -98,6 +108,7 @@ class MicropolisEnv(core.Env):
         else:
             self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
                 rank=self.rank, power_puzzle=self.power_puzzle, gui=self.render_gui)
+        self.city_metrics = self.get_city_metrics()
         self.post_gui()
 
     def pre_gui(self, size, max_step=None, rank=0, print_map=False,
@@ -269,7 +280,7 @@ class MicropolisEnv(core.Env):
         self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
         self.curr_pop = 0
-        self.curr_reward = self.getPop()
+        self.curr_reward = self.getReward()
         self.state = self.getState()
         self.last_pop=0
         self.micro.num_roads = 0
@@ -330,7 +341,7 @@ class MicropolisEnv(core.Env):
         return curr_pop
 
     def getReward(self):
-        if self.poet:
+        if True:
             max_reward = self.max_reward
             loss = 0
             i = 0
@@ -338,7 +349,8 @@ class MicropolisEnv(core.Env):
                 if i == self.num_params:
                     break
                 else:
-                    loss += abs(v - self.city_metrics[k])
+                    weight = self.weights[k]
+                    loss += abs(v - self.city_metrics[k]) * weight
                     i += 1
 
             reward = (self.max_loss - loss) * max_reward / self.max_loss
@@ -368,6 +380,7 @@ class MicropolisEnv(core.Env):
             pop_reward += max(0, zone_bonus)
         if False:
             pop_reward = (resPop + 1) * (comPop + 1) * (indPop + 1) - 1
+        return 0
         return pop_reward
 
     def set_param_bounds(self, bounds):

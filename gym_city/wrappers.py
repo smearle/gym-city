@@ -1,4 +1,5 @@
 '''Wrappers to extend the functionality of the gym_city environment.'''
+import sys
 import os
 import shutil
 import math
@@ -9,22 +10,22 @@ import cv2
 
 class Extinguisher(gym.Wrapper):
     '''Trigger intermittent extinction events.'''
-    def __init__(self, env, extinction_type=None, extinction_prob=0.1):
+    def __init__(self, env, extinction_type=None, extinction_prob=0.1, xt_dels=15):
         super(Extinguisher, self).__init__(env)
-        self.set_extinction_type(extinction_type, extinction_prob)
-        self.n_tile_dels = 250
+        self.set_extinction_type(extinction_type, extinction_prob, xt_dels)
+       #self.n_dels = int((self.MAP_X * self.MAP_Y) * 0.004)
         print('Wrapping env in Extinguisher')
 
-    def set_extinction_type(self, extinction_type, extinction_prob):
+    def set_extinction_type(self, extinction_type, extinction_prob, extinction_dels):
         '''Set parameters relating to the extinction event.'''
         self.extinction_type = extinction_type
         self.extinction_prob = extinction_prob
+        self.n_dels = extinction_dels
         if extinction_prob == 0:
             self.extinction_interval = -1
         else:
             self.extinction_interval = 1 / extinction_prob
-        if self.extinction_type == 'age':
-            self.unwrapped.micro.map.init_age_array()
+        self.unwrapped.micro.map.init_age_array()
 
     def step(self, a):
         out = self.env.step(a)
@@ -35,55 +36,94 @@ class Extinguisher(gym.Wrapper):
 
     def extinguish(self, extinction_type='age'):
         ''' Cause some kind of extinction event to occur.'''
+        curr_dels = 0
         if extinction_type == 'Monster':
-            return self.micro.engine.makeMonster()
+            curr_dels = self.micro.engine.makeMonster()
         if extinction_type == 'age':
-            return self.elderCleanse()
+            curr_dels = self.elderCleanse()
         if extinction_type == 'spatial':
-            return self.localWipe()
+            curr_dels = self.localWipe()
         if extinction_type == 'random':
-            return self.ranDemolish()
+            curr_dels = self.ranDemolish()
+        print('{} deletions'.format(curr_dels))
+        return curr_dels
 
     def localWipe(self):
         # assume square map
-        #suppose
-        w = int(math.sqrt(self.n_tile_dels))
+        print('LOCALWIPE')
+        curr_dels = 0
         x = np.random.randint(0, self.MAP_X)
         y = np.random.randint(0, self.MAP_Y)
-        self.micro.map.clearPatch(x, y, patch_size=w, static_build=False)
+        for r in range(0, max(x, abs(self.MAP_X - x), y, abs(self.MAP_Y - y))):
+            curr_dels = self.clear_border(x, y, r, curr_dels)
+            if curr_dels >= self.n_dels:
+                break
+        return curr_dels
+
+    def clear_border(self, x, y, r, curr_dels):
+        '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
+        '''
+        for x_i in range(x - r, x + r):
+            if x_i < 0 or x_i >= self.MAP_X:
+                continue
+            for y_i in range(y - r, y + r):
+                if y_i < 0 or y_i >= self.MAP_X:
+                    continue
+                ages = self.micro.map.age_order
+                if ages[x_i, y_i] > 0:
+                   #print(x_i, y_i)
+                    self.micro.doBotTool(x_i, y_i, 'Clear', static_build=True)
+                    curr_dels += 1
+                    if curr_dels == self.n_dels:
+                        return curr_dels
+        return curr_dels
 
     def ranDemolish(self):
         # hack this to make it w/o replacement
-        for i in range(int(100/10) * 2):
-            x = np.random.randint(0, self.MAP_X)
-            y = np.random.randint(0, self.MAP_Y)
+        print('RANDEMOLISH')
+        curr_dels = 0
+        for i in range(self.n_dels):
+            ages = self.micro.map.age_order
+            ages = ages.flatten()
+            age_is = np.where(ages > -1)[0]
+            if len(age_is) == 0:
+                break
+           #age_i = np.random.choice(np.where(ages_flat > -1))
+            age_i = np.random.choice(age_is)
+            x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
+            x, y = int(x), int(y)
             result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-
+            curr_dels += 1
+        return curr_dels
 
     def elderCleanse(self):
-        ages = self.micro.map.age_order
-        eldest = np.max(ages)
         print('\n AGEIST VIOLENCE')
-        ages[ages < 0] = 2*eldest
        #for i in range(20):
-        n_building_deletions = int(self.n_tile_dels / 10)
-        for i in range(n_building_deletions):
+        curr_dels = 0
+       #np.set_printoptions(threshold=sys.maxsize)
+        for i in range(self.n_dels):
        #for i in range((self.MAP_X * self.MAP_Y) // 90):
-            ages[ages < 0] = 2*eldest
-            xy = np.argmin(ages)
-            x = xy // self.MAP_X
-            y = xy % self.MAP_X
-            x = int(x)
-            y = int(y)
+           #print(str(self.micro.map.age_order).replace('\n ', ' ').replace('] [', '\n'))
+            ages = self.micro.map.age_order
+            ages = ages.flatten()
+            youngest = np.max(ages)
+            age_is = np.where(ages > -1)[0]
+            if len(age_is) == 0:
+                break
+            ages = np.copy(ages)
+            ages += (ages < 0) * 2 * youngest
+            age_i = np.argmin(ages)
+            x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
+            x, y = int(x), int(y)
            #print('deleting {} {}'.format(x, y))
+           #print('zone {}'.format(self.micro.map.zones[self.micro.map.zoneMap[-1, x, y]]))
             result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
            #self.render()
            #print('result {}'.format(result))
-        ages -= np.min(ages)
-        ages[ages>eldest] = -1
+            curr_dels += 1
         # otherwise it's over!
         self.micro.engine.setFunds(self.micro.init_funds)
-
+        return curr_dels
 
 class ImRender(gym.Wrapper):
     ''' Render micropolis as simple image.

@@ -126,8 +126,9 @@ class MicropolisAgentPanel(gtk.Frame):
         self.checkButtonStaticBuilds.connect('toggled', lambda item: self.set_static())
         self.vbox1.pack_start(self.checkButtonStaticBuilds, False, False, 0)
 
-        pop_threshold = (0, 200)
-        traffic_range = (0, 500)
+        #TODO: not this
+        pop_threshold = (0, 1000)
+        traffic_range = (0, 2000)
         num_plants_range = (0, 200)
         mayor_rating_range = (0, 100)
 
@@ -176,12 +177,12 @@ class MicropolisAgentPanel(gtk.Frame):
         scaleTraffic = gtk.HScale()
         self.scaleTraffic = scaleTraffic
         scaleTraffic.set_digits(10)
-        scaleTraffic.set_range(0, 500)
+        scaleTraffic.set_range(0, 2000)
         scaleTraffic.connect('value_changed', self.scaleTrafficChanged)
         scaleTrafficMetric = gtk.HScale()
         self.scaleTrafficMetric = scaleTrafficMetric
         scaleTrafficMetric.set_digits(10)
-        scaleTrafficMetric.set_range(0, 500)
+        scaleTrafficMetric.set_range(0, 2000)
         labelTraffic = gtk.Label('Traffic:')
         vbox3.pack_start(labelTraffic, False, False, 0)
         vbox3.pack_start(scaleTraffic, False, False, 0)

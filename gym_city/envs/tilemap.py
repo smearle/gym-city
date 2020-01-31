@@ -89,7 +89,7 @@ class TileMap(object):
                 'Stadium' : 4,
                 'PoliceDept' : 3,
                 'FireDept' : 3,
-                'Airport' : 5,
+                'Airport' : 6,
                 'NuclearPowerPlant' : 4,
                 'CoalPowerPlant' : 4,
                 'Road' : 1,
@@ -203,7 +203,7 @@ class TileMap(object):
         # track age of build structures
         print('initializing AGES')
         self.age_order = np.zeros((self.MAP_X, self.MAP_Y), dtype=int)
-       #self.age_order.fill(-1)
+        self.age_order.fill(-1)
 
     def didRoadBuild(self, x, y):
        #assert self.road_networks[0, x, y] == 0
@@ -410,35 +410,33 @@ class TileMap(object):
     def clearTile(self, x, y, static_build=False):
         ''' This ultimately calls itself until the tile is clear'''
        #print('clearing tile {} {}'.format(x, y))
-        old_zone = self.zoneMap[-1][x][y]
-        if old_zone in ['Land']:
-            return
+        old_zone = self.zones[self.zoneMap[-1][x][y]]
+       #if old_zone in ['Land']:
+       #    return
         cnt = self.centers[x][y]
         if cnt is None:
             cnt = (x, y)
-        if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
-            return
+       #if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
+       #    return
         if self.static_builds[0][x][y] == 1 and static_build == False:
             return
 
-        result = self.micro.doSimTool(cnt[0], cnt[1], 'Clear')
+        xc, yc = cnt[0], cnt[1]
+        result = self.micro.doSimTool(xc, yc, 'Clear')
         #assert self.static_builds[0][x][y] == self.static_builds[0][cnt[0]][cnt[1]]
         #assert self.centers[x][y] == self.centers[cnt[0]][cnt[1]]
-        self.removeZone(cnt[0], cnt[1])
 
 
-    def removeZone(self, x, y):
        #print("CLEAR ", x, y)
-        old_zone = self.zones[self.zoneMap[-1][x][y]]
         size = self.zoneSize[old_zone]
         if size == 1:
-            self.updateTile(x, y, static_build=False)
+            self.updateTile(xc, yc, static_build=False)
             return
-        if size == 5:
-            x -= 1
-            y -= 1
-        x0, y0 = max(0, x-1), max(0, y-1)
-        x1, y1 = min(x-1+size, self.MAP_X,), min(y-1+size, self.MAP_Y)
+        if size == 6:
+            xc -= 1
+            yc -= 1
+        x0, y0 = max(0, xc-1), max(0, yc-1)
+        x1, y1 = min(xc-1+size, self.MAP_X,), min(yc-1+size, self.MAP_Y)
         for i in range(x0, x1):
             for j in range(y0, y1):
                 self.updateTile(i, j, static_build = False)
@@ -453,8 +451,8 @@ class TileMap(object):
        #    static_build = False
         zone = map_zone
         zone_size = self.zoneSize[zone]
-        if zone_size == 5:
-            center = (x+1, y+1)
+        if zone_size == 6:
+            center = (x + 1, y + 1)
         else:
             center = (x, y)
         if zone_size == 1:
@@ -515,7 +513,6 @@ class TileMap(object):
             self.n_struct_tiles += 1
         if not was_natural and is_natural:
             self.n_struct_tiles -= 1
-
         if self.track_ages:
             if is_natural:
                 self.age_order[x][y] = -1

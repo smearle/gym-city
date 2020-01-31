@@ -64,9 +64,9 @@ class DDummyVecEnv(DummyVecEnv):
         for env in self.envs:
             env.setMapSize(size, **kwargs)
 
-    def set_extinction_type(self, xt_type, xt_prob):
+    def set_extinction_type(self, *args):
         for env in self.envs:
-            env.set_extinction_type(xt_type, xt_prob)
+            env.set_extinction_type(*args)
 
     def reset_episodes(self, im_log_dir):
         for env in self.envs:

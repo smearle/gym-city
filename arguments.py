@@ -174,7 +174,7 @@ def get_parser():
     parser.add_argument(
         '--extinction-prob', type=float, default=0.0, help='probability of extinction event')
     parser.add_argument(
-        '--extinction-type', type=str, default='None',
+        '--extinction-type', type=str, default=None,
         help='type of extinction event')
     parser.add_argument('--im-render', action='store_true',
             help='Render micropolis as a simplistic image')

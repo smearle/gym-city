@@ -152,21 +152,26 @@ class ExtinctionEvaluator():
         self.envs = envs
         self.args = args
 
-    def run_experiment(self, n_epis, max_step, map_width, extinction_type, extinction_prob):
+    def run_experiment(self, n_epis, max_step, map_width, extinction_type, extinction_prob,
+            extinction_dels):
         '''Evaluate the effect of a single type of extinction event (or none).'''
         args = self.args
         actor_critic = self.actor_critic
         envs = self.envs
-        im_log_dir = '{}/xttyp:{}_xtprob:{}_size:{}_stp:{}'.format(
+        im_log_dir = '{}/xttyp:{}_stp:{}'.format(
                 self.im_log_dir,
                 extinction_type,
-                extinction_prob,
-                map_width,
+               #extinction_prob,
+               #map_width,
                 max_step
                 )
         envs.venv.venv.set_log_dir(im_log_dir)
+        # adjust envs in general
         envs.venv.venv.setMapSize(map_width, max_step=max_step, render=args.render)
-        envs.venv.venv.set_extinction_type(extinction_type, extinction_prob)
+        if extinction_type is not None:
+            # adjust extinguisher wrapper
+            envs.venv.venv.set_extinction_type(extinction_type, extinction_prob, extinction_dels)
+        # adjust image render wrapper
         envs.venv.venv.reset_episodes(im_log_dir)
         envs.venv.venv.init_storage()
         recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
@@ -304,6 +309,7 @@ class ExtinctionExperimenter():
                 ]
         # TODO: automate xt_probs
         self.xt_probs = [args.extinction_prob]
+        self.xt_dels = [15]
         self.map_sizes = [args.map_width]
        #self.xt_probs = [
        #        0.005,
@@ -311,7 +317,10 @@ class ExtinctionExperimenter():
        #       #0.05,
        #       #0.1
        #        ]
-        exp_name = 'test_map:{}_xtprob:{}'.format(self.map_sizes[0], float(self.xt_probs[0]))
+        exp_name = 'test_map:{}_xtprob:{}_xtdels:{}'.format(
+                self.map_sizes[0],
+                float(self.xt_probs[0]),
+                self.xt_dels[0])
         self.log_dir = log_dir
         args.load_dir = log_dir
         im_log_dir = os.path.join(log_dir, exp_name)
@@ -329,13 +338,14 @@ class ExtinctionExperimenter():
         evaluator = self.evaluator
         for mst in self.max_step:
             for msz in self.map_sizes:
-                for xtt in self.xt_types:
-                    if xtt is None:
-                        xtp = 0
-                        evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp)
-                    else:
-                        for xtp in self.xt_probs:
-                            evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp)
+                for xtd in self.xt_dels:
+                    for xtt in self.xt_types:
+                        if xtt is None:
+                            xtp = 0
+                            evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
+                        else:
+                            for xtp in self.xt_probs:
+                                evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
 
     def visualize_experiments(self):
         '''

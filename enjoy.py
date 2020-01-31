@@ -177,7 +177,6 @@ while True:
             player_act=player_act)
 
     if env_done:
-        env.reset()
         num_step = 0
     # Observe reward and next obs
     obs, reward, done, infos = env.step(action)

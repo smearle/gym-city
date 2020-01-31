@@ -253,8 +253,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = TransposeImage(env)
 
-        if args.extinction_type is not None:
-            env = Extinguisher(env, args.extinction_type, args.extinction_prob)
+        #FIXME: this is just hack to make our extinction experiment loop work.
+       #if args.extinction_type is not None:
+        env = Extinguisher(env, args.extinction_type, args.extinction_prob)
            #env.set_extinction_type(args.extinction_type, args.extinction_prob)
 
         if args.im_render:
