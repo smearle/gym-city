@@ -30,7 +30,7 @@ class MicropolisEnv(core.Env):
         self.static_player_builds = False
     ### MIXED
         self.city_trgs = OrderedDict({
-                'res_pop': 200,
+                'res_pop': 500,
                 'com_pop': 50,
                 'ind_pop': 50,
                 'traffic': 750,
@@ -40,7 +40,7 @@ class MicropolisEnv(core.Env):
                 })
         self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
         self.param_bounds = OrderedDict({
-                'res_pop': (0, 500),
+                'res_pop': (0, 750),
                 'com_pop': (0, 100),
                 'ind_pop': (0, 100),
                 'traffic': (0, 1000),
@@ -91,15 +91,16 @@ class MicropolisEnv(core.Env):
     def setMapSize(self, size, **kwargs):
         '''Do most of the actual initialization.
         '''
+        self.pre_gui(size, **kwargs)
+        #TODO: this better
         if hasattr(self, 'micro'):
-            self.micro.close()
+            self.micro.reset_params(size)
         else:
-            self.pre_gui(size, **kwargs)
-        self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
+            self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
                 rank=self.rank, power_puzzle=self.power_puzzle, gui=self.render_gui)
         self.post_gui()
 
-    def pre_gui(self, size, max_step=None, rank=None, print_map=False,
+    def pre_gui(self, size, max_step=None, rank=0, print_map=False,
             PADDING=0, static_builds=True, parallel_gui=False,
             render_gui=False, empty_start=True, simple_reward=False,
             power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False, **kwargs):
@@ -165,7 +166,7 @@ class MicropolisEnv(core.Env):
         self.last_mayor_rating = self.mayor_rating
         self.last_priority_road_net_size = 0
         self.display_city_trgs()
-        if self.render_gui:
+        if self.render_gui and self.rank == 0:
             self.render()
 
     def get_param_bounds(self):

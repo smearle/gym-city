@@ -65,6 +65,7 @@ def zoneFromInt_A(i):
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
     def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True):
+        self.n_struct_tiles = 0
         self.track_ages = False
         # whether or not the latest call to addZone has any effect on our map
         # no good if we encounter a fixed optimal state / are on a budget
@@ -178,7 +179,7 @@ class TileMap(object):
                     feature_ints = None
                 self.zoneSquares[z] = makeZoneSquare(self.zoneSize[z], zone_int, feature_ints)
         # first dimension is binary feature-vector - followed by zone int
-        self.zoneMap = np.zeros((self.num_features + 1,self.MAP_X, self.MAP_Y), dtype=np.uint8)
+        self.zoneMap = np.zeros((self.num_features + 1, self.MAP_X, self.MAP_Y), dtype=np.uint8)
         self.static_builds = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
         self.road_int = self.zoneInts['Road']
         self.road_networks = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
@@ -202,7 +203,7 @@ class TileMap(object):
         # track age of build structures
         print('initializing AGES')
         self.age_order = np.zeros((self.MAP_X, self.MAP_Y), dtype=int)
-        self.age_order.fill(-1)
+       #self.age_order.fill(-1)
 
     def didRoadBuild(self, x, y):
        #assert self.road_networks[0, x, y] == 0
@@ -479,6 +480,11 @@ class TileMap(object):
         True when building, and False when deleting '''
         was_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
         was_road = self.zoneMap[self.road_int][x][y] == 1
+        #TODO: get_natural function
+        was_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Forest']][x][y] == 1
         if zone is None:
             tile_int = self.micro.getTile(x, y)
             zone = zoneFromInt(tile_int)
@@ -500,13 +506,21 @@ class TileMap(object):
         self.centers[x][y] = center
         is_road = self.zoneMap[self.road_int][x][y] == 1
         is_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
+
+        is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Forest']][x][y] == 1
+        if was_natural and not is_natural:
+            self.n_struct_tiles += 1
+        if not was_natural and is_natural:
+            self.n_struct_tiles -= 1
+
         if self.track_ages:
-            is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
-                         self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
-                         self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
-                         self.zoneMap[self.zoneInts['Forest']][x][y] == 1
             if is_natural:
                 self.age_order[x][y] = -1
+
+
 
         net = None
         if was_road and not is_road:

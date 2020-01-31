@@ -1,14 +1,19 @@
 '''Do inference on a trained agent, for qualitative analysis or interactive play.'''
-import datetime
 import argparse
+import datetime
+
 import torch
+
 
 def str2bool(val):
     '''Interpret relevant strings as boolean values. For argparser.'''
+
     if isinstance(val, bool):
         return val
+
     if val.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
+
     if val.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     raise argparse.ArgumentTypeError('Boolean value expected.')
@@ -18,22 +23,28 @@ def get_args():
     parser = get_parser()
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
+
     if not torch.cuda.is_available():
         print('CUDA not available')
+
     if args.experiment_name == '':
         args.experiment_name += '{}'.format(datetime.datetime.now())
   # args.experiment_name = "{}_{}".format(args.experiment_name, datetime.datetime.now())
     model_name = args.model
+
     if args.model == 'FractalNet':
         if args.rule != 'extend':
             model_name += '-{}'.format(args.rule)
        #model_name += '-{}recs'.format(args.n_recs)
         if args.intra_shr:
             model_name += '_intra'
+
         if args.inter_shr:
             model_name += '_inter'
+
         if args.drop_path:
             model_name += '_drop'
+
     if args.load_dir:
         args.save_dir = args.load_dir
         args.log_dir = args.load_dir
@@ -163,7 +174,7 @@ def get_parser():
     parser.add_argument(
         '--extinction-prob', type=float, default=0.0, help='probability of extinction event')
     parser.add_argument(
-        '--extinction-type', type=str, default='disaster',
+        '--extinction-type', type=str, default='None',
         help='type of extinction event')
     parser.add_argument('--im-render', action='store_true',
             help='Render micropolis as a simplistic image')
@@ -195,4 +206,5 @@ def get_parser():
         type=str2bool,
         default=False,
         help='set targets for environment, replaces fixed reward function')
+
     return parser

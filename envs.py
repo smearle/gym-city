@@ -14,7 +14,7 @@ from baselines.common.vec_env.vec_normalize import \
 from gym.spaces.box import Box
 
 #from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from dummy_vec_env import DummyVecEnv
+from dummy_vec_env import DDummyVecEnv as DummyVecEnv
 from gym_city.wrappers import Extinguisher, ImRender
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
@@ -259,7 +259,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
         if args.im_render:
             print('wrapping id imrender')
-            env = ImRender(env, log_dir)
+            env = ImRender(env, log_dir, rank)
 
         assert env is not None
 

@@ -38,7 +38,12 @@ class MicropolisControl():
     def __init__(self, env, MAP_W=12, MAP_H=12, PADDING=13, gui=False, rank=None,
             power_puzzle=False, paint=False):
         env.micro = self # attach ourselves to our parent before we start
-        engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
+        # Reuse game engine if we are reinitializing controller (i.e. to change map size)
+        if hasattr(self, 'engine'):
+            print('REINIT: reuse engine and window')
+            engine, win1 = self.engine, self.win1
+        else:
+            engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
                 gui=gui)
        #os.chdir(CURR_DIR)
         self.env = env
@@ -128,6 +133,14 @@ class MicropolisControl():
 #       engine.clearMap()
         self.win1=win1
         self.player_builds = []
+
+    def reset_params(self, size):
+        '''Change map-size of existing controller object.'''
+        # gui is irrelevant here (only passed to micropolis)
+        self.__init__(self.env,
+                      MAP_W=size, MAP_H=size, PADDING=self.PADDING, gui=False, rank=self.env.rank,
+                      power_puzzle=self.env.power_puzzle, paint=False)
+
 
     def displayRewardWeights(self, reward_weights):
         self.win1.agentPanel.displayRewardWeights(reward_weights)

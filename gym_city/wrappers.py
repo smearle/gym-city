@@ -1,6 +1,7 @@
 '''Wrappers to extend the functionality of the gym_city environment.'''
 import os
 import shutil
+import math
 import gzip
 import gym
 import numpy as np
@@ -11,7 +12,8 @@ class Extinguisher(gym.Wrapper):
     def __init__(self, env, extinction_type=None, extinction_prob=0.1):
         super(Extinguisher, self).__init__(env)
         self.set_extinction_type(extinction_type, extinction_prob)
-        print('CREATE EXTI')
+        self.n_tile_dels = 250
+        print('Wrapping env in Extinguisher')
 
     def set_extinction_type(self, extinction_type, extinction_prob):
         '''Set parameters relating to the extinction event.'''
@@ -24,8 +26,8 @@ class Extinguisher(gym.Wrapper):
         if self.extinction_type == 'age':
             self.unwrapped.micro.map.init_age_array()
 
-    def step(self, a, static_build=False):
-        out = self.unwrapped.step(a)
+    def step(self, a):
+        out = self.env.step(a)
         if self.num_step % self.extinction_interval == 0:
        #if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
@@ -39,17 +41,24 @@ class Extinguisher(gym.Wrapper):
             return self.elderCleanse()
         if extinction_type == 'spatial':
             return self.localWipe()
+        if extinction_type == 'random':
+            return self.ranDemolish()
 
     def localWipe(self):
         # assume square map
-        w = self.MAP_X // 3
+        #suppose
+        w = int(math.sqrt(self.n_tile_dels))
         x = np.random.randint(0, self.MAP_X)
         y = np.random.randint(0, self.MAP_Y)
         self.micro.map.clearPatch(x, y, patch_size=w, static_build=False)
 
     def ranDemolish(self):
-        pass
-       #for i in range()
+        # hack this to make it w/o replacement
+        for i in range(int(100/10) * 2):
+            x = np.random.randint(0, self.MAP_X)
+            y = np.random.randint(0, self.MAP_Y)
+            result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+
 
     def elderCleanse(self):
         ages = self.micro.map.age_order
@@ -57,7 +66,8 @@ class Extinguisher(gym.Wrapper):
         print('\n AGEIST VIOLENCE')
         ages[ages < 0] = 2*eldest
        #for i in range(20):
-        for i in range(30):
+        n_building_deletions = int(self.n_tile_dels / 10)
+        for i in range(n_building_deletions):
        #for i in range((self.MAP_X * self.MAP_Y) // 90):
             ages[ages < 0] = 2*eldest
             xy = np.argmin(ages)
@@ -67,7 +77,7 @@ class Extinguisher(gym.Wrapper):
             y = int(y)
            #print('deleting {} {}'.format(x, y))
             result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-            self.render()
+           #self.render()
            #print('result {}'.format(result))
         ages -= np.min(ages)
         ages[ages>eldest] = -1
@@ -78,7 +88,7 @@ class Extinguisher(gym.Wrapper):
 class ImRender(gym.Wrapper):
     ''' Render micropolis as simple image.
     '''
-    def __init__(self, env, log_dir):
+    def __init__(self, env, log_dir, rank):
         super(ImRender, self).__init__(env)
         tile_types = {
             'Residential': 'Residential',
@@ -107,7 +117,9 @@ class ImRender(gym.Wrapper):
             'Hospital': 'Residential',
             'Radioactive': 'Other',
             'Flood': 'Other',
-            'Fire': 'Other'
+            'Fire': 'Other',
+            'Bridge': 'Transit',
+            'Radar': 'Industrial',
             }
         type_colors = {
             'Residential': 'Green',
@@ -126,12 +138,19 @@ class ImRender(gym.Wrapper):
             'Magenta': [1, 0, 1],
             'Cyan': [1, 1, 0],
                 }
-        self.log_dir = os.path.join(log_dir, 'imRender/None')
-        try:
-            os.mkdir(self.log_dir)
-        except FileExistsError:
-            pass
-
+        # TODO: put the extinction-type part of this log_dir in the appropriate wrapper
+        im_log_dir = log_dir
+       #im_log_dir = os.path.join(log_dir, 'imRender')
+       #try:
+       #    os.mkdir(im_log_dir)
+       #except FileExistsError:
+       #    pass
+       #im_log_dir = os.path.join(im_log_dir, 'None')
+       #try:
+       #    os.mkdir(im_log_dir)
+       #except FileExistsError:
+       #    pass
+        self.im_log_dir = im_log_dir
         # save the image at regular intervals
         self.save_interval = 10
         self.n_saved = 0
@@ -141,27 +160,31 @@ class ImRender(gym.Wrapper):
         self.colors = colors
         self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
         self.image = np.transpose(self.image, (1, 0, 2))
-        if self.unwrapped.render_gui and self.unwrapped.rank == 0:
+        self.rank = rank
+        if self.unwrapped.render_gui:
             _ = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
             cv2.imshow('im', self.image)
 
     def step(self, action):
         self.im_render()
-        return super().step(action)
+        return self.env.step(action)
 
-    def reset_episodes(self):
+    def reset_episodes(self, im_log_dir):
         self.n_episode = 0
-        self.log_dir = self.log_dir.split('/')[:-1]
-        self.log_dir = '/'.join(self.log_dir)
-        self.log_dir = os.path.join(self.log_dir, str(self.env.extinction_type))
+        print('reset epis, imrender log dir: {}'.format(self.im_log_dir))
+        self.im_log_dir = im_log_dir
+       #self.im_log_dir = self.im_log_dir.split('/')[:-1]
+       #self.im_log_dir = '/'.join(self.im_log_dir)
+       #self.im_log_dir = os.path.join(self.im_log_dir, str(self.env.extinction_type))
+        print('reset epis, renamed imrender log dir: {}'.format(self.im_log_dir))
         try:
-            os.mkdir(self.log_dir)
+            os.mkdir(self.im_log_dir)
         except FileExistsError:
             pass
 
     def reset(self):
         self.n_episode += 1
-        return super().reset()
+        return self.env.reset()
 
     def im_render(self):
         zone_map = self.unwrapped.micro.map.zoneMap
@@ -176,10 +199,10 @@ class ImRender(gym.Wrapper):
                 self.image[x][y] = color
         self.image = np.transpose(self.image, (1, 0, 2))
         self.image = self.image * 255
-        if self.unwrapped.render_gui and self.unwrapped.rank == 0:
+        if self.unwrapped.render_gui:
             cv2.imshow('im', self.image)
         if self.unwrapped.num_step % self.save_interval == 0:
-            log_dir = os.path.join(self.log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
+            log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
                 self.unwrapped.rank, self.n_episode, self.num_step))
             print(log_dir)
             cv2.imwrite(log_dir, self.image)
