@@ -49,8 +49,8 @@ class MicropolisEnv(core.Env):
                 })
         self.weights = OrderedDict({
                 'res_pop': 1,
-                'com_pop': 0,
-                'ind_pop': 0,
+                'com_pop': 1,
+                'ind_pop': 1,
                 'traffic': 1,
                 'num_plants': 0,
                 'mayor_rating': 0,
@@ -109,6 +109,7 @@ class MicropolisEnv(core.Env):
             self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
                 rank=self.rank, power_puzzle=self.power_puzzle, gui=self.render_gui)
         self.city_metrics = self.get_city_metrics()
+        self.last_city_metrics = self.city_metrics
         self.post_gui()
 
     def pre_gui(self, size, max_step=None, rank=0, print_map=False,
@@ -277,6 +278,8 @@ class MicropolisEnv(core.Env):
         if self.random_builds:
             self.randomStaticStart()
         self.micro.simTick()
+        self.city_metrics = self.get_city_metrics()
+        self.last_city_metrics = self.city_metrics
         self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
         self.curr_pop = 0
@@ -341,22 +344,47 @@ class MicropolisEnv(core.Env):
         return curr_pop
 
     def getReward(self):
+        '''Calculate reward.
+        '''
         if True:
-            max_reward = self.max_reward
-            loss = 0
-            i = 0
-            for k, v in self.city_trgs.items():
-                if i == self.num_params:
-                    break
+            reward = 0
+            for metric, trg in self.city_trgs.items():
+                last_val = self.last_city_metrics[metric]
+                trg_change = trg - last_val
+                val = self.city_metrics[metric]
+                change = val - last_val
+                if np.sign(change) != np.sign(trg_change):
+                    metric_rew = -abs(change)
+                elif abs(change) < abs(trg_change):
+                    metric_rew = abs(change)
                 else:
-                    weight = self.weights[k]
-                    loss += abs(v - self.city_metrics[k]) * weight
-                    i += 1
+                    metric_rew = abs(trg_change) - abs(trg_change - change)
+                reward += metric_rew * self.weights[metric]
+       #if self.render_gui and reward != 0:
+       #    print(self.city_metrics)
+       #    print(self.city_trgs)
+       #    print(reward)
+       #    print()
 
-            reward = (self.max_loss - loss) * max_reward / self.max_loss
-        else:
-            reward = self.getPopReward()
-        self.curr_reward = reward
+       #if False:
+       #    max_reward = self.max_reward
+       #    loss = 0
+       #    i = 0
+       #    for k, v in self.city_trgs.items():
+       #        if i == self.num_params:
+       #            break
+       #        else:
+       #            if True:
+       #                reward = 0
+       #                for metric_name, trg in self.city_trgs.items():
+
+       #            weight = self.weights[k]
+       #            loss += abs(v - self.city_metrics[k]) * weight
+       #            i += 1
+
+       #    reward = (self.max_loss - loss) * max_reward / self.max_loss
+       #    reward = self.getPopReward()
+       #self.curr_reward = reward
         return reward
 
 
@@ -443,6 +471,7 @@ class MicropolisEnv(core.Env):
         self.state = self.getState()
        #print(self.state[-2])
         self.curr_pop = self.getPop()
+        self.last_city_metrics = self.city_metrics
         self.city_metrics = self.get_city_metrics()
         if self.render_gui:
             self.display_city_metrics()
@@ -485,7 +514,7 @@ class MicropolisEnv(core.Env):
 
 
         reward = self.getReward()
-        reward = reward / (self.max_step)
+       #reward = reward / (self.max_step)
         self.curr_funds = curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
         terminal = (bankrupt or self.num_step >= self.max_step) and\

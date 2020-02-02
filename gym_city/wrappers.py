@@ -10,7 +10,11 @@ import cv2
 
 class Extinguisher(gym.Wrapper):
     '''Trigger intermittent extinction events.'''
-    def __init__(self, env, extinction_type=None, extinction_prob=0.1, xt_dels=15):
+    def __init__(self, env,
+                 extinction_type=None,
+                 extinction_prob=0.1,
+                 xt_dels=25
+                 ):
         super(Extinguisher, self).__init__(env)
         self.set_extinction_type(extinction_type, extinction_prob, xt_dels)
        #self.n_dels = int((self.MAP_X * self.MAP_Y) * 0.004)
@@ -207,7 +211,12 @@ class ImRender(gym.Wrapper):
 
     def step(self, action):
         self.im_render()
-        return self.env.step(action)
+        obs, rew, done, info = self.env.step(action)
+        info = {
+                **info,
+                **self.city_metrics,
+                }
+        return obs, rew, done, info
 
     def reset_episodes(self, im_log_dir):
         self.n_episode = 0
@@ -244,6 +253,6 @@ class ImRender(gym.Wrapper):
         if self.unwrapped.num_step % self.save_interval == 0:
             log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
                 self.unwrapped.rank, self.n_episode, self.num_step))
-            print(log_dir)
-            cv2.imwrite(log_dir, self.image)
+           #print(log_dir)
+           #cv2.imwrite(log_dir, self.image)
             self.n_saved += 1

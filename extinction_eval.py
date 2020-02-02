@@ -247,7 +247,8 @@ def get_xy(exp_dir):
 
 def visualize_experiments(log_dir):
     '''Visualize results from extinction-compressibility experiments.
-     - load-dir: stores folder of experiments, within which are compressed images named by
+     - load-dir: stores folder of experiments, within which are compressed images named by rank and
+       episode
     '''
     log_dir = log_dir
     xtinct_dirs = os.listdir(log_dir)
