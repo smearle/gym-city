@@ -752,8 +752,8 @@ class SubFractal(nn.Module):
             reach = True
         else:
             # try for natural path to target
-            prob_body = 1
-            prob_skip = 0.15
+            prob_body = 1 - (1/2) ** self.n_rec
+            prob_skip = 1/2
             mask = (np.random.random_sample(2) > [prob_body, prob_skip]).astype(int)
             reach = self.set_child_drops(False, mask)
             if not reach and force: # then force one path down
