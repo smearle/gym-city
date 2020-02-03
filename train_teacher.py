@@ -34,11 +34,14 @@ class Teacher(Trainer):
     def get_save_dict(self):
         d = super().get_save_dict()
         d['alp_gmm'] = self.alp_gmm
+        d['param_hist'] = self.param_hist
         return d
 
     def __init__(self):
         # have to do above before call to parent to inirialize Evaluator correctly
         super(Teacher, self).__init__()
+        # dictionary of param names to target histories as set by alp_gmm
+        self.param_hist = {}
         envs = self.envs
         args = self.args
         env_param_bounds = envs.get_param_bounds()
@@ -46,7 +49,7 @@ class Teacher(Trainer):
         # not know how much traffic the agent can possibly produce in Micropolis)
         envs.set_param_bounds(env_param_bounds) # start with default bounds
         env_param_bounds = env_param_bounds
-        num_env_params = 1
+        num_env_params = 4
         env_param_ranges = []
         env_param_lw_bounds = []
         env_param_hi_bounds = []
@@ -110,11 +113,16 @@ class Teacher(Trainer):
 
         self.trial_remaining = trial_remaining
 
+    def plot_trg_params(self):
+        for param in self.params:
+           #print('plotting param. {}'.format(param))
+            pass
 
 
     def main(self):
-        for self.n_train in range(self.past_steps, self.num_updates):
+        for self.n_train in range(self.updates_remaining):
             self.check_params()
+            self.plot_trg_params()
             self.train()
 
 

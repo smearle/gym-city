@@ -307,7 +307,7 @@ class MicropolisControl():
     def doSimToolInt(self, x, y, tool):
        #print('calling engine doTool {} {} {}'.format(x, y, tool))
         result = self.engine.toolDown(tool, x, y)
-       #print('result in SimToolIne: {}'.format(result))
+       #print('result in SimToolInt: {}'.format(result))
         return result
 
     def getResPop(self):

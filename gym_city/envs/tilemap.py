@@ -134,7 +134,7 @@ class TileMap(object):
                 else:
                     zone_compat[c] = l
         self.zone_compat = zone_compat
-        print(zone_compat)
+#       print(zone_compat)
         self.zones = list(self.zoneSize.keys()) + list(composite_zones.keys())
         for c in composite_zones.keys():
             self.zoneSize[c] = self.zoneSize[composite_zones[c][0]]
@@ -413,15 +413,20 @@ class TileMap(object):
         old_zone = self.zones[self.zoneMap[-1][x][y]]
        #if old_zone in ['Land']:
        #    return
+       #if old_zone in ['Water']:
+       #    print('Deleting water {} {}'.format(x, y))
         cnt = self.centers[x][y]
         if cnt is None:
             cnt = (x, y)
        #if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
        #    return
         if self.static_builds[0][x][y] == 1 and static_build == False:
-            return
+            result = - 1
+            return result
 
         xc, yc = cnt[0], cnt[1]
+        result = self.micro.doSimTool(xc, yc, 'Water')
+        result = self.micro.doSimTool(xc, yc, 'Land')
         result = self.micro.doSimTool(xc, yc, 'Clear')
         #assert self.static_builds[0][x][y] == self.static_builds[0][cnt[0]][cnt[1]]
         #assert self.centers[x][y] == self.centers[cnt[0]][cnt[1]]
