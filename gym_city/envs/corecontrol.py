@@ -38,7 +38,12 @@ class MicropolisControl():
     def __init__(self, env, MAP_W=12, MAP_H=12, PADDING=13, gui=False, rank=None,
             power_puzzle=False, paint=False):
         env.micro = self # attach ourselves to our parent before we start
-        engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
+        # Reuse game engine if we are reinitializing controller (i.e. to change map size)
+        if hasattr(self, 'engine'):
+            print('REINIT: reuse engine and window')
+            engine, win1 = self.engine, self.win1
+        else:
+            engine, win1 = main.train(env=env, rank=rank, map_x=MAP_W, map_y=MAP_H,
                 gui=gui)
        #os.chdir(CURR_DIR)
         self.env = env
@@ -77,33 +82,34 @@ class MicropolisControl():
         if power_puzzle:
             self.tools = ['Wire']
         else:
-            self.tools = ['Residential', 'Commercial', 'Industrial',
-                    'FireDept',
-                    'PoliceDept',
-                 # 'Query',
-                    'Clear',
-                   'Wire',
-                  #'Land',
-                   'Rail',
-                   'Road',
-                    'Stadium',
-                    'Park',
-                     'Seaport',
-                    'CoalPowerPlant',
-                    'NuclearPowerPlant',
-                    'Airport',
-                    'Net',
-                    'Water',
-                    'Land',
-                    'Forest',
-                    'Nil' # the agent takes no action
-                    ]
+            self.tools = [
+                'Residential', 'Commercial', 'Industrial',
+                'FireDept',
+                'PoliceDept',
+                # 'Query',
+                'Clear',
+                'Wire',
+                # 'Land',
+                'Rail',
+                'Road',
+                'Stadium',
+                'Park',
+                'Seaport',
+                'CoalPowerPlant',
+                'NuclearPowerPlant',
+                'Airport',
+                'Net',
+                'Water',
+                'Land',
+                'Forest',
+                'Nil' # the agent takes no action
+                ]
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:
         self.num_tools = len(self.tools)
-        ages = self.env.terror_type == 'age'
+        # TODO: move age-tracking into wrapper?
         self.map = TileMap(self, self.MAP_X + 2 * PADDING, self.MAP_Y + 2 * PADDING,
-                paint=paint, ages=ages)
+                paint=paint)
         self.zones = self.map.zones
         self.num_zones = self.map.num_zones
         # allows building on rubble and forest
@@ -127,6 +133,14 @@ class MicropolisControl():
 #       engine.clearMap()
         self.win1=win1
         self.player_builds = []
+
+    def reset_params(self, size):
+        '''Change map-size of existing controller object.'''
+        # gui is irrelevant here (only passed to micropolis)
+        self.__init__(self.env,
+                      MAP_W=size, MAP_H=size, PADDING=self.PADDING, gui=False, rank=self.env.rank,
+                      power_puzzle=self.env.power_puzzle, paint=False)
+
 
     def displayRewardWeights(self, reward_weights):
         self.win1.agentPanel.displayRewardWeights(reward_weights)
@@ -293,7 +307,7 @@ class MicropolisControl():
     def doSimToolInt(self, x, y, tool):
        #print('calling engine doTool {} {} {}'.format(x, y, tool))
         result = self.engine.toolDown(tool, x, y)
-       #print('result in SimToolIne: {}'.format(result))
+       #print('result in SimToolInt: {}'.format(result))
         return result
 
     def getResPop(self):

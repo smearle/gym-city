@@ -177,7 +177,7 @@ class Trainer():
             saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
         self.checkpoint = None
         if os.path.exists(saved_model) and not args.overwrite:
-            print('current actor_critic params: {}'.format(actor_critic.parameters()))
+           #print('current actor_critic params: {}'.format(actor_critic.parameters()))
             checkpoint = torch.load(saved_model)
             self.checkpoint = checkpoint
             saved_args = checkpoint['args']
@@ -185,10 +185,10 @@ class Trainer():
             opt = agent.optimizer.state_dict()
             opt_load = checkpoint['optimizer_state_dict']
             for o, l in zip(opt, opt_load):
-                print(o, l)
+               #print(o, l)
                 param = opt[o]
                 param_load = opt_load[l]
-                print('current: {}'.format(param), 'load: {}'.format(param_load))
+               #print('current: {}'.format(param), 'load: {}'.format(param_load))
                #print(param_load.keys())
                #params = param_load[0]['params']
                #param[0]['params'] = params
@@ -309,7 +309,6 @@ class Trainer():
         self.agent = agent
         self.episode_rewards = episode_rewards
         self.n_cols = n_cols
-        self.n_frames += self.args.num_steps * self.args.num_processes
 
     def main(self):
 
@@ -394,6 +393,7 @@ class Trainer():
                             feature_state, feature_state_pred, action_bin, action_dist_pred)
         else:
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks)
+        self.n_frames += self.args.num_steps * self.args.num_processes
 
 
 
@@ -475,7 +475,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                         fieldnames=self.fieldnames)
                 self.evaluator = evaluator
 
-            col_idx = [-1, *range(0, n_cols, self.col_step)]
+            col_idx = [-1, *[i for i in range(0, n_cols, self.col_step)]]
             for i in col_idx:
                 evaluator.evaluate(column=i)
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step

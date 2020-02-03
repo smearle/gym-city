@@ -64,16 +64,11 @@ def zoneFromInt_A(i):
 
 class TileMap(object):
     ''' Map of Micropolis Zones as affected by actions of MicropolisControl object. Also automates bulldozing (always finds deletable tile of larger zones/structures and subsequently removes rubble)'''
-    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True,
-            ages=False):
+    def __init__(self, micro, MAP_X, MAP_Y, walker=False, paint=True):
+        self.n_struct_tiles = 0
+        self.track_ages = False
         # whether or not the latest call to addZone has any effect on our map
         # no good if we encounter a fixed optimal state / are on a budget
-        self.ages = ages
-        if self.ages:
-            # track age of build structures
-            print('initializing AGES')
-            self.age_order = np.zeros((MAP_X, MAP_Y), dtype=int)
-            self.age_order.fill(-1)
         self.no_change = False
         self.walker = walker
         self.paint = paint
@@ -94,7 +89,7 @@ class TileMap(object):
                 'Stadium' : 4,
                 'PoliceDept' : 3,
                 'FireDept' : 3,
-                'Airport' : 5,
+                'Airport' : 6,
                 'NuclearPowerPlant' : 4,
                 'CoalPowerPlant' : 4,
                 'Road' : 1,
@@ -139,7 +134,7 @@ class TileMap(object):
                 else:
                     zone_compat[c] = l
         self.zone_compat = zone_compat
-        print(zone_compat)
+#       print(zone_compat)
         self.zones = list(self.zoneSize.keys()) + list(composite_zones.keys())
         for c in composite_zones.keys():
             self.zoneSize[c] = self.zoneSize[composite_zones[c][0]]
@@ -149,8 +144,6 @@ class TileMap(object):
         for z in range(self.num_zones):
             self.zoneInts[self.zones[z]] = z
         self.clear_int = self.zoneInts['Land']
-
-
 
 
         def makeZoneSquare(width, zone_int, feature_ints=None):
@@ -186,7 +179,7 @@ class TileMap(object):
                     feature_ints = None
                 self.zoneSquares[z] = makeZoneSquare(self.zoneSize[z], zone_int, feature_ints)
         # first dimension is binary feature-vector - followed by zone int
-        self.zoneMap = np.zeros((self.num_features + 1,self.MAP_X, self.MAP_Y), dtype=np.uint8)
+        self.zoneMap = np.zeros((self.num_features + 1, self.MAP_X, self.MAP_Y), dtype=np.uint8)
         self.static_builds = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
         self.road_int = self.zoneInts['Road']
         self.road_networks = np.zeros((1, self.MAP_X, self.MAP_Y), dtype=int)
@@ -205,6 +198,12 @@ class TileMap(object):
        #self.road_crowding_map = np.zeros(0, self.MAP_X, self.MAP_Y)
         self.numPlants = 0 # power plants
 
+    def init_age_array(self):
+        self.track_ages = True
+        # track age of build structures
+        print('initializing AGES')
+        self.age_order = np.zeros((self.MAP_X, self.MAP_Y), dtype=int)
+        self.age_order.fill(-1)
 
     def didRoadBuild(self, x, y):
        #assert self.road_networks[0, x, y] == 0
@@ -411,35 +410,38 @@ class TileMap(object):
     def clearTile(self, x, y, static_build=False):
         ''' This ultimately calls itself until the tile is clear'''
        #print('clearing tile {} {}'.format(x, y))
-        old_zone = self.zoneMap[-1][x][y]
-        if old_zone in ['Land']:
-            return
+        old_zone = self.zones[self.zoneMap[-1][x][y]]
+       #if old_zone in ['Land']:
+       #    return
+       #if old_zone in ['Water']:
+       #    print('Deleting water {} {}'.format(x, y))
         cnt = self.centers[x][y]
         if cnt is None:
             cnt = (x, y)
-        if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
-            return
+       #if cnt[0] >= self.MAP_X or cnt[1] >= self.MAP_Y:
+       #    return
         if self.static_builds[0][x][y] == 1 and static_build == False:
-            return
+            result = - 1
+            return result
 
-        result = self.micro.doSimTool(cnt[0], cnt[1], 'Clear')
+        xc, yc = cnt[0], cnt[1]
+        result = self.micro.doSimTool(xc, yc, 'Water')
+        result = self.micro.doSimTool(xc, yc, 'Land')
+        result = self.micro.doSimTool(xc, yc, 'Clear')
         #assert self.static_builds[0][x][y] == self.static_builds[0][cnt[0]][cnt[1]]
         #assert self.centers[x][y] == self.centers[cnt[0]][cnt[1]]
-        self.removeZone(cnt[0], cnt[1])
 
 
-    def removeZone(self, x, y):
        #print("CLEAR ", x, y)
-        old_zone = self.zones[self.zoneMap[-1][x][y]]
         size = self.zoneSize[old_zone]
         if size == 1:
-            self.updateTile(x, y, static_build=False)
+            self.updateTile(xc, yc, static_build=False)
             return
-        if size == 5:
-            x -= 1
-            y -= 1
-        x0, y0 = max(0, x-1), max(0, y-1)
-        x1, y1 = min(x-1+size, self.MAP_X,), min(y-1+size, self.MAP_Y)
+        if size == 6:
+            xc -= 1
+            yc -= 1
+        x0, y0 = max(0, xc-1), max(0, yc-1)
+        x1, y1 = min(xc-1+size, self.MAP_X,), min(yc-1+size, self.MAP_Y)
         for i in range(x0, x1):
             for j in range(y0, y1):
                 self.updateTile(i, j, static_build = False)
@@ -454,15 +456,15 @@ class TileMap(object):
        #    static_build = False
         zone = map_zone
         zone_size = self.zoneSize[zone]
-        if zone_size == 5:
-            center = (x+1, y+1)
+        if zone_size == 6:
+            center = (x + 1, y + 1)
         else:
             center = (x, y)
         if zone_size == 1:
             self.updateTile(x, y, zone, center, static_build)
             if self.paint:
                 self.acted[x, y] = 1
-            if self.ages:
+            if self.track_ages:
                 self.age_order[x][y] = self.micro.env.num_step
             return
         else:
@@ -473,7 +475,7 @@ class TileMap(object):
                     self.updateTile(i, j, zone, center, static_build)
                     if self.paint:
                         self.acted[i, j] = 1
-                    if self.ages:
+                    if self.track_ages:
                         self.age_order[i][j] = self.micro.env.num_step
 
     def updateTile(self, x, y, zone=None, center=None, static_build=None):
@@ -481,6 +483,11 @@ class TileMap(object):
         True when building, and False when deleting '''
         was_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
         was_road = self.zoneMap[self.road_int][x][y] == 1
+        #TODO: get_natural function
+        was_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Forest']][x][y] == 1
         if zone is None:
             tile_int = self.micro.getTile(x, y)
             zone = zoneFromInt(tile_int)
@@ -502,13 +509,20 @@ class TileMap(object):
         self.centers[x][y] = center
         is_road = self.zoneMap[self.road_int][x][y] == 1
         is_plant = (self.zoneMap[self.zoneInts['NuclearPowerPlant']][x][y] == 1) or (self.zoneMap[self.zoneInts['CoalPowerPlant']][x][y] == 1)
-        if self.ages:
-            is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
-                         self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
-                         self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
-                         self.zoneMap[self.zoneInts['Forest']][x][y] == 1
+
+        is_natural = self.zoneMap[self.zoneInts['Land']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Water']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Rubble']][x][y] == 1 or \
+                     self.zoneMap[self.zoneInts['Forest']][x][y] == 1
+        if was_natural and not is_natural:
+            self.n_struct_tiles += 1
+        if not was_natural and is_natural:
+            self.n_struct_tiles -= 1
+        if self.track_ages:
             if is_natural:
                 self.age_order[x][y] = -1
+
+
 
         net = None
         if was_road and not is_road:

@@ -22,35 +22,9 @@ from utils import get_vec_normalize
 from visualize import Plotter
 from shutil import copyfile
 from teachDRL.teachers.algos.alp_gmm import ALPGMM
-from main import init_agent, Trainer
+from train import init_agent, Trainer
 
 
-#class Teacher():
-#    def __init__(self, env_param_bounds):
-#        '''
-#            - list of tuples corresponding to boundaries of parameters
-#        '''
-#        self.env_param_bounds = env_param_bounds
-#        self.num_env_params = len(env_param_bounds)
-#        env_param_ranges = [abs(env_param_bounds[i][1] - env_param_bounds[i][0])
-#                                for i in range(self.num_env_params)]
-#        self.prm_rew = {}
-#        self.prm_alp = {}
-#        # one episode per trial
-#        self.num_trials = args.num_frames / (args.max_step * args.num_processes)
-#
-#
-#    def teach(self):
-#        env_param_lw_bounds = [b for a, b in self.env_param_bounds]
-#        for i in range(self.num_trials):
-#            env_params = np.random(self.num_env_params) * env_param_ranges + env_param_lw_bounds
-#            epi_rew = self.student.train()
-#
-#
-#
-#class Student():
-#    def __init__(self):
-#        pass
 
 
 class Teacher(Trainer):
@@ -60,11 +34,14 @@ class Teacher(Trainer):
     def get_save_dict(self):
         d = super().get_save_dict()
         d['alp_gmm'] = self.alp_gmm
+        d['param_hist'] = self.param_hist
         return d
 
     def __init__(self):
         # have to do above before call to parent to inirialize Evaluator correctly
         super(Teacher, self).__init__()
+        # dictionary of param names to target histories as set by alp_gmm
+        self.param_hist = {}
         envs = self.envs
         args = self.args
         env_param_bounds = envs.get_param_bounds()
@@ -72,7 +49,7 @@ class Teacher(Trainer):
         # not know how much traffic the agent can possibly produce in Micropolis)
         envs.set_param_bounds(env_param_bounds) # start with default bounds
         env_param_bounds = env_param_bounds
-        num_env_params = 1
+        num_env_params = 4
         env_param_ranges = []
         env_param_lw_bounds = []
         env_param_hi_bounds = []
@@ -136,11 +113,16 @@ class Teacher(Trainer):
 
         self.trial_remaining = trial_remaining
 
+    def plot_trg_params(self):
+        for param in self.params:
+           #print('plotting param. {}'.format(param))
+            pass
 
 
     def main(self):
-        for self.n_train in range(self.past_steps, self.num_updates):
+        for self.n_train in range(self.updates_remaining):
             self.check_params()
+            self.plot_trg_params()
             self.train()
 
 

@@ -30,7 +30,7 @@ class Evaluator(object):
         ''' frozen: we are not in the main training loop, but evaluating frozen model separately'''
         if frozen:
             self.win_eval = None
-            past_steps = args.past_steps
+            past_frames = args.past_frames
         self.frozen = frozen
        #eval_args.render = True
         self.device = device
@@ -46,10 +46,10 @@ class Evaluator(object):
        #        setattr(self, 'eval_log_dir_col_{}'.format(i), eval_log_dir)
         if frozen:
             if 'GameOfLife' in args.env_name:
-                self.eval_log_dir = args.log_dir + "/eval_{}-steps_w{}_{}rec_{}s_{}pl".format(past_steps,
+                self.eval_log_dir = args.log_dir + "/eval_{}-frames_w{}_{}rec_{}s_{}pl".format(past_frames,
                         args.map_width, args.n_recs, args.max_step, args.prob_life, '.1f')
             else:
-                self.eval_log_dir = args.log_dir + "/eval_{}-steps_w{}_{}rec_{}s".format(past_steps,
+                self.eval_log_dir = args.log_dir + "/eval_{}-frames_w{}_{}rec_{}f".format(past_frames,
                         args.map_width, args.n_recs, args.max_step, '.1f')
             merge_col_logs = True
         else:
