@@ -4,13 +4,13 @@ import os
 import time
 from collections import deque
 import gym
+import csv
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from shutil import copyfile
-import csv
 
 from arguments import get_args
 from envs import make_vec_envs
@@ -21,6 +21,7 @@ from visualize import Plotter
 from evaluate import Evaluator
 import algo
 
+import gym_pcgrl
 
 def main():
     trainer = Trainer()
@@ -103,12 +104,9 @@ class Trainer():
             win_eval = None
             self.win_eval = win_eval
         print('env name: {}'.format(args.env_name))
-        if 'GameOfLife' in args.env_name:
-            num_actions = 1
         envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                 args.gamma, args.log_dir, args.add_timestep, device, False, None,
                 args=args)
-
         if isinstance(envs.observation_space, gym.spaces.Discrete):
             num_inputs = envs.observation_space.n
         elif isinstance(envs.observation_space, gym.spaces.Box):
@@ -137,6 +135,17 @@ class Trainer():
                     num_actions = 19 # TODO: have this already from env
             elif 'GameOfLife' in args.env_name:
                 num_actions = 1
+            # for PCGRL
+            if '-wide' in args.env_name:
+                #TODO: should be done like this for all envs!
+                print('obs space shape: {}'.format(envs.observation_space.shape))
+                map_width = envs.observation_space.shape[1]
+                map_height = envs.observation_space.shape[2]
+                out_w = map_width
+                out_h = map_height
+                print(envs.action_space.n)
+                num_actions = envs.action_space.n / (map_width * map_height)
+                num_actions = int(num_actions)
             else:
                 num_actions = envs.action_space.n
         elif isinstance(envs.action_space, gym.spaces.Box):
@@ -280,10 +289,6 @@ class Trainer():
         self.model = model = actor_critic.base
         self.reset_eval = False
         plotter = None
-        env_param_bounds = envs.get_param_bounds()
-        # in case we want to change this dynamically in the future (e.g., we may
-        # not know how much traffic the agent can possibly produce in Micropolis)
-        envs.set_param_bounds(env_param_bounds) # start with default bounds
 
         if args.model == 'FractalNet' or args.model == 'fractal':
             n_cols = model.n_cols
@@ -295,10 +300,6 @@ class Trainer():
             n_cols = 0
             col_step = 1
         self.col_step = col_step
-        env_param_bounds = envs.get_param_bounds()
-        # in case we want to change this dynamically in the future (e.g., we may
-        # not know how much traffic the agent can possibly produce in Micropolis)
-        envs.set_param_bounds(env_param_bounds) # start with default bounds
         self.updates_remaining = updates_remaining
         self.envs = envs
         self.start = start

@@ -6,19 +6,19 @@ import time
 import gym
 import numpy as np
 import torch
+from gym.spaces.box import Box
+
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
-from gym.spaces.box import Box
-
 #from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from dummy_vec_env import DDummyVecEnv as DummyVecEnv
 from gym_city.wrappers import Extinguisher, ImRender
+from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
@@ -156,6 +156,22 @@ except ImportError:
 #    pass
 
 
+class ToPytorchOrder(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = gym.spaces.Box(low=0, high=self.observation_space.high[0, 0, 0],
+                shape=(self.observation_space.shape[-1], self.shape[0], self.shape[1]))
+
+    def reset(self):
+        obs = self.env.reset()
+        obs = obs.swapaxes(0, 2)
+        return obs
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        obs = obs.swapaxes(0, 2)
+        return obs, reward, done, info
+
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None,
         args=None):
     ''' return a function which starts the environment'''
@@ -189,6 +205,11 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         num_proc=args.num_processes)
             else:
                 multi_env = False
+
+            if '-wide' in env_id:
+                env = ActionMapImagePCGRLWrapper(env_id)
+                env = ToPytorchOrder(env)
+                env = MaxStep(env, args.max_step)
 
             if 'micropolis' in env_id.lower():
                 power_puzzle = False
@@ -254,6 +275,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = TransposeImage(env)
 
         #FIXME: this is just hack to make our extinction experiment loop work.
+
         if args.extinction_type is not None:
             env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 

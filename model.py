@@ -9,10 +9,9 @@ import math
 
 import numpy as np
 import copy
-
-# from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
 from ConvLSTMCell import ConvLSTMCell
-#from torchviz import make_dot
+# from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
+# from torchviz import make_dot
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -26,20 +25,20 @@ class Policy(nn.Module):
         self.curiosity = curiosity
         self.args = args
 
-        # TODO this info should come directly from the environment. Redundant code.
-
-        if 'GameOfLife' in args.env_name:
-            num_actions = 1
-        elif 'Micropolis' in args.env_name:
-            if args.power_puzzle:
-                num_actions = 1
-            else:
-                num_actions = 19
-        self.multi_env = False
-        if 'GoLMultiEnv' in args.env_name:
-            self.multi_env = True
-            num_actions = 1
-        self.num_actions = num_actions
+        num_actions = base_kwargs.get('num_actions')
+       ## TODO this info should come directly from the environment. Redundant code.
+       #if 'GameOfLife' in args.env_name:
+       #    num_actions = 1
+       #elif 'Micropolis' in args.env_name:
+       #    if args.power_puzzle:
+       #        num_actions = 1
+       #    else:
+       #        num_actions = 19
+       #self.multi_env = False
+       #if 'GoLMultiEnv' in args.env_name:
+       #    self.multi_env = True
+       #    num_actions = 1
+       #self.num_actions = num_actions
         base_kwargs = {**base_kwargs, **{'num_actions': num_actions}}
 
 
