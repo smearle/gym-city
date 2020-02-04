@@ -327,13 +327,14 @@ class Trainer():
             else:
                 pass
         else:
-            if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name or multi_env):
-                envs.render()
-                envs.venv.venv.render()
-            else:
-                pass
-               #envs.venv.venv.remotes[0].send(('render', None))
-               #envs.venv.venv.remotes[0].recv()
+            pass
+           #if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name or multi_env):
+           #    envs.render()
+           #    envs.venv.venv.render()
+           #else:
+           #    pass
+           #   #envs.venv.venv.remotes[0].send(('render', None))
+           #   #envs.venv.venv.remotes[0].recv()
 
     def step(self):
         player_act = self.player_act

@@ -156,11 +156,27 @@ except ImportError:
 #    pass
 
 
+class Render(gym.Wrapper):
+    """
+    Wrapper to render environments of a particular rank.
+    """
+    def __init__(self, env, rank, **kwargs):
+        super().__init__(env)
+        self.rank = rank
+        self.render_gui = kwargs.get('render', False)
+        self.render_rank = kwargs.get('render_rank', 0)
+
+    def step(self, action):
+        if self.render_gui and self.rank == self.render_rank:
+            self.render()
+        return super().step(action)
+
+
 class ToPytorchOrder(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.observation_space = gym.spaces.Box(low=0, high=self.observation_space.high[0, 0, 0],
-                shape=(self.observation_space.shape[-1], self.shape[0], self.shape[1]))
+                shape=(self.observation_space.shape[-1], self.shape[1], self.shape[0]))
 
     def reset(self):
         obs = self.env.reset()
@@ -206,10 +222,12 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             else:
                 multi_env = False
 
+            #FIXME: make this recognize pcgrl environments in general
             if '-wide' in env_id:
                 env = ActionMapImagePCGRLWrapper(env_id)
                 env = ToPytorchOrder(env)
                 env = MaxStep(env, args.max_step)
+                env = Render(env, rank, render = render_gui, render_rank=0)
 
             if 'micropolis' in env_id.lower():
                 power_puzzle = False
