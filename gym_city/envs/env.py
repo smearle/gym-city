@@ -36,14 +36,14 @@ class MicropolisEnv(core.Env):
                 'traffic': 2000,
                 # i believe one plant is worth 12, the other 16?
                 'num_plants': 14,
-                'mayor_rating': 100
+                'mayor_rating': 10
                 })
         self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
         self.param_bounds = OrderedDict({
                 'res_pop': (0, 750),
                 'com_pop': (0, 100),
                 'ind_pop': (0, 100),
-                'traffic': (0, 2000),
+                'traffic': (0, 5000),
                 'num_plants': (0, 100),
                 'mayor_rating': (0, 100)
                 })
@@ -51,8 +51,8 @@ class MicropolisEnv(core.Env):
                 'res_pop': 1/4,
                 'com_pop': 1,
                 'ind_pop': 1,
-                'traffic': 1,
-                'num_plants': 0,
+                'traffic': 1/20,
+                'num_plants': 100,
                 'mayor_rating': 0,
                 })
 

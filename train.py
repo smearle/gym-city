@@ -159,12 +159,22 @@ class Trainer():
         if args.auto_expand:
             args.n_recs -= 1
         actor_critic = Policy(envs.observation_space.shape, envs.action_space,
-            base_kwargs={'map_width': args.map_width, 'num_actions': num_actions,
-                'recurrent': args.recurrent_policy, 'prebuild': args.prebuild,
-                'in_w': in_w, 'in_h': in_h, 'num_inputs': num_inputs,
-                'out_w': out_w, 'out_h': out_h},
-                         curiosity=args.curiosity, algo=args.algo,
-                         model=args.model, args=args)
+                              base_kwargs={
+                                  'map_width': args.map_width,
+                                  'recurrent': args.recurrent_policy,
+                                  'prebuild': args.prebuild,
+                                  'in_w': in_w,
+                                  'in_h': in_h,
+                                  'num_inputs': num_inputs,
+                                  'out_w': out_w,
+                                  'out_h': out_h,
+                                  'num_actions': num_actions,
+                                  },
+                              curiosity=args.curiosity,
+                              algo=args.algo,
+                              model=args.model,
+                              args=args
+                              )
         if not agent:
             agent = init_agent(actor_critic, args)
         if args.auto_expand:

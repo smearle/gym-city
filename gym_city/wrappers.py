@@ -13,7 +13,7 @@ class Extinguisher(gym.Wrapper):
     def __init__(self, env,
                  extinction_type=None,
                  extinction_prob=0.1,
-                 xt_dels=25
+                 xt_dels=15
                  ):
         super(Extinguisher, self).__init__(env)
         self.set_extinction_type(extinction_type, extinction_prob, xt_dels)
