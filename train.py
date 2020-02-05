@@ -146,8 +146,6 @@ class Trainer():
                 print(envs.action_space.n)
                 num_actions = envs.action_space.n / (map_width * map_height)
                 num_actions = int(num_actions)
-            else:
-                num_actions = envs.action_space.n
         elif isinstance(envs.action_space, gym.spaces.Box):
             if len(envs.action_space.shape) == 3:
                 out_w = envs.action_space.shape[1]
@@ -358,8 +356,6 @@ class Trainer():
 
         # Observe reward and next obs
         obs, reward, done, infos = envs.step(action)
-        if all(done): # usually this is done elsewhere...
-            obs = envs.reset()
 
         player_act = None
         if args.render:
@@ -395,7 +391,9 @@ class Trainer():
                             feature_state, feature_state_pred, action_bin, action_dist_pred)
         else:
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks)
-        self.n_frames += self.args.num_steps * self.args.num_processes
+        self.n_frames += self.args.num_processes
+
+        return obs, reward, done, infos
 
 
 

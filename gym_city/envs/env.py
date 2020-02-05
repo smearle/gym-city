@@ -30,7 +30,7 @@ class MicropolisEnv(core.Env):
         self.static_player_builds = False
     ### MIXED
         self.city_trgs = OrderedDict({
-                'res_pop': 500,
+                'res_pop': 200,
                 'com_pop': 50,
                 'ind_pop': 50,
                 'traffic': 2000,
@@ -48,7 +48,7 @@ class MicropolisEnv(core.Env):
                 'mayor_rating': (0, 100)
                 })
         self.weights = OrderedDict({
-                'res_pop': 1,
+                'res_pop': 1/4,
                 'com_pop': 1,
                 'ind_pop': 1,
                 'traffic': 1,

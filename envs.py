@@ -16,9 +16,11 @@ from baselines.common.vec_env.vec_normalize import \
 #from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from dummy_vec_env import DDummyVecEnv as DummyVecEnv
 from gym_city.wrappers import Extinguisher, ImRender
+from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
+
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
@@ -169,6 +171,7 @@ class Render(gym.Wrapper):
     def step(self, action):
         if self.render_gui and self.rank == self.render_rank:
             self.render()
+
         return super().step(action)
 
 
@@ -181,11 +184,13 @@ class ToPytorchOrder(gym.Wrapper):
     def reset(self):
         obs = self.env.reset()
         obs = obs.swapaxes(0, 2)
+
         return obs
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
         obs = obs.swapaxes(0, 2)
+
         return obs, reward, done, info
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None,
@@ -223,6 +228,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 multi_env = False
 
             #FIXME: make this recognize pcgrl environments in general
+
             if '-wide' in env_id:
                 env = ActionMapImagePCGRLWrapper(env_id)
                 env = ToPytorchOrder(env)
