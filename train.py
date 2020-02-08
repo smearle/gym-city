@@ -1,27 +1,28 @@
 import copy
+import csv
 import glob
 import os
 import time
 from collections import deque
+from shutil import copyfile
+
 import gym
-import csv
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from shutil import copyfile
 
+import algo
+import gym_pcgrl
 from arguments import get_args
 from envs import make_vec_envs
+from evaluate import Evaluator
 from model import Policy
-from storage import RolloutStorage, CuriosityRolloutStorage
+from storage import CuriosityRolloutStorage, RolloutStorage
 from utils import get_vec_normalize
 from visualize import Plotter
-from evaluate import Evaluator
-import algo
 
-import gym_pcgrl
 
 def main():
     trainer = Trainer()
@@ -45,6 +46,7 @@ def init_agent(actor_critic, args):
                 max_grad_norm=args.max_grad_norm,
                 acktr=True,
                 curiosity=args.curiosity, args=args)
+
     return agent
 
 class Teacher():
@@ -61,16 +63,19 @@ class Trainer():
         import game_of_life
         self.fieldnames = self.get_fieldnames()
         self.n_frames = 0
+
         if args is None:
             args = get_args()
         args.log_dir = args.save_dir + '/logs'
         assert args.algo in ['a2c', 'ppo', 'acktr']
+
         if args.recurrent_policy:
             assert args.algo in ['a2c', 'ppo'], \
                     'Recurrent policy is not implemented for ACKTR'
 
 
         torch.manual_seed(args.seed)
+
         if args.cuda:
             print('CUDA ENABLED')
             torch.cuda.manual_seed(args.seed)
@@ -85,6 +90,7 @@ class Trainer():
             os.makedirs(args.log_dir)
         except OSError:
             files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
+
             for f in files:
                 if args.overwrite:
                     os.remove(f)
@@ -103,77 +109,13 @@ class Trainer():
             win_eval = None
             self.win_eval = win_eval
         print('env name: {}'.format(args.env_name))
-        envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                args.gamma, args.log_dir, args.add_timestep, device, False, None,
-                args=args)
-        if isinstance(envs.observation_space, gym.spaces.Discrete):
-            num_inputs = envs.observation_space.n
-        elif isinstance(envs.observation_space, gym.spaces.Box):
-            if 'golmulti' in args.env_name.lower():
-                multi_env = True
-                observation_space_shape = envs.observation_space.shape[1:]
-            else:
-                multi_env = False
-                observation_space_shape = envs.observation_space.shape
-            self.multi_env = multi_env
-            if len(observation_space_shape) == 3:
-                in_w = observation_space_shape[1]
-                in_h = observation_space_shape[2]
-            else:
-                in_w = 1
-                in_h = 1
-            num_inputs = observation_space_shape[0]
-        if isinstance(envs.action_space, gym.spaces.Discrete) or\
-            isinstance(envs.action_space, gym.spaces.Box):
-            out_w = args.map_width
-            out_h = args.map_width
-            if 'Micropolis' in args.env_name: #otherwise it's set
-                if args.power_puzzle:
-                    num_actions = 1
-                else:
-                    num_actions = 19 # TODO: have this already from env
-            elif 'GameOfLife' in args.env_name:
-                num_actions = 1
-            # for PCGRL
-            if '-wide' in args.env_name:
-                #TODO: should be done like this for all envs!
-                print('obs space shape: {}'.format(envs.observation_space.shape))
-                map_width = envs.observation_space.shape[1]
-                map_height = envs.observation_space.shape[2]
-                out_w = map_width
-                out_h = map_height
-                print(envs.action_space.n)
-                num_actions = envs.action_space.n / (map_width * map_height)
-                num_actions = int(num_actions)
-        elif isinstance(envs.action_space, gym.spaces.Box):
-            if len(envs.action_space.shape) == 3:
-                out_w = envs.action_space.shape[1]
-                out_h = envs.action_space.shape[2]
-            elif len(envs.action_space.shape) == 1:
-                out_w = 1
-                out_h = 1
-            num_actions = envs.action_space.shape[-1]
-        print('num actions {}'.format(num_actions))
 
+        envs = self.make_vec_envs(args)
+        self.get_space_dims(envs, args)
         if args.auto_expand:
             args.n_recs -= 1
-        actor_critic = Policy(envs.observation_space.shape, envs.action_space,
-                              base_kwargs={
-                                  'map_width': args.map_width,
-                                  'recurrent': args.recurrent_policy,
-                                  'prebuild': args.prebuild,
-                                  'in_w': in_w,
-                                  'in_h': in_h,
-                                  'num_inputs': num_inputs,
-                                  'out_w': out_w,
-                                  'out_h': out_h,
-                                  'num_actions': num_actions,
-                                  },
-                              curiosity=args.curiosity,
-                              algo=args.algo,
-                              model=args.model,
-                              args=args
-                              )
+        actor_critic = self.init_policy(envs, args)
+
         if not agent:
             agent = init_agent(actor_critic, args)
         if args.auto_expand:
@@ -181,9 +123,6 @@ class Trainer():
 
         evaluator = None
         self.evaluator = evaluator
-
-
-
         vec_norm = get_vec_normalize(envs)
         self.vec_norm = vec_norm
        #saved_model = os.path.join(args.save_dir, args.env_name + '.pt')
@@ -192,6 +131,7 @@ class Trainer():
         else:
             saved_model = os.path.join(args.save_dir, args.env_name + '.tar')
         self.checkpoint = None
+
         if os.path.exists(saved_model) and not args.overwrite:
            #print('current actor_critic params: {}'.format(actor_critic.parameters()))
             checkpoint = torch.load(saved_model)
@@ -200,6 +140,7 @@ class Trainer():
             actor_critic.load_state_dict(checkpoint['model_state_dict'])
             opt = agent.optimizer.state_dict()
             opt_load = checkpoint['optimizer_state_dict']
+
             for o, l in zip(opt, opt_load):
                #print(o, l)
                 param = opt[o]
@@ -222,6 +163,7 @@ class Trainer():
            #actor_critic.cuda()
            #agent = init_agent(actor_critic, saved_args)
             agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
             if args.auto_expand:
                 if not args.n_recs - saved_args.n_recs == 1:
                     print('can expand by 1 rec only from saved model, not {}'.format(args.n_recs - saved_args.n_recs))
@@ -273,10 +215,12 @@ class Trainer():
         updates_remaining = int(args.num_frames - past_frames) // (args.num_steps * args.num_processes)
         self.n_frames = self.n_frames + past_frames
         self.past_frames = past_frames
+
         if 'LSTM' in args.model:
             recurrent_hidden_state_size = actor_critic.base.get_recurrent_state_size()
         else:
             recurrent_hidden_state_size = actor_critic.recurrent_hidden_state_size
+
         if args.curiosity:
             rollouts = CuriosityRolloutStorage(args.num_steps, args.num_processes,
                                 envs.observation_space.shape, envs.action_space,
@@ -299,6 +243,7 @@ class Trainer():
 
         if args.model == 'FractalNet' or args.model == 'fractal':
             n_cols = model.n_cols
+
             if args.rule == 'wide1' and args.n_recs > 3:
                 col_step = 3
             else:
@@ -318,9 +263,95 @@ class Trainer():
         self.episode_rewards = episode_rewards
         self.n_cols = n_cols
 
+    def get_space_dims(self, envs, args):
+        if isinstance(envs.observation_space, gym.spaces.Discrete):
+            num_inputs = envs.observation_space.n
+        elif isinstance(envs.observation_space, gym.spaces.Box):
+            if 'golmulti' in args.env_name.lower():
+                multi_env = True
+                observation_space_shape = envs.observation_space.shape[1:]
+            else:
+                multi_env = False
+                observation_space_shape = envs.observation_space.shape
+            self.multi_env = multi_env
+
+            if len(observation_space_shape) == 3:
+                in_w = observation_space_shape[1]
+                in_h = observation_space_shape[2]
+            else:
+                in_w = 1
+                in_h = 1
+            num_inputs = observation_space_shape[0]
+
+        if isinstance(envs.action_space, gym.spaces.Discrete) or\
+            isinstance(envs.action_space, gym.spaces.Box):
+            out_w = args.map_width
+            out_h = args.map_width
+
+            if 'Micropolis' in args.env_name: #otherwise it's set
+                if args.power_puzzle:
+                    num_actions = 1
+                else:
+                    num_actions = 19 # TODO: have this already from env
+            elif 'GameOfLife' in args.env_name:
+                num_actions = 1
+            # for PCGRL
+
+            if '-wide' in args.env_name:
+                #TODO: should be done like this for all envs!
+                print('obs space shape: {}'.format(envs.observation_space.shape))
+                map_width = envs.observation_space.shape[1]
+                map_height = envs.observation_space.shape[2]
+                out_w = map_width
+                out_h = map_height
+                print(envs.action_space.n)
+                num_actions = envs.action_space.n / (map_width * map_height)
+                num_actions = int(num_actions)
+        elif isinstance(envs.action_space, gym.spaces.Box):
+            if len(envs.action_space.shape) == 3:
+                out_w = envs.action_space.shape[1]
+                out_h = envs.action_space.shape[2]
+            elif len(envs.action_space.shape) == 1:
+                out_w = 1
+                out_h = 1
+            num_actions = envs.action_space.shape[-1]
+        print('num actions {}'.format(num_actions))
+        self.in_w, self.in_h, self.num_inputs = in_w, in_h, num_inputs
+        self.out_w, self.out_h, self.num_actions = out_w, out_h, num_actions
+
+
+    def make_vec_envs(self, args):
+        envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
+                args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
+                args=args)
+        return envs
+
+    def init_policy(self, envs, args):
+        actor_critic = Policy(envs.observation_space.shape, envs.action_space,
+                              base_kwargs={
+                                  'map_width': args.map_width,
+                                  'recurrent': args.recurrent_policy,
+                                  'prebuild': args.prebuild,
+                                  'in_w': self.in_w,
+                                  'in_h': self.in_h,
+                                  'num_inputs': self.num_inputs,
+                                  'out_w': self.out_w,
+                                  'out_h': self.out_h,
+                                  'num_actions': self.num_actions,
+                                  },
+                              curiosity=args.curiosity,
+                              algo=args.algo,
+                              model=args.model,
+                              args=args
+                            )
+
+        return actor_critic
+
+
     def main(self):
 
         # Main training loop
+
         for self.n_train in range(self.updates_remaining):
             self.train()
 
@@ -328,6 +359,7 @@ class Trainer():
         args = self.args
         envs = self.envs
         multi_env = self.multi_env
+
         if self.args.num_processes == 1:
             if not ('Micropolis' in args.env_name or 'GameOfLife' in args.env_name or multi_env):
                 envs.venv.venv.render()
@@ -367,12 +399,14 @@ class Trainer():
         obs, reward, done, infos = envs.step(action)
 
         player_act = None
+
         if args.render:
             pass
            #print('infos be: {}'.format(infos))
            #if infos[0]:
            #    if 'player_move' in infos[0].keys():
            #        player_act = infos[0]['player_move']
+
         if args.curiosity:
             # run icm
             with torch.no_grad():
@@ -383,11 +417,14 @@ class Trainer():
                         )
 
             intrinsic_reward = args.eta * ((feature_state - feature_state_pred).pow(2)).sum() / 2.
+
             if args.no_reward:
                 reward = 0
             reward += intrinsic_reward.cpu()
+
         if type(infos) is dict:
             infos = [infos]
+
         for info in infos:
             if 'episode' in info.keys():
                 episode_rewards.append(info['episode']['r'])
@@ -395,6 +432,7 @@ class Trainer():
         # If done then clean the history of observations.
         masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                    for done_ in done])
+
         if args.curiosity:
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks,
                             feature_state, feature_state_pred, action_bin, action_dist_pred)
@@ -423,16 +461,20 @@ class Trainer():
         device = self.device
         vec_norm = self.vec_norm
         n_frames = self.n_frames
+
         if self.reset_eval:
             obs = envs.reset()
             rollouts.obs[0].copy_(obs)
             rollouts.to(device)
             self.reset_eval = False
+
         if args.model == 'FractalNet' and args.drop_path:
             model.set_drop_path()
+
         if args.model == 'fixed' and model.RAND:
             model.num_recursions = random.randint(1, model.map_width * 2)
         self.player_act = None
+
         for self.n_step in range(args.num_steps):
             # Sample actions
             _, latest_rewards, _, infos = self.step()
@@ -443,6 +485,7 @@ class Trainer():
                                                 rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
+
         if args.curiosity:
             value_loss, action_loss, dist_entropy, fwd_loss, inv_loss = agent.update(rollouts)
         else:
@@ -472,6 +515,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                        round(np.min(episode_rewards), 6),
                        round(np.max(episode_rewards), 6), round(dist_entropy, 6),
                        round(value_loss, 6), round(action_loss, 6)))
+
             if args.curiosity:
                 print("fwd/inv icm loss {:.1f}/{:.1f}\n".
                 format(
@@ -479,12 +523,14 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and n_train % args.eval_interval == 0):
+
             if evaluator is None:
                 evaluator = Evaluator(args, actor_critic, device, envs=envs, vec_norm=vec_norm,
                         fieldnames=self.fieldnames)
                 self.evaluator = evaluator
 
             col_idx = [-1, *[i for i in range(0, n_cols, self.col_step)]]
+
             for i in col_idx:
                 evaluator.evaluate(column=i)
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
@@ -492,6 +538,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             viz = self.viz
             win_eval = self.win_eval
             graph_name = self.graph_name
+
             if args.vis: #and n_train % args.vis_interval == 0:
                 try:
                     # Sometimes monitor doesn't properly flush the outputs
@@ -522,6 +569,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             ob_rms = getattr(get_vec_normalize(envs), 'ob_rms', None)
             save_model = copy.deepcopy(actor_critic)
             save_agent = copy.deepcopy(agent)
+
             if args.cuda:
                 save_model.cpu()
             optim_save = save_agent.optimizer.state_dict()
@@ -555,6 +603,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+
         return infos
 
     def get_save_dict(self):
@@ -572,6 +621,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             'ob_rms': ob_rms,
             'args': args,
             }
+
         return d
 
 
