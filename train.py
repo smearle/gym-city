@@ -55,15 +55,14 @@ class Trainer():
     def get_fieldnames(self):
         return ['r','l','t','e']
 
-    def __init__(self):
+    def __init__(self, args=None):
         import random
         import gym_city
         import game_of_life
-
         self.fieldnames = self.get_fieldnames()
         self.n_frames = 0
-
-        args = get_args()
+        if args is None:
+            args = get_args()
         args.log_dir = args.save_dir + '/logs'
         assert args.algo in ['a2c', 'ppo', 'acktr']
         if args.recurrent_policy:
@@ -436,7 +435,7 @@ class Trainer():
         self.player_act = None
         for self.n_step in range(args.num_steps):
             # Sample actions
-            _, _, _, infos = self.step()
+            _, latest_rewards, _, infos = self.step()
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],

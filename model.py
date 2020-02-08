@@ -470,7 +470,7 @@ class FractalNet(NNBase):
                  map_width=16, n_conv_recs=2, n_recs=1,
                  intra_shr=False, inter_shr=False,
                  num_actions=19,
-                 n_player_actions=5,
+                 n_player_actions=4,
                  rule='extend',
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None,
                  val_kern=3):
@@ -513,19 +513,19 @@ class FractalNet(NNBase):
             init_ = self.init_
             linit_ = self.linit_
             print(self.n_out_chan, n_player_actions)
-            ply_c0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
-            ply_c1 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
-            ply_c2 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
+           #ply_c0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
+           #ply_c1 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
+           #ply_c2 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
             self.player_head = nn.Sequential(
-                    ply_c0,
-                    nn.ReLU(),
-                    ply_c1,
-                    nn.ReLU(),
-                    ply_c2,
-                    nn.ReLU(),
+           #        ply_c0,
+           #        nn.ReLU(),
+           #        ply_c1,
+           #        nn.ReLU(),
+           #        ply_c2,
+           #        nn.ReLU(),
                     nn.Flatten(),
-                    linit_(nn.Linear(int(self.map_width ** 2 * self.n_out_chan / 4), n_player_actions)),
-                    nn.ReLU(),
+                    linit_(nn.Linear(int(self.map_width ** 2 * self.n_out_chan ), n_player_actions)),
+                   #nn.ReLU(),
                     )
 
     # TODO: should be part of a subclass
