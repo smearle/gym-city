@@ -49,7 +49,7 @@ class Extinguisher(gym.Wrapper):
             curr_dels = self.localWipe()
         if extinction_type == 'random':
             curr_dels = self.ranDemolish()
-        print('{} deletions'.format(curr_dels))
+       #print('{} deletions'.format(curr_dels))
         return curr_dels
 
     def localWipe(self):
@@ -253,6 +253,6 @@ class ImRender(gym.Wrapper):
         if self.unwrapped.num_step % self.save_interval == 0:
             log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
                 self.unwrapped.rank, self.n_episode, self.num_step))
-           #print(log_dir)
-           #cv2.imwrite(log_dir, self.image)
+            print(log_dir)
+            cv2.imwrite(log_dir, self.image)
             self.n_saved += 1

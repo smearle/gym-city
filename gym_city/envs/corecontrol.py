@@ -102,7 +102,7 @@ class MicropolisControl():
                 'Water',
                 'Land',
                 'Forest',
-                'Nil' # the agent takes no action
+               #'Nil' # the agent takes no action
                 ]
         #['Residential','Commercial','Industrial','Road','Wire','NuclearPowerPlant', 'Park', 'Clear']
         # since query is exluded for now:

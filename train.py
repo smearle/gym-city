@@ -436,7 +436,7 @@ class Trainer():
         self.player_act = None
         for self.n_step in range(args.num_steps):
             # Sample actions
-            self.step()
+            _, _, _, infos = self.step()
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],
@@ -556,6 +556,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+        return infos
 
     def get_save_dict(self):
         agent = self.agent

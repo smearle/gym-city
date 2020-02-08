@@ -85,12 +85,16 @@ if isinstance(env.action_space, gym.spaces.Discrete):
         num_actions = env.venv.venv.envs[0].num_tools
     elif 'GameOfLife' in env_name:
         num_actions = 1
+    elif '-wide' in env_name:
+        num_actions = env.observation_space.shape[-1]
     else:
         num_actions = env.action_space.n
 elif isinstance(env.action_space, gym.spaces.Box):
     out_w = env.action_space.shape[0]
     out_h = env.action_space.shape[1]
     num_actions = env.action_space.shape[-1]
+
+print('num_actions: {}'.format(num_actions))
 
 #actor_critic, ob_rms = \
 #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
@@ -104,7 +108,7 @@ actor_critic = Policy(env.observation_space.shape, env.action_space,
         base_kwargs={'map_width': args.map_width,
                      'recurrent': args.recurrent_policy,
                     'in_w': in_w, 'in_h': in_h, 'num_inputs': num_inputs,
-            'out_w': out_w, 'out_h': out_h },
+                    'out_w': out_w, 'out_h': out_h, 'num_actions':num_actions},
                      curiosity=args.curiosity, algo=saved_args.algo,
                      model=saved_args.model, args=saved_args)
 actor_critic.to(device)
@@ -123,6 +127,7 @@ vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
     vec_norm.ob_rms = ob_rms
+actor_critic.to(device)
 
 recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)

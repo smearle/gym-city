@@ -304,7 +304,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 
         if args.im_render:
-            print('wrapping id imrender')
+            print('wrapping in imrender')
             env = ImRender(env, log_dir, rank)
 
         assert env is not None

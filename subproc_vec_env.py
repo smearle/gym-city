@@ -45,11 +45,12 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.send(None)
         elif hasattr(env, cmd):
             cmd_fn = getattr(env, cmd)
-            print(data)
             if isinstance(data, dict):
                 ret_val = cmd_fn(**data)
-            else:
+            elif isinstance(data, list) or isinstance(data, tuple):
                 ret_val = cmd_fn(*data)
+            else:
+                ret_val = data
             remote.send(ret_val)
         else:
             print('invalid command, data: {}, {}'.format(cmd, data))
@@ -111,6 +112,20 @@ class SubprocVecEnv(VecEnv):
     def set_params(self, params):
         for remote in self.remotes:
             remote.send(('set_params', params))
+            remote.recv()
+
+        return
+
+    def set_active_agent(self, n_agent):
+        for remote in self.remotes:
+            remote.send(('set_active_agent', [n_agent]))
+            remote.recv()
+
+        return
+
+    def set_map(self, map):
+        for remote in self.remotes:
+            remote.send(('set_map', [map]))
             remote.recv()
 
         return

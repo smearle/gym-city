@@ -50,6 +50,9 @@ class DDummyVecEnv(DummyVecEnv):
     def get_param_bounds(self):
         return self.envs[0].get_param_bounds()
 
+    def set_active_agent(self, n_agent):
+        for env in self.envs:
+            env.set_active_agent(n_agent)
 
     def set_param_bounds(self, bounds):
         for env in self.envs:
@@ -63,6 +66,10 @@ class DDummyVecEnv(DummyVecEnv):
     def setMapSize(self, size, **kwargs):
         for env in self.envs:
             env.setMapSize(size, **kwargs)
+
+    def set_map(self, map):
+        for env in self.envs:
+            env.set_map(map)
 
     def set_extinction_type(self, *args):
         for env in self.envs:

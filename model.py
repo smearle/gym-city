@@ -208,6 +208,8 @@ class NNBase(nn.Module):
 
         self._hidden_size = hidden_size
         self._recurrent = recurrent
+        # for multi-headed agents
+        self.active_agent = 0
 
         if recurrent:
             self.gru = nn.GRUCell(recurrent_input_size, hidden_size)
@@ -467,7 +469,9 @@ class FractalNet(NNBase):
     def __init__(self,num_inputs, recurrent=False, hidden_size=512,
                  map_width=16, n_conv_recs=2, n_recs=1,
                  intra_shr=False, inter_shr=False,
-                 num_actions=19, rule='extend',
+                 num_actions=19,
+                 n_player_actions=5,
+                 rule='extend',
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64, prebuild=None,
                  val_kern=3):
         super(FractalNet, self).__init__(recurrent, hidden_size, hidden_size)
@@ -492,13 +496,41 @@ class FractalNet(NNBase):
         self.n_cols = self.block_0.n_cols
 
         n_out_chan = block_chans[-1]
+        self.n_out_chan = n_out_chan
         self.critic_dwn = init_(nn.Conv2d(n_out_chan, n_out_chan, val_kern, 2, 1))
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
+        self.linit_ = lambda m: init(m,
+           nn.init.orthogonal_,
+           lambda x: nn.init.constant_(x, 0))
+        self.init_ = init_
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
         self.active_column = None
+       #self.player_head = None
+        if True:
+            init_ = self.init_
+            linit_ = self.linit_
+            print(self.n_out_chan, n_player_actions)
+            ply_c0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
+            ply_c1 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
+            ply_c2 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
+            self.player_head = nn.Sequential(
+                    ply_c0,
+                    nn.ReLU(),
+                    ply_c1,
+                    nn.ReLU(),
+                    ply_c2,
+                    nn.ReLU(),
+                    nn.Flatten(),
+                    linit_(nn.Linear(int(self.map_width ** 2 * self.n_out_chan / 4), n_player_actions)),
+                    nn.ReLU(),
+                    )
+
+    # TODO: should be part of a subclass
+    def add_player_head(self, n_player_actions):
+        pass
 
     def auto_expand(self):
         self.block_0.auto_expand() # assumption
@@ -509,7 +541,10 @@ class FractalNet(NNBase):
         for i in range(self.num_blocks):
             block = getattr(self, 'block_{}'.format(i))
             x = F.relu(block(x, rnn_hxs, masks))
-        actions = self.actor_out(x)
+        if self.active_agent == 0:
+            actions = self.actor_out(x)
+        elif self.active_agent == 1:
+            actions = self.player_head(x)
         values = x
         for i in range(int(math.log(self.map_width, 2))):
             values = F.relu(self.critic_dwn(values))

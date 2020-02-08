@@ -104,6 +104,7 @@ class ExtinctionEvaluator():
         if isinstance(envs.action_space, gym.spaces.Discrete):
             out_w = 1
             out_h = 1
+            print(envs.action_space.n / (in_w*in_h))
             num_actions = int(envs.action_space.n // (in_w * in_h))
            #if 'Micropolis' in env_name:
            #    num_actions = env.venv.venv.envs[0].num_tools
@@ -115,6 +116,7 @@ class ExtinctionEvaluator():
             out_w = envs.action_space.shape[0]
             out_h = envs.action_space.shape[1]
             num_actions = envs.action_space.shape[-1]
+        print('num_actions: {}'.format(num_actions))
         # We need to use the same statistics for normalization as used in training
         #actor_critic, ob_rms = \
         #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
@@ -125,7 +127,7 @@ class ExtinctionEvaluator():
                 base_kwargs={'map_width': args.map_width,
                              'recurrent': args.recurrent_policy,
                             'in_w': in_w, 'in_h': in_h, 'num_inputs': num_inputs,
-                    'out_w': out_w, 'out_h': out_h },
+                            'out_w': out_w, 'out_h': out_h , 'num_actions': num_actions},
                              curiosity=args.curiosity, algo=saved_args.algo,
                              model=saved_args.model, args=saved_args)
         actor_critic.to(device)
