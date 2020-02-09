@@ -87,9 +87,12 @@ class DesignerPlayer(Trainer):
         if 'playable_map' in infos[0] and done[0]:
             playable_map = infos[0]['playable_map']
             play_rew = self.train_player_epi(playable_map)
-            if play_rew > 0:
-                play_rew = self.args.max_step - play_rew
+           #if play_rew > 0:
+           #    play_rew = self.args.max_step - play_rew
             rew = rew + play_rew
+            print(rew)
+            dummy_rews = torch.empty((self.args.num_processes), dtype=float).fill_(rew)
+            self.rollouts.rewards[self.rollouts.step].copy_(dummy_rews)
 
         return obs, rew, done, infos
 
@@ -104,12 +107,14 @@ class DesignerPlayer(Trainer):
         ''' Trains a player for one episode on a given map. '''
        #self.envs.set_active_agent(1)
         epi_done = False
+        self.player.set_active_agent(1)
         self.player.envs.set_map(playable_map)
 
         while not epi_done:
             done, info = self.player.train()
             self.player.n_train += 1
             epi_done = done[0]
+        print(self.player.episode_rewards)
         epi_rew = self.player.episode_rewards[-1]
         self.player.visualize(self.player.plotter)
         print('epi reward', epi_rew)
