@@ -169,7 +169,7 @@ class Render(gym.Wrapper):
         self.render_rank = kwargs.get('render_rank', 0)
 
     def step(self, action):
-        if self.render_gui and self.rank == self.render_rank:
+        if self.render_gui and self.rank in [0,1]:
             self.render()
 
         return super().step(action)

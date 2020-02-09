@@ -56,7 +56,7 @@ class MicropolisEnv(core.Env):
                 'mayor_rating': 0,
                 })
 
-        self.num_params = 6
+        self.num_params = 1
         # not necessarily true but should take care of most cases
         self.max_loss = 0
         i = 0

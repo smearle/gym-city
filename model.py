@@ -1,15 +1,17 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from distributions import Categorical, Categorical2D, CategoricalPaint, DiagGaussian
-from utils import init, init_normc_
-from torchsummary import summary
+import copy
 import math
 
 import numpy as np
-import copy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchsummary import summary
+
 from ConvLSTMCell import ConvLSTMCell
+from distributions import (Categorical, Categorical2D, CategoricalPaint,
+                           DiagGaussian)
+from utils import init, init_normc_
+
 # from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
 # from torchviz import make_dot
 
@@ -50,8 +52,10 @@ class Policy(nn.Module):
                     args.model = 'fixed'
                 else:
                     base_model = globals()[args.model]
+
                 if not args.model == 'FullyConv_linVal':
                     base_kwargs['val_kern'] = args.val_kern
+
                 if args.model == 'FractalNet':
                     base_kwargs = {**base_kwargs, **{'n_recs': args.n_recs,
                             'intra_shr':args.intra_shr, 'inter_shr':args.inter_shr,
@@ -80,6 +84,7 @@ class Policy(nn.Module):
 
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape
+
             if self.args.env_name == 'MicropolisPaintEnv-v0':
                 self.dist = CategoricalPaint(num_actions=self.num_actions)
             else:
@@ -112,6 +117,7 @@ class Policy(nn.Module):
     @property
     def recurrent_hidden_state_size(self):
         """Size of rnn_hx."""
+
         return self.base.recurrent_hidden_state_size
 
     def forward(self, inputs, rnn_hxs, masks):
@@ -134,6 +140,7 @@ class Policy(nn.Module):
 
         else:
             dist = self.dist(actor_features)
+
             if player_act:
                 # force the model to sample the player-selected action
                 play_features = actor_features
@@ -159,6 +166,7 @@ class Policy(nn.Module):
                 action_bin = torch.zeros(dist.probs.shape)
                 # indexes of separate envs
                 action_ixs = torch.LongTensor(list(range(dist.probs.size(0)))).unsqueeze(1)
+
                 if self.args.cuda:
                     action_bin = action_bin.cuda()
                     action_ixs = action_ixs.cuda()
@@ -167,6 +175,7 @@ class Policy(nn.Module):
                 action_bin, action_ixs = self.action_bin, self.action_ixs
             action_i = torch.cat((action_ixs, action), 1)
             action_bin[action_i[:,0], action_i[:,1]] = 1
+
             if self.multi_env:
                 action = action_bin
                 action = action.view(actor_features.shape)
@@ -175,19 +184,23 @@ class Policy(nn.Module):
 
     def icm_act(self, inputs):
         s1, pred_s1, pred_a = self.base(inputs, None, None, icm=True)
+
         return s1, pred_s1, self.dist(pred_a).probs
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _ = self.base(inputs, rnn_hxs, masks)
+
         return value
 
     def evaluate_icm(self, inputs):
         s1, pred_s1, pred_a = self.base(inputs, None, None, icm=True)
+
         return s1, pred_s1, self.dist(pred_a).probs
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
 
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+
         if 'paint' in self.args.env_name.lower():
             dist = self.dist(actor_features)
             action = action.view(self.args.num_steps, -1)
@@ -198,6 +211,7 @@ class Policy(nn.Module):
 
             action_log_probs = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()
+
         return value, action_log_probs, dist_entropy, rnn_hxs
 
 
@@ -226,6 +240,7 @@ class NNBase(nn.Module):
     def recurrent_hidden_state_size(self):
         if self._recurrent:
             return self._hidden_size
+
         return 1
 
     @property
@@ -247,6 +262,7 @@ class NNBase(nn.Module):
             masks = masks.view(T, N, 1)
 
             outputs = []
+
             for i in range(T):
                 hx = hxs = self.gru(x[i], hxs * masks[i])
                 outputs.append(hx)
@@ -294,6 +310,7 @@ class FullyConv_Atari(NNBase):
         act = self.act(x)
        #val = x
         val = self.val(x)
+
         return val.view(val.shape[0], -1), act, rhxs
 
 class FullyConv(NNBase):
@@ -365,6 +382,7 @@ class FullyConv_linVal(NNBase):
         act = self.act(x)
         x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
         val = self.val(x_lin)
+
         return val.view(val.shape[0], -1), act, rhxs
 
 class FullyConvLSTM(NNBase):
@@ -406,10 +424,12 @@ class FullyConvLSTM(NNBase):
        #x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
        #val = self.val(x_lin)
         act = self.act(x)
+
         for i in range(int(math.log(self.map_width, 2))):
             x = F.relu(self.val_shrink(x))
        #val = x
         val = self.val(x)
+
         return val.view(val.shape[0], -1), act, rhxs
 
     def get_recurrent_state_size(self):
@@ -452,11 +472,13 @@ class MicropolisBase_FullyConvRec(NNBase):
 
         x = F.relu(self.embed(x))
         x = F.relu(self.k5(x))
+
         for i in range(10):
             x = F.relu(self.k3(x))
        #x_lin = torch.tanh(self.dense(x.view(x.shape[0], -1)))
        #val = self.val(x_lin)
         act = self.act(x)
+
         for i in range(int(math.log(self.map_width, 2))):
             x = F.relu(self.val_shrink(x))
        #val = x
@@ -485,6 +507,7 @@ class FractalNet(NNBase):
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
             nn.init.calculate_gain('relu'))
+
         for i in range(num_blocks):
             setattr(self, 'block_{}'.format(i),
                     FractalBlock(n_chan_in=block_chans[i-1], n_chan=block_chans[i],
@@ -504,33 +527,17 @@ class FractalNet(NNBase):
         self.linit_ = lambda m: init(m,
            nn.init.orthogonal_,
            lambda x: nn.init.constant_(x, 0))
-        self.init_ = init_
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
-        self.active_column = None
-       #self.player_head = None
-        if True:
-            init_ = self.init_
-            linit_ = self.linit_
-            print(self.n_out_chan, n_player_actions)
-           #ply_c0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
-           #ply_c1 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
-           #ply_c2 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 1, 1))
-            self.player_head = nn.Sequential(
-           #        ply_c0,
-           #        nn.ReLU(),
-           #        ply_c1,
-           #        nn.ReLU(),
-           #        ply_c2,
-           #        nn.ReLU(),
-                    nn.Flatten(),
-                    linit_(nn.Linear(int(self.map_width ** 2 * self.n_out_chan ), n_player_actions)),
-                   #nn.ReLU(),
-                    )
+        n_shrinks = int(math.log(self.map_width // out_w, 2))
+        actor_head = []
 
+        for i in range(n_shrinks):
+            actor_head.append(init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1)))
+            actor_head.append(nn.ReLU())
+        self.actor_head = nn.Sequential(*actor_head)
+        self.active_column = None
     # TODO: should be part of a subclass
-    def add_player_head(self, n_player_actions):
-        pass
 
     def auto_expand(self):
         self.block_0.auto_expand() # assumption
@@ -541,15 +548,16 @@ class FractalNet(NNBase):
         for i in range(self.num_blocks):
             block = getattr(self, 'block_{}'.format(i))
             x = F.relu(block(x, rnn_hxs, masks))
-        if self.active_agent == 0:
-            actions = self.actor_out(x)
-        elif self.active_agent == 1:
-            actions = self.player_head(x)
+
+        actions = self.actor_head(x)
+        actions = self.actor_out(actions)
         values = x
+
         for i in range(int(math.log(self.map_width, 2))):
             values = F.relu(self.critic_dwn(values))
         values = self.critic_out(values)
         values = values.view(values.size(0), -1)
+
         return values, actions, rnn_hxs # no recurrent states
 
     def set_drop_path(self):
@@ -558,6 +566,7 @@ class FractalNet(NNBase):
 
     def set_active_column(self, a):
         self.active_column = a
+
         for i in range(self.num_blocks):
             getattr(self, 'block_{}'.format(i)).set_active_column(a)
 
@@ -582,6 +591,7 @@ class FractalBlock(NNBase):
             self.rule, self.n_recs))
 
         self.SKIPSQUEEZE = rule == 'wide1' # actually we mean a fractal rule that grows linearly in max depth but exponentially in number of columns, rather than vice versa, with number of recursions #TODO: combine the two rules
+
         if self.rule == 'wide1':
             self.n_cols = 2 ** (self.n_recs - 1)
             print('{} cols'.format(self.n_cols))
@@ -600,12 +610,15 @@ class FractalBlock(NNBase):
             nn.init.calculate_gain('relu'))
         self.embed_chan = nn.Conv2d(num_inputs, n_chan, 1, 1, 0)
         # TODO: right now, we initialize these only as placeholders to successfully load older models, get rid of these ASAP
+
         if False and self.intracol_share:
             # how many columns with distinct sets of layers?
+
             if self.intercol_share:
                 n_unique_cols = 1
             else:
                 n_unique_cols = self.n_recs
+
             for i in range(n_unique_cols):
                 if self.intracol_share:
                     n_unique_layers = 1
@@ -613,16 +626,19 @@ class FractalBlock(NNBase):
                     n_unique_layers = 3
                 setattr(self, 'fixed_{}'.format(i), init_(nn.Conv2d(
                     self.n_chan, self.n_chan, 3, 1, 1)))
+
                 if n_unique_cols == 1 or i > 0:
 
                     setattr(self, 'join_{}'.format(i), init_(nn.Conv2d(
                         self.n_chan * 2, self.n_chan, 3, 1, 1)))
+
                     if self.rule == 'wide1' or self.rule == 'extend_sqz':
                         setattr(self, 'dwn_{}'.format(i), init_(nn.Conv2d(
                             self.n_chan, self.n_chan, 2, 2, 0)))
                         setattr(self, 'up_{}'.format(i), init_(nn.ConvTranspose2d(
                             self.n_chan, self.n_chan, 2, 2, 0)))
         f_c = None
+
         if self.rule == 'wide1':
             subfractal = SkipFractal
         elif self.rule == 'extend':
@@ -631,6 +647,7 @@ class FractalBlock(NNBase):
             else:
                 subfractal = SubFractal
         n_recs = self.n_recs
+
         for i in range(n_recs):
             f_c = subfractal(self, f_c, n_rec=i, n_chan=self.n_chan)
         self.f_c = f_c
@@ -640,6 +657,7 @@ class FractalBlock(NNBase):
 
     def auto_expand(self):
         ''' Apply a fractal expansion without introducing new weight layers.
+
         For neuroevolution or inference.'''
         self.intracol_share = False
         self.f_c = self.subfractal(self, self.f_c, n_rec=self.n_recs, n_chan=self.n_chan)
@@ -655,20 +673,25 @@ class FractalBlock(NNBase):
         x = self.embed_chan(x)
         depth = pow(2, self.n_recs - 1)
             # (column, join depth)
+
         if self.rule == 'wide1':
             net_coords = (0, self.n_recs - 1)
         else:
             net_coords = (self.n_recs - 1, depth - 1 )
         x = F.relu(self.f_c(x))
+
         return x
 
     def clear_join_masks(self):
         ''' Returns a set of join masks that will result in activation flowing
         through the entire fractal network.'''
+
         if self.rule == 'wide1':
             self.join_masks.fill(1)
+
             return
         i = 0
+
         for mask in self.join_masks:
             n_ins = len(mask)
             mask = [1]*n_ins
@@ -682,6 +705,7 @@ class FractalBlock(NNBase):
             columns are activated.'''
         self.global_drop = True
         self.local_drop = False
+
         if a == -1:
             self.f_c.reset_join_masks(True)
         else:
@@ -725,8 +749,10 @@ class SubFractal(nn.Module):
         self.n_chan = n_chan
         self.join_layer = False
         init_ = root.c_init_
+
         if f_c is not None:
             self.f_c_A = f_c
+
             if root.intercol_share:
                 self.copy_child_weights()
             self.f_c_B = f_c.mutate_copy(root)
@@ -734,8 +760,10 @@ class SubFractal(nn.Module):
         else:
             self.join_masks = {'body': False, 'skip': True}
         self.active_column = root.active_column
+
         if (not root.intercol_share) or self.n_rec == 0:
             self.fixed = init_(nn.Conv2d(self.n_chan, self.n_chan, 3, 1, 1))
+
             if self.join_layer and n_rec > 0:
                 self.join = init_(nn.Conv2d(self.n_chan * 2, self.n_chan, 3, 1, 1))
 
@@ -748,20 +776,25 @@ class SubFractal(nn.Module):
 
     def mutate_copy(self, root):
         ''' Return a copy of myself to be used as my twin.'''
+
         if self.n_rec > 0:
             f_c = self.f_c_A.mutate_copy(root)
             twin = SubFractal(root, f_c, self.n_rec, n_chan=self.n_chan)
         else:
             twin = SubFractal(root, None, 0, n_chan=self.n_chan)
+
         if root.intracol_share:
             twin.fixed = self.fixed
+
         return twin
 
 
     def copy_child_weights(self):
         ''' Steal our child's weights to use as our own. Not deep (just refers to existing weights).'''
+
         if self.n_rec > 0:
             self.fixed = self.f_c_A.fixed
+
             if self.join_layer:
                 self.join = self.f_c_A.join
 
@@ -769,6 +802,7 @@ class SubFractal(nn.Module):
 
     def reset_join_masks(self, val=True):
         self.join_masks['skip'] = val
+
         if self.n_rec > 0:
             self.join_masks['body'] = val
             self.f_c_A.reset_join_masks(val)
@@ -781,6 +815,7 @@ class SubFractal(nn.Module):
         ''' Returns True if path from source to target is yielded to self.join_masks.
                 - force: a boolean, whether or not to force one path through.'''
         reach = False
+
         if self.n_rec == 0:
             self.set_child_drops(False, [0, 1])
             reach = True
@@ -790,35 +825,44 @@ class SubFractal(nn.Module):
             prob_skip = 1/2
             mask = (np.random.random_sample(2) > [prob_body, prob_skip]).astype(int)
             reach = self.set_child_drops(False, mask)
+
             if not reach and force: # then force one path down
                 mask[1] = np.random.randint(0, 1) <= 1 / (self.n_recs - self.n_rec)
                 mask[0] = (mask[1] + 1) % 2
                 assert self.set_child_drops(True, mask) == True
                 reach = True
+
         return reach
 
 
     def set_child_drops(self, force, mask):
         reach = False
+
         if force:
             assert 1 in mask
+
         if mask[1] == 1:
             self.join_masks['skip'] = True
             reach = True
         else:
             self.join_masks['skip'] = False
         self.join_masks['body'] = False
+
         if mask[0] == 1:
             reach_a = self.f_c_A.set_local_drop(force)
+
             if reach_a:
                 reach_b = self.f_c_B.set_local_drop(force)
+
                 if reach_b:
                     self.join_masks['body'] = True
                     reach = True
             else:
                 assert not force
+
         if force:
             assert reach
+
         return reach
 
 
@@ -838,11 +882,14 @@ class SubFractal(nn.Module):
         ''' for printing! '''
         stri = ''
         indent = ''
+
         for i in range(self.n_recs - self.n_rec):
             indent += '    '
         stri = stri + indent + str(self.join_masks)
+
         if self.n_rec != 0:
             stri = stri + '\n' + str(self.f_c_A.get_join_masks()) + '\n' + str(self.f_c_B.get_join_masks())
+
         return stri
 
 
@@ -856,21 +903,27 @@ class SubFractal(nn.Module):
                 x_c1 = F.relu(
                         #self.dropout_fixed
                         (self.fixed(x_c1)))
+
         if self.n_rec == 0:
             return x_c1
+
         if self.join_masks['body']:
             x_c = self.f_c_A(x_c)
             x_c =self.f_c_B(x_c)
+
         if x_c1 is None:
             return x_c
+
         if x_c is None:
             return x_c1
+
         if self.join_layer:
             x = F.relu(
                     #self.dropout_join
                     (self.join(torch.cat((x_c, x_c1), dim=1))))
         else:
             x = (x_c1 + x_c * (self.n_rec)) / (self.n_rec + 1)
+
         return x
 
 
@@ -897,6 +950,7 @@ class SubFractal_squeeze(nn.Module):
             j = 0
         else:
             j = n_rec
+
         if self.intracol_share:
            #for i in range(self.num_down):
             for i in range(1):
@@ -912,6 +966,7 @@ class SubFractal_squeeze(nn.Module):
             if n_rec > 0:
                 self.up = getattr(root, 'up_{}'.format(j))
                 self.dwn = getattr(root, 'dwn_{}'.format(j))
+
                 if self.join_layer:
                     self.join = getattr(root, 'join_{}'.format(j))
       # if self.dense_nug:
@@ -922,15 +977,19 @@ class SubFractal_squeeze(nn.Module):
       #         lambda x: nn.init.constant_(x, 0))
       #     self.dense = linit_(nn.Linear(hidden_size, hidden_size))
             self.fixed = getattr(root, 'fixed_{}'.format(j))
+
             if root.batch_norm:
                 self.bn_join = nn.BatchNorm2d(self.n_chan)
+
                 if self.num_down == 0:
                     setattr(self, 'bn_fixed_{}'.format(0), nn.BatchNorm2d(self.n_chan))
+
                 for i in range(self.num_down):
                     setattr(self, 'bn_dwn_{}'.format(i), nn.BatchNorm2d(self.n_chan))
                     setattr(self, 'bn_fixed_{}'.format(i), nn.BatchNorm2d(self.n_chan))
                     setattr(self, 'bn_up_{}'.format(i),nn.BatchNorm2d(self.n_chan))
         self.f_c_A = f_c
+
         if f_c is not None:
             self.f_c_B = f_c.mutate_copy(root)
         else:
@@ -938,13 +997,16 @@ class SubFractal_squeeze(nn.Module):
 
     def mutate_copy(self, root):
         ''' '''
+
         if self.f_c_A is not None:
             f_c = self.f_c_A.mutate_copy(root)
             twin = SubFractal_squeeze(root, f_c, self.n_layer)
+
             return twin
         else:
             twin = SubFractal_squeeze(root, None, 0)
             ##win.body = nn.Sequential(twin.body, twin.body)
+
             return twin
     def forward(self, x, net_coords):
         if x is None:
@@ -952,9 +1014,11 @@ class SubFractal_squeeze(nn.Module):
         x_c, x_c1 = x, x
         col = net_coords[0]
         depth = net_coords[1]
+
         if self.n_rec > 0:
             x_c = self.f_c_A(x_c, (col - 1, depth - 2 ** (col - 1 )))
             x_c = self.f_c_B(x_c, (col - 1, depth))
+
             if  self.join_masks[depth][col]:
                 for d in range(self.num_down):
                     #bn_dwn = getattr(self, 'bn_dwn_{}'.format(d))
@@ -966,25 +1030,31 @@ class SubFractal_squeeze(nn.Module):
                     #     x_c1 = x_c1.view(x_c1.size(0), -1)
                     #     x_c1 = F.tanh(self.dense(x_c1))
                     #     x_c1 = x_c1.view(x_c1_shape)
+
                 for f in range(1):
                     #bn_fixed= getattr(self, 'bn_fixed_{}'.format(f))
                     x_c1 = F.relu(#bn_fixed
                             (self.fixed(x_c1)))
+
                 for u in range(self.num_down):
                     #bn_up = getattr(self, 'bn_up_{}'.format(u))
                     up = getattr(self, 'up_{}'.format(0))
                     x_c1 = F.relu(#bn_up
                             up(x_c1, output_size = (x_c1.size(0), x_c1.size(1),
                                 x_c1.size(2) * 2, x_c1.size(3) * 2)))
+
         if x_c is None or col == 0:
             return x_c1
+
         if x_c1 is None:
             return x_c
+
         if self.join_layer:
             x = F.relu(#self.bn_join
                     (self.join(torch.cat((x_c, x_c1), dim=1))))
         else:
             x = (x_c1 + x_c * self.n_rec) / (self.n_rec + 1)
+
         return x
 
 class SkipFractal(nn.Module):
@@ -1012,6 +1082,7 @@ class SkipFractal(nn.Module):
         if not self.intracol_share:
             self.fixed = init_(nn.Conv2D(self.n_chan, self.n_chan,
                 3, 1, 1))
+
             if n_rec > 0:
                 self.join = init_(nn.Conv2D(self.n_chan * 2, self.n_chan,
                     3, 1, 1))
@@ -1024,12 +1095,15 @@ class SkipFractal(nn.Module):
                 j = 0 # default index for shared layers
             else:
                 j = n_rec # layer index = recursion index
+
             if n_rec == 0:
                 self.fixed = getattr(root, 'fixed_{}'.format(j))
+
             if n_rec > 0:
                 self.join = getattr(root, 'join_{}'.format(j))
                 self.up = getattr(root, 'up_{}'.format(j))
                 self.dwn = getattr(root, 'dwn_{}'.format(j))
+
         if f_c is not None:
             self.skip = f_c.mutate_copy(root)
             self.body = f_c
@@ -1041,10 +1115,12 @@ class SkipFractal(nn.Module):
         col = net_coords[0]
         depth = net_coords[1]
         x_b, x_a = x, x
+
         if self.n_rec > 0:
             x_a = self.skip(x_a, (col + 2 ** (self.n_rec - 1), depth - 1))
         else:
             x_a = None
+
         if self.join_masks[depth][col]:
            #print('including body at: {}'.format(net_coords))
             if self.n_rec > 0:
@@ -1055,13 +1131,16 @@ class SkipFractal(nn.Module):
                     x_b = F.relu(self.up(x_b))
             else:
                 x_b = self.body(x_b)
+
                 return x_b
         else:
            #print('excluding body at: {}'.format(net_coords))
            #print(x_a, x_b)
             x_b = None
+
         if x_a is None:
             return x_b
+
         if x_b is None:
             return x_a
         x = F.relu(self.join(torch.cat((x_a, x_b), dim=1)))
@@ -1075,9 +1154,11 @@ class SkipFractal(nn.Module):
         replacing every application of the 'fixed' layer with two in sequence.
         - root: the fractal's owner
         '''
+
         if self.f_c is not None:
             f_c = self.f_c.mutate_copy(root)
             twin = SkipFractal(root, f_c, self.n_rec)
+
             return twin
         else:
             twin = SkipFractal(root, None, 0)
@@ -1107,6 +1188,7 @@ class MicropolisBase_fixed(NNBase):
         for i in range(1):
             setattr(self, 'conv_2_{}'.format(i), init_(nn.Conv2d(64, 64, 3, 1, 1)))
         self.critic_compress = init_(nn.Conv2d(79, 64, 3, 1, 1))
+
         for i in range(1):
             setattr(self, 'critic_downsize_{}'.format(i), init_(nn.Conv2d(64, 64, 2, 2, 0)))
 
@@ -1125,10 +1207,12 @@ class MicropolisBase_fixed(NNBase):
         skip_input = F.relu(self.skip_compress(inputs))
        #x = F.relu(self.conv_1(x))
         conv_2 = getattr(self, 'conv_2_{}'.format(0))
+
         for i in range(self.num_recursions):
             x = F.relu(conv_2(x))
         x = torch.cat((x, skip_input), 1)
         values = F.relu(self.critic_compress(x))
+
         for i in range(4):
             critic_downsize = getattr(self, 'critic_downsize_{}'.format(0))
             values = F.relu(critic_downsize(values))
@@ -1152,6 +1236,7 @@ class MicropolisBase_squeeze(NNBase):
             nn.init.calculate_gain('relu'))
 
         self.cmp_in = init_(nn.Conv2d(num_inputs, 64, 1, stride=1, padding=0))
+
         for i in range(self.num_maps):
             setattr(self, 'prj_life_obs_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
             setattr(self, 'cmp_life_obs_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
@@ -1168,6 +1253,7 @@ class MicropolisBase_squeeze(NNBase):
             setattr(self, 'cmp_life_act_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
             setattr(self, 'cmp_life_val_in_{}'.format(i), init_(nn.Conv2d(128, 64, 3, stride=1, padding=1)))
             setattr(self, 'dwn_val_{}'.format(i), init_(nn.Conv2d(64, 64, 2, stride=2, padding=0)))
+
             if i == self.num_maps - 1:
                 setattr(self, 'prj_life_val_{}'.format(i), init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)))
             else:
@@ -1188,13 +1274,16 @@ class MicropolisBase_squeeze(NNBase):
         x = inputs
         x = F.relu(self.cmp_in(x))
         x_obs = []
+
         for i in range(self.num_maps): # shrink if not first, then run life sim
             if i != 0:
                 shrink_life = getattr(self, 'dwn_{}'.format(0))
                 x = F.relu(shrink_life(x))
             x_0 = x
+
             if i > -1:
                 prj_life_obs = getattr(self, 'prj_life_obs_{}'.format(i))
+
                 for c in range(3):
                     x = F.relu(prj_life_obs(x))
                 x = torch.cat((x, x_0), 1)
@@ -1210,11 +1299,14 @@ class MicropolisBase_squeeze(NNBase):
                 cmp_life_act = getattr(self, 'cmp_life_act_{}'.format(j))
                 x =  F.relu(cmp_life_act(x))
             x_0 = x
+
             if j > -1:
                 prj_life_act = getattr(self, 'prj_life_act_{}'.format(j))
+
                 for c in range(1):
                     x = F.relu(prj_life_act(x))
                 x = torch.cat((x, x_0), 1)
+
             if j < self.num_maps - 1:
                 expand_life = getattr(self, 'expand_life_{}'.format(j))
                 x = F.relu(expand_life(x))
@@ -1232,6 +1324,7 @@ class MicropolisBase_squeeze(NNBase):
             x = F.relu(prj_life_val(x))
         vals = self.cmp_val_out(x)
         vals = vals.view(vals.size(0), -1)
+
         return  vals, acts, rnn_hxs
 
 class MicropolisBase_ICM(MicropolisBase_fixed):
@@ -1307,31 +1400,43 @@ class MicropolisBase_ICM(MicropolisBase_fixed):
           ##s1_skip = F.relu(self.icm_skip_compress(s1_in))
 
             # Predict outcome state feature-map and action dist.
+
             if True:
                 a1 = a1.cuda()
                 s0 = s0.cuda()
 
             pred_s1 = pred_s1_0 = F.relu(self.icm_pred_s_in(torch.cat((s0, a1), 1)))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_0(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_1(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_2(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_3(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_4(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_5(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_6(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_7(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_8(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_9(pred_s1))
+
             for i in range(2):
                 pred_s1 = F.relu(self.icm_pred_s_conv_10(pred_s1))
 
@@ -1339,6 +1444,7 @@ class MicropolisBase_ICM(MicropolisBase_fixed):
             pred_s1 = self.icm_pred_s_out(pred_s1)
 
             pred_a = F.relu(self.icm_pred_a_in(torch.cat((s0, s1), 1)))
+
             for i in range(1):
                 pred_a = F.relu(self.icm_pred_a_conv_0(pred_a))
             pred_a = self.icm_pred_a_out(pred_a)
@@ -1443,6 +1549,7 @@ class MicropolisBase_1d(NNBase):
         skip_input = F.relu(self.skip_compress(inputs))
         x = F.relu(self.conv_1(x))
         num_batch = x.size(0)
+
         for i in range(5):
             w, h = x.size(2), x.size(3)
             num_chan = x.size(1)
@@ -1455,6 +1562,7 @@ class MicropolisBase_1d(NNBase):
             x = F.relu(self.conv_2_chan(x))
             num_chan = x.size(3)
             x = x.view(num_batch, num_chan, w, h)
+
         for j in range(5):
             w, h = x.size(2), x.size(3)
             num_chan = x.size(1)
@@ -1486,6 +1594,7 @@ class MicropolisBase_0(NNBase):
             nn.init.calculate_gain('relu'))
 
         import sys
+
         if sys.version[0] == '2':
             num_inputs=104
       # assert num_inputs / 4 == 25
@@ -1526,9 +1635,11 @@ class MicropolisBase_0(NNBase):
         x_A = F.relu(x_A)
         x_B = self.conv_B_0(x)
         x_B = F.relu(x_B)
+
         for i in range(2):
 #           x = torch.cat((x, inputs[:,-26:]), 1)
             x_A = F.relu(self.conv_A_1(x_A))
+
         for i in range(5):
             x_B = F.relu(self.conv_B_1(x_B))
         x = torch.mul(x_A, x_B)
@@ -1583,6 +1694,7 @@ class MicropolisBase_mlp(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=256, map_width=20, num_actions=19):
         super(MicropolisBase_mlp, self).__init__(recurrent, num_inputs, hidden_size)
         num_inputs = map_width * map_width * num_inputs
+
         if recurrent:
             num_inputs = hidden_size
 
@@ -1631,6 +1743,7 @@ class MLPBase(NNBase):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
         self.n_cols = 1
         num_inputs = in_w * in_h * num_inputs
+
         if recurrent:
             num_inputs = hidden_size
         print('num_inputs: {}, hidden_size: {}'.format(num_inputs, hidden_size))

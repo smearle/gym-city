@@ -2,6 +2,7 @@ import copy
 import csv
 import glob
 import os
+import random
 import time
 from collections import deque
 from shutil import copyfile
@@ -14,6 +15,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import algo
+import game_of_life
+import gym_city
 import gym_pcgrl
 from arguments import get_args
 from envs import make_vec_envs
@@ -57,10 +60,8 @@ class Trainer():
     def get_fieldnames(self):
         return ['r','l','t','e']
 
-    def __init__(self, args=None):
-        import random
-        import gym_city
-        import game_of_life
+    def __init__(self, envs=None, args=None):
+        self.n_train = 0
         self.fieldnames = self.get_fieldnames()
         self.n_frames = 0
 
@@ -110,14 +111,17 @@ class Trainer():
             self.win_eval = win_eval
         print('env name: {}'.format(args.env_name))
 
-        envs = self.make_vec_envs(args)
+        if envs is None:
+            envs = self.make_vec_envs(args)
         self.get_space_dims(envs, args)
+
         if args.auto_expand:
             args.n_recs -= 1
         actor_critic = self.init_policy(envs, args)
 
         if not agent:
             agent = init_agent(actor_critic, args)
+
         if args.auto_expand:
             args.n_recs += 1
 
@@ -324,6 +328,7 @@ class Trainer():
         envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                 args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
                 args=args)
+
         return envs
 
     def init_policy(self, envs, args):
@@ -477,7 +482,7 @@ class Trainer():
 
         for self.n_step in range(args.num_steps):
             # Sample actions
-            _, latest_rewards, _, infos = self.step()
+            _, rewards, dones, infos = self.step()
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],
@@ -591,20 +596,28 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
 
             print('model saved at {}'.format(save_path))
 
-        if args.vis and n_train % args.vis_interval == 0:
-            if plotter is None:
-                plotter = Plotter(n_cols, args.log_dir, args.num_processes)
-            try:
-                # Sometimes monitor doesn't properly flush the outputs
-                viz = self.viz
-                win = self.win
-                graph_name = self.graph_name
-                win = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
-                                  args.algo, args.num_frames)
-            except IOError:
-                pass
+        if args.vis and self.n_train % args.vis_interval == 0:
+            self.visualize(plotter)
+            print('visualize train')
 
-        return infos
+
+        return dones, infos
+
+    def visualize(self, plotter=None):
+        n_cols = self.n_cols
+        args = self.args
+        if plotter is None:
+            plotter = Plotter(n_cols, args.log_dir, args.num_processes)
+            self.plotter = plotter
+        try:
+            # Sometimes monitor doesn't properly flush the outputs
+            viz = self.viz
+            win = self.win
+            graph_name = self.graph_name
+            win = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
+                              args.algo, args.num_frames)
+        except IOError:
+            pass
 
     def get_save_dict(self):
         agent = self.agent
