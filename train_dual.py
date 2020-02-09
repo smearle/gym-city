@@ -1,6 +1,8 @@
 import copy
 import torch
 
+import numpy as np
+
 from arguments import get_args
 from model import Policy
 from train import Trainer
@@ -21,6 +23,7 @@ class Player(Trainer):
         if args is None:
             args = get_args()
         args.log_dir += '_dsgn'
+        args.model = 'MLPBase'
         super().__init__(envs, args)
         self.actor_critic.to(self.device)
 
@@ -62,6 +65,7 @@ class DesignerPlayer(Trainer):
     def __init__(self, args=None):
         super().__init__(args=args)
         design_args = copy.deepcopy(args)
+        args.model = 'FractalNet'
         self.player = Player(self.envs, design_args)
         self.active_agent = 0
         # Assume player actions are discrete
@@ -76,7 +80,7 @@ class DesignerPlayer(Trainer):
     def step(self):
         self.set_active_agent(0)
         obs, rew, done, infos = super().step()
-        rew = 0
+        rews = torch.zeros(self.args.num_processes)
 
        #if 'trg_agent' in infos[0]:
             # suppress environment's desire to switch modes
@@ -89,20 +93,24 @@ class DesignerPlayer(Trainer):
             play_rew = self.train_player_epi(playable_map)
            #if play_rew > 0:
            #    play_rew = self.args.max_step - play_rew
-            rew = rew + play_rew
-            print(rew)
+            rews = rews + play_rew
+           #print('epi rew {}'.format(rew))
             #dummy_rews = torch.empty((self.args.num_processes), dtype=float).fill_(rew)
-            rew = torch.Tensor([rew])
-            self.rollouts.rewards[self.rollouts.step].copy_(rew)
+            rews = rews.unsqueeze(-1)
+           #print('pre rollout copy{}'.format(self.rollouts.rewards.shape))
+            self.rollouts.rewards[self.rollouts.step].copy_(rews)
+           #print(self.rollouts.rewards.shape)
+           #print('max rollout rew after player epi', self.rollouts.rewards.max())
+       #print('designer player step res {}'.format(rews.shape))
 
-        return obs, rew, done, infos
+        return obs, rews, done, infos
 
     def train(self):
-
-        done, info = super().train()
+       #print('max rollout rew on train', self.rollouts.rewards.max())
+        cum_rews, done, info = super().train()
         self.n_train += 1
 
-        return info
+        return cum_rews, info
 
     def train_player_epi(self, playable_map):
         ''' Trains a player for one episode on a given map. '''
@@ -110,17 +118,19 @@ class DesignerPlayer(Trainer):
         epi_done = False
         self.player.set_active_agent(1)
         self.player.envs.set_map(playable_map)
+        epi_rews = torch.zeros(self.args.num_processes)
 
         while not epi_done:
-            done, info = self.player.train()
+            cum_rews, done, info = self.player.train()
+            epi_rews += cum_rews
             self.player.n_train += 1
             epi_done = done[0]
-        print(self.player.episode_rewards)
-        epi_rew = self.player.episode_rewards[-1]
+       #print('latest player epi rews', self.player.episode_rewards)
+       #epi_rew = self.player.episode_rewards[-1]
         self.player.visualize(self.player.plotter)
-        print('epi reward', epi_rew)
+       #print('epi reward', epi_rews.shape)
 
-        return epi_rew
+        return epi_rews
 
 
 if __name__ == "__main__":

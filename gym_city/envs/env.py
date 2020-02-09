@@ -48,11 +48,11 @@ class MicropolisEnv(core.Env):
                 'mayor_rating': (0, 100)
                 })
         self.weights = OrderedDict({
-                'res_pop': 1/10,
-                'com_pop': 1,
-                'ind_pop': 1,
-                'traffic': 1/20,
-                'num_plants': 1,
+                'res_pop': 1,
+                'com_pop': 0,
+                'ind_pop': 0,
+                'traffic': 0,
+                'num_plants': 0,
                 'mayor_rating': 0,
                 })
 

@@ -321,6 +321,7 @@ class FullyConv(NNBase):
         num_chan = int(n_chan)
         num_actions = num_actions
         self.map_width = map_width
+        self.out_w = out_w
         init_ = lambda m: init(m,
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0.1),
@@ -333,6 +334,7 @@ class FullyConv(NNBase):
             nn.init.dirac_,
             lambda x: nn.init.constant_(x, 0))
         self.val = init_(nn.Conv2d(num_chan, 1, 3, 1, 1))
+        self.act_shrink = init_(nn.Conv2d(num_chan, num_chan, 3, 2, 1))
         self.act = init_(nn.Conv2d(num_chan, num_actions, 1, 1, 0))
 
     def forward(self, x, rhxs=None, masks=None):
@@ -341,11 +343,15 @@ class FullyConv(NNBase):
         x = F.relu(self.k5(x))
         x = F.relu(self.k3(x))
        #x = self.act_soft(self.k3(x))
-        act = self.act(x)
+        act, val = x, x
+        n_act_shrink = int(math.log(self.map_width , 2))
+        for i in range(n_act_shrink):
+            act = self.act_shrink(act)
+        act = self.act(act)
        #assert (act > 0).all
         for i in range(int(math.log(self.map_width, 2))):
-            x = F.relu(self.val_shrink(x))
-        val = self.val(x)
+            vac = F.relu(self.val_shrink(val))
+        val = self.val(val)
        #assert (act > 0).all
         return val.view(val.shape[0], -1), act, rhxs
 
@@ -531,10 +537,10 @@ class FractalNet(NNBase):
         self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
         n_shrinks = int(math.log(self.map_width // out_w, 2))
         actor_head = []
-
-        for i in range(n_shrinks):
-            actor_head.append(init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1)))
-            actor_head.append(nn.ReLU())
+       #self.act_0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
+       #for i in range(n_shrinks):
+       #    actor_head.append(self.act_0)
+       #    actor_head.append(nn.ReLU())
         self.actor_head = nn.Sequential(*actor_head)
         self.active_column = None
     # TODO: should be part of a subclass

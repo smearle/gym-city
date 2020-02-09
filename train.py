@@ -444,6 +444,8 @@ class Trainer():
         else:
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_probs, value, reward, masks)
         self.n_frames += self.args.num_processes
+        reward = reward.squeeze(-1)
+       #print('step rew shape {}'.format(reward.shape))
 
         return obs, reward, done, infos
 
@@ -480,9 +482,14 @@ class Trainer():
             model.num_recursions = random.randint(1, model.map_width * 2)
         self.player_act = None
 
+        cum_rews = torch.zeros(self.args.num_processes)
         for self.n_step in range(args.num_steps):
             # Sample actions
             _, rewards, dones, infos = self.step()
+           #print('rews', rewards.shape)
+            rewards = rewards.squeeze(-1)
+           #print('cum_rews', cum_rews.shape)
+            cum_rews += rewards
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],
@@ -601,7 +608,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             print('visualize train')
 
 
-        return dones, infos
+        return cum_rews, dones, infos
 
     def visualize(self, plotter=None):
         n_cols = self.n_cols
