@@ -91,8 +91,9 @@ class DesignerPlayer(Trainer):
            #    play_rew = self.args.max_step - play_rew
             rew = rew + play_rew
             print(rew)
-            dummy_rews = torch.empty((self.args.num_processes), dtype=float).fill_(rew)
-            self.rollouts.rewards[self.rollouts.step].copy_(dummy_rews)
+            #dummy_rews = torch.empty((self.args.num_processes), dtype=float).fill_(rew)
+            rew = torch.Tensor([rew])
+            self.rollouts.rewards[self.rollouts.step].copy_(rew)
 
         return obs, rew, done, infos
 
