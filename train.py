@@ -96,7 +96,8 @@ class Trainer():
                 if args.overwrite:
                     os.remove(f)
                 else:
-                    pass
+                    if not args.load:
+                        raise Exception('experiment exists, not overwriting')
         torch.set_num_threads(1)
         device = torch.device("cuda:0" if args.cuda else "cpu")
         self.device = device
@@ -610,12 +611,15 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
 
         return cum_rews, dones, infos
 
-    def visualize(self, plotter=None):
+    def visualize(self, plotter=None, log_dir=None):
         n_cols = self.n_cols
         args = self.args
+        if log_dir == None:
+            log_dir = args.log_dir
         if plotter is None:
             plotter = Plotter(n_cols, args.log_dir, args.num_processes)
-            self.plotter = plotter
+        self.plotter = plotter
+
         try:
             # Sometimes monitor doesn't properly flush the outputs
             viz = self.viz

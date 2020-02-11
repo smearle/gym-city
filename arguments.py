@@ -145,6 +145,7 @@ def get_parser():
             help='film videos of inference')
 ########################################### Fractal Nets
     parser.add_argument('--drop-path', action='store_true', help='enable global and local drop path on fractal model (ignored otherwise)')
+    parser.add_argument('--load', action='store_true', help='load up past experiment of this name? Alternatively, supply --load-dir')
     parser.add_argument('--inter-shr', action='store_true',
             help='layers shared between columns')
     parser.add_argument('--intra-shr', action='store_true',

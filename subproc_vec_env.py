@@ -124,6 +124,13 @@ class SubprocVecEnv(VecEnv):
 
         return
 
+    def set_save_dir(self, save_dir):
+        for remote in self.remotes:
+            remote.send(('set_save_dir', [save_dir]))
+            remote.recv()
+
+        return
+
     def set_map(self, map):
         for remote in self.remotes:
             remote.send(('set_map', [map]))

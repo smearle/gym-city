@@ -231,6 +231,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
             if '-wide' in env_id:
                 env = ActionMapImagePCGRLWrapper(env_id)
+                env.set_max_step(max_step)
                 env = ToPytorchOrder(env)
                 env = MaxStep(env, args.max_step)
                 env = Render(env, rank, render = render_gui, render_rank=0)

@@ -49,14 +49,14 @@ class MicropolisEnv(core.Env):
                 })
         self.weights = OrderedDict({
                 'res_pop': 1,
-                'com_pop': 0,
-                'ind_pop': 0,
-                'traffic': 0,
-                'num_plants': 0,
-                'mayor_rating': 0,
+                'com_pop': 1,
+                'ind_pop': 1,
+                'traffic': 1,
+                'num_plants': 1,
+                'mayor_rating': 1,
                 })
 
-        self.num_params = 1
+        self.num_params = 6
         # not necessarily true but should take care of most cases
         self.max_loss = 0
         i = 0

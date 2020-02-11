@@ -67,6 +67,10 @@ class DDummyVecEnv(DummyVecEnv):
         for env in self.envs:
             env.setMapSize(size, **kwargs)
 
+    def set_save_dir(self, save_dir):
+        for env in self.envs:
+            envs.set_save_dir(save_dir)
+
     def set_map(self, map):
         for env in self.envs:
             env.set_map(map)

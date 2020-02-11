@@ -1,5 +1,6 @@
 import copy
 import torch
+import os
 
 import numpy as np
 
@@ -22,7 +23,8 @@ class Player(Trainer):
     def __init__(self, envs=None, args=None):
         if args is None:
             args = get_args()
-        args.log_dir += '_dsgn'
+        args.save_dir = os.path.join(args.save_dir, 'player')
+       #os.makedirs(args.save_dir)
         args.model = 'MLPBase'
         super().__init__(envs, args)
         self.actor_critic.to(self.device)
@@ -32,7 +34,6 @@ class Player(Trainer):
         self.envs.set_active_agent(n_agent)
 
     def step(self):
-        self.set_active_agent(1)
         obs, rew, done, infos = super().step()
 
        #if 'trg_agent' in infos[0]:
@@ -63,10 +64,12 @@ class Player(Trainer):
 
 class DesignerPlayer(Trainer):
     def __init__(self, args=None):
-        super().__init__(args=args)
         design_args = copy.deepcopy(args)
-        args.model = 'FractalNet'
-        self.player = Player(self.envs, design_args)
+        design_args.save_dir = os.path.join(design_args.save_dir, 'designer')
+        design_args.model = 'FractalNet'
+        super().__init__(args=design_args)
+        play_args = copy.deepcopy(args)
+        self.player = Player(self.envs, play_args)
         self.active_agent = 0
         # Assume player actions are discrete
        #self.envs.remotes[0].send(('get_player_action_space', None))
@@ -79,6 +82,7 @@ class DesignerPlayer(Trainer):
 
     def step(self):
         self.set_active_agent(0)
+        self.player.set_active_agent(0)
         obs, rew, done, infos = super().step()
         rews = torch.zeros(self.args.num_processes)
 
@@ -116,8 +120,9 @@ class DesignerPlayer(Trainer):
         ''' Trains a player for one episode on a given map. '''
        #self.envs.set_active_agent(1)
         epi_done = False
-        self.player.set_active_agent(1)
+        self.set_active_agent(1)
         self.player.envs.set_map(playable_map)
+       #self.player.envs.set_save_dir(self.args.save_dir)
         epi_rews = torch.zeros(self.args.num_processes)
 
         while not epi_done:
@@ -125,11 +130,14 @@ class DesignerPlayer(Trainer):
             epi_rews += cum_rews
             self.player.n_train += 1
             epi_done = done[0]
-       #print('latest player epi rews', self.player.episode_rewards)
        #epi_rew = self.player.episode_rewards[-1]
         self.player.visualize(self.player.plotter)
-       #print('epi reward', epi_rews.shape)
-
+       #print('epi reward', epi_rews.shape, epi_rews)
+        # assume we won
+        #FIXME: specific to 1 key 1 door in zelda
+        won = cum_rews > 2
+        # reward for longer win times (harder levels)
+        epi_rews += won * (self.args.max_step - (epi_rews - 2))
         return epi_rews
 
 
