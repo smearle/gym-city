@@ -109,6 +109,7 @@ class Teacher(Trainer):
                 else:
                     break
             self.envs.set_params(params)
+            print('setting params: {}'.format(params))
         trial_remaining -= args.num_steps
 
         self.trial_remaining = trial_remaining

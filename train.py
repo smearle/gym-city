@@ -292,26 +292,27 @@ class Trainer():
             isinstance(envs.action_space, gym.spaces.Box):
             out_w = args.map_width
             out_h = args.map_width
+            num_actions = int(envs.action_space.n // (out_w * out_h))
 
-            if 'Micropolis' in args.env_name: #otherwise it's set
-                if args.power_puzzle:
-                    num_actions = 1
-                else:
-                    num_actions = 19 # TODO: have this already from env
-            elif 'GameOfLife' in args.env_name:
-                num_actions = 1
-            # for PCGRL
+            #if 'Micropolis' in args.env_name: #otherwise it's set
+            #    if args.power_puzzle:
+            #        num_actions = 1
+            #    else:
+            #        num_actions = 19 # TODO: have this already from env
+            #elif 'GameOfLife' in args.env_name:
+            #    num_actions = 1
+            ## for PCGRL
 
-            if '-wide' in args.env_name:
-                #TODO: should be done like this for all envs!
-                print('obs space shape: {}'.format(envs.observation_space.shape))
-                map_width = envs.observation_space.shape[1]
-                map_height = envs.observation_space.shape[2]
-                out_w = map_width
-                out_h = map_height
-                print(envs.action_space.n)
-                num_actions = envs.action_space.n / (map_width * map_height)
-                num_actions = int(num_actions)
+            #if '-wide' in args.env_name:
+            #    #TODO: should be done like this for all envs!
+            #    print('obs space shape: {}'.format(envs.observation_space.shape))
+            #    map_width = envs.observation_space.shape[1]
+            #    map_height = envs.observation_space.shape[2]
+            #    out_w = map_width
+            #    out_h = map_height
+            #    print(envs.action_space.n)
+            #    num_actions = envs.action_space.n / (map_width * map_height)
+            #    num_actions = int(num_actions)
         elif isinstance(envs.action_space, gym.spaces.Box):
             if len(envs.action_space.shape) == 3:
                 out_w = envs.action_space.shape[1]

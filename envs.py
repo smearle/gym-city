@@ -20,6 +20,7 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
+from wrappers import ParamRew
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -103,6 +104,15 @@ class MicropolisMonitor(bench.Monitor):
     def setRewardWeights(self):
         return self.env.setRewardWeights()
 
+
+    def reset(self):
+        obs = super().reset()
+        self.needs_reset = False
+        obs = self.env.reset()
+
+        return obs
+
+
 class MultiMonitor(MicropolisMonitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         super(MultiMonitor, self).__init__(env, filename, allow_early_resets=allow_early_resets, reset_keywords=reset_keywords, info_keywords=info_keywords)
@@ -129,6 +139,8 @@ class MultiMonitor(MicropolisMonitor):
             self.episode_lengths.append(eplen)
             self.episode_times.append(time.time() - self.tstart)
             epinfo.update(self.current_reset_info)
+            ob = self.reset()
+            self.needs_reset = False
 
             if hasattr(self, 'logger'):
                 self.logger.writerow(epinfo)
@@ -138,9 +150,8 @@ class MultiMonitor(MicropolisMonitor):
                 self.results_writer.write_row(epinfo)
             info[0]['episode'] = epinfo
         self.total_steps += 1
-       #print('dones: {}'.format(done))
-        return (ob, rew, done, info)
 
+        return (ob, rew, done, info)
 
 try:
     import dm_control2gym
@@ -224,6 +235,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         prob_life = args.prob_life, record=record_dir,
                         max_step=max_step, cuda=args.cuda,
                         num_proc=args.num_processes)
+                env = ParamRew(env)
             else:
                 multi_env = False
 

@@ -59,18 +59,22 @@ class GoLMultiEnv(core.Env):
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
         max_loss = sum(self.param_ranges)
         self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
-        self.params = OrderedDict({
+        self.metric_trgs = OrderedDict({
                #'pop': 0 # aim for empty board
                #'prob_life':
                 'pop': max_pop,
                 # aim for max possible pop (roughly?)
                 })
-        num_params = len(self.params)
+        num_params = len(self.metric_trgs)
         # so that we can calculate the loss of each sim separately
-        self.trg_param_vals = torch.Tensor([v for v in self.params.values()])
+        self.trg_param_vals = torch.Tensor([v for v in self.metric_trgs.values()])
         self.trg_param_vals = self.trg_param_vals.unsqueeze(0).expand(self.num_proc,
                 num_params)
         self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
+        self.metrics = {}
+        i = 0
+        for key, val in self.metric_trgs.items():
+            self.metrics[key] = self.curr_param_vals[i]
         obs_shape = (num_proc, 1 + num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
         self.num_params = num_params
@@ -132,7 +136,7 @@ class GoLMultiEnv(core.Env):
         if self.cuda:
             self.scalar_obs = self.scalar_obs.cuda()
             self.curr_param_vals.cuda()
-        self.set_params(self.params)
+        self.set_params(self.metric_trgs)
 
 
     def get_param_bounds(self):
@@ -145,7 +149,7 @@ class GoLMultiEnv(core.Env):
 
     def set_params(self, params):
         print('Updated env targets: {}'.format(params))
-        self.params = params
+        self.metric_trgs = params
         self.trg_param_vals = torch.Tensor([v for v in params.values()])
         self.trg_param_vals = self.trg_param_vals.unsqueeze(0).expand(self.num_proc,
                 self.num_params)
@@ -161,6 +165,7 @@ class GoLMultiEnv(core.Env):
     def get_curr_param_vals(self):
         self.curr_pop = self.get_pop()
         self.curr_param_vals[:, 0] = self.curr_pop
+        self.metrics['pop'] = self.curr_pop
 
 
     def get_pop(self):
@@ -204,12 +209,12 @@ class GoLMultiEnv(core.Env):
                 if self.render_gui:
                     self.render(agent=True)
         self.get_curr_param_vals()
-        loss = abs(self.trg_param_vals - self.curr_param_vals)
-        loss = loss.squeeze(-1)
+       #loss = abs(self.trg_param_vals - self.curr_param_vals)
+       #loss = loss.squeeze(-1)
         # loss in a 1D tensor of losses of individual envs
        #reward = torch.Tensor((100 * 50 / (loss + 50)))
        #reward = reward / (self.max_loss * self.max_step * self.num_proc)
-        reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
+       #reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
         if self.step_count == self.max_step:
             terminal = np.ones(self.num_proc, dtype=bool)
         else:
@@ -228,7 +233,8 @@ class GoLMultiEnv(core.Env):
        #reward = self.curr_pop / (self.max_step * self.num_proc)
        #reward = 256 - self.curr_pop
 
-        reward = reward.unsqueeze(-1)
+       #reward = reward.unsqueeze(-1)
+        reward = 0
         return (obs, reward, terminal, info)
 
 
@@ -254,6 +260,7 @@ class GoLMultiEnv(core.Env):
 
 
     def reset(self):
+        self.terminal = np.zeros((self.num_proc, 1), dtype=bool)
         self.step_count = 0
         self.world.repopulate_cells()
        #self.world.prepopulate_neighbours()

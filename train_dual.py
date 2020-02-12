@@ -137,7 +137,7 @@ class DesignerPlayer(Trainer):
         #FIXME: specific to 1 key 1 door in zelda
         won = cum_rews > 2
         # reward for longer win times (harder levels)
-        epi_rews += won * (self.args.max_step - (epi_rews - 2))
+        epi_rews += won * (self.args.max_step - (epi_rews - 2)) ** 2
         return epi_rews
 
 
