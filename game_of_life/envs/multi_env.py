@@ -65,6 +65,7 @@ class GoLMultiEnv(core.Env):
                 'pop': max_pop,
                 # aim for max possible pop (roughly?)
                 })
+        self.metric_weights = {'pop': 1}
         num_params = len(self.metric_trgs)
         # so that we can calculate the loss of each sim separately
         self.trg_param_vals = torch.Tensor([v for v in self.metric_trgs.values()])

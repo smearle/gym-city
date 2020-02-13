@@ -20,7 +20,7 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRew
+from wrappers import ParamRewMulti
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -235,7 +235,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         prob_life = args.prob_life, record=record_dir,
                         max_step=max_step, cuda=args.cuda,
                         num_proc=args.num_processes)
-                env = ParamRew(env)
+                env = ParamRewMulti(env)
             else:
                 multi_env = False
 

@@ -358,8 +358,8 @@ class ExtinctionExperimenter():
 
 
 if __name__ == "__main__":
-    VIS_ONLY = False
-   #VIS_ONLY = True
+   #VIS_ONLY = False
+    VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',

@@ -30,13 +30,13 @@ class MicropolisEnv(core.Env):
         self.static_player_builds = False
     ### MIXED
         self.city_trgs = OrderedDict({
-                'res_pop': 200,
-                'com_pop': 50,
-                'ind_pop': 50,
+                'res_pop': 750,
+                'com_pop': 100,
+                'ind_pop': 100,
                 'traffic': 2000,
                 # i believe one plant is worth 12, the other 16?
                 'num_plants': 14,
-                'mayor_rating': 10
+                'mayor_rating': 100
                 })
         self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
         self.param_bounds = OrderedDict({
@@ -48,7 +48,7 @@ class MicropolisEnv(core.Env):
                 'mayor_rating': (0, 100)
                 })
         self.weights = OrderedDict({
-                'res_pop': 1,
+                'res_pop': 1/4,
                 'com_pop': 1,
                 'ind_pop': 1,
                 'traffic': 1,
