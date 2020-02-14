@@ -288,6 +288,8 @@ class GoLMultiEnv(core.Env):
             rend_arr = rend_state + rend_dels + rend_builds
        #print(rend_arr)
         rend_arr = rend_arr.transpose(2, 1, 0)
+        rend_arr = rend_arr.astype(np.uint8)
+        rend_arr = rend_arr * 255
         cv2.imshow("Game of Life", rend_arr)
         if self.record and not self.gif_writer.done:
             gif_dir = ('{}/gifs/'.format(self.record))
