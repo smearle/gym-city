@@ -28,8 +28,8 @@ class GoLMultiEnv(core.Env):
         self.player_builds = []
         self.action_bin = None
         self.rend_idx = -1
-        self.agent_steps = 1
-        self.sim_steps = 1
+        self.agent_steps = 4
+        self.sim_steps = 4
 
     def configure(self, render=False, map_width=16, prob_life=20,
              max_step=200, num_proc=1, record=None, cuda=False):
@@ -52,7 +52,7 @@ class GoLMultiEnv(core.Env):
                 os.mkdir('{}/gifs/im/'.format(record))
             except FileExistsError:
                 pass
-        max_pop = self.map_width * self.map_width * 2/3
+        max_pop = self.map_width * self.map_width
         self.param_bounds = OrderedDict({
                 'pop': (0, max_pop)
                 })

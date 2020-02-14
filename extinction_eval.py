@@ -182,7 +182,7 @@ class ExtinctionEvaluator():
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
-
+        exp_infos = {}
         while n_episode < n_epis:
             with torch.no_grad():
                 value, action, _, recurrent_hidden_states = actor_critic.act(
@@ -190,10 +190,21 @@ class ExtinctionEvaluator():
                     player_act=player_act)
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
+            if exp_infos == {}:
+                for k, v in infos[0].items():
+                    exp_infos[k] = np.array((max_step))
+            else:
+                for k, v in infos[0].items():
+                    if k in exp_infos:
+                        exp_infos[k] = exp_infos[k] + [v]
+                    else:
+                        pass
+           #print(exp_infos)
             if args.render:
                 envs.venv.venv.render()
 
             if done.any():
+                print(done)
                 n_episode += np.sum(done.astype(int))
             player_act = None
 
@@ -305,7 +316,7 @@ class ExtinctionExperimenter():
                #64
                 ]
         self.xt_types = [
-                None,
+               #'None',
                 'age',
                 'spatial',
                 'random'
@@ -358,8 +369,8 @@ class ExtinctionExperimenter():
 
 
 if __name__ == "__main__":
-   #VIS_ONLY = False
-    VIS_ONLY = True
+    VIS_ONLY = False
+   #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
