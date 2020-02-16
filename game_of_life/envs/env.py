@@ -17,10 +17,6 @@ import os
 import shutil
 
 
-
-
-
-
 class GameOfLifeEnv(core.Env):
     def __init__(self):
         self.num_tools = 1 # bring cell to life

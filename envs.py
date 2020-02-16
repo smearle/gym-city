@@ -20,7 +20,7 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti
+from wrappers import ParamRewMulti, ExtinguisherMulti
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -236,8 +236,14 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         max_step=max_step, cuda=args.cuda,
                         num_proc=args.num_processes)
                 env = ParamRewMulti(env)
+                if args.extinction_type != 'None':
+                    env = ExtinguisherMulti(env, args.extinction_type, args.extinction_prob)
             else:
                 multi_env = False
+                #FIXME: this is just hack to make our extinction experiment loop work.
+               #if args.extinction_type is not None:
+                if args.extinction_type != 'None':
+                    env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 
             #FIXME: make this recognize pcgrl environments in general
 
@@ -311,10 +317,6 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = TransposeImage(env)
 
-        #FIXME: this is just hack to make our extinction experiment loop work.
-
-       #if args.extinction_type is not None:
-        env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 
         if args.im_render:
             print('wrapping in imrender')

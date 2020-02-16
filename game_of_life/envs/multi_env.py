@@ -193,29 +193,8 @@ class GoLMultiEnv(core.Env):
         a = a.long()
        #a.fill_(0)
         actions = self.action_idx_to_tensor(a)
-        acted_state = self.world.state + actions
-        new_state = self.world.state.long() ^ actions.long()
 
-        if self.render_gui:
-            # where cells are already alive
-            self.agent_dels = self.world.state.long() & actions.long()
-            agent_builds = actions - self.agent_dels
-            assert(agent_builds >= 0).all()
-            assert torch.sum(self.agent_dels + agent_builds) == self.num_proc
-
-            if not hasattr(self, 'agent_builds'):
-                self.agent_builds = actions.float()
-            else:
-                # agent builds accumulate on rendered board during agent's build-turn
-                self.agent_builds = torch.clamp(self.agent_builds + actions, 0, 1)
-            self.agent_builds -= self.agent_dels # in case agent deletes what it has built in the
-            # current build-turn
-            self.rend_state = new_state - self.agent_builds # separate state from agent's actions
-            self.rend_state = torch.clamp(self.rend_state, 0, 1)
-           #assert (self.rend_state >= 0).all() # was something built w/o being added to new state?
-            # for separate rendering
-            self.render(agent=True)
-        self.world.state = new_state
+        self.act_tensor(actions)
 
         if self.num_step % self.agent_steps == 0: # the agent build-turn is over
             if self.render_gui:
@@ -257,6 +236,34 @@ class GoLMultiEnv(core.Env):
 
         return (obs, reward, terminal, info)
 
+
+
+    def act_tensor(self, actions):
+        '''Take a tensor corresponding to the game-map with actions represented as 1s.'''
+        acted_state = self.world.state + actions
+        new_state = self.world.state.long() ^ actions.long()
+
+        if self.render_gui:
+            # where cells are already alive
+            self.agent_dels = self.world.state.long() & actions.long()
+            agent_builds = actions - self.agent_dels
+            assert(agent_builds >= 0).all()
+           #assert(torch.sum(self.agent_dels + agent_builds) == self.num_proc)
+
+            if not hasattr(self, 'agent_builds'):
+                self.agent_builds = actions.float()
+            else:
+                # agent builds accumulate on rendered board during agent's build-turn
+                self.agent_builds = torch.clamp(self.agent_builds + actions, 0, 1)
+            self.agent_builds -= self.agent_dels # in case agent deletes what it has built in the
+            # current build-turn
+            self.rend_state = new_state - self.agent_builds # separate state from agent's actions
+            self.rend_state = torch.clamp(self.rend_state, 0, 1)
+           #assert (self.rend_state >= 0).all() # was something built w/o being added to new state?
+            # for separate rendering
+            self.render(agent=True)
+        self.world.state = new_state
+
     def update_ages(self):
         self.ages = self.ages + (self.world.state == 0) * (-self.ages)
         self.ages = self.ages + self.world.state
@@ -276,7 +283,7 @@ class GoLMultiEnv(core.Env):
         self.action_bin.fill_(0)
         action_bin, action_ixs = self.action_bin, self.action_ixs
         action_i = torch.cat((action_ixs, a), 1)
-        action_bin[action_i[:,0], action_i[:,1]] = 1
+        action_bin[action_i[:, 0], action_i[:, 1]] = 1
         action = action_bin
         action = action.view(self.action_shape_2D)
 
@@ -354,7 +361,6 @@ class GoLMultiEnv(core.Env):
         return [seed1, seed2]
 
     def delete(self, x, y):
-        print('delete')
         self.world.build_cell(x, y, alive=False)
 
 
