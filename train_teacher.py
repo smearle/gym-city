@@ -64,7 +64,8 @@ class Teacher(Trainer):
                 break
         alp_gmm = None
         if self.checkpoint:
-            alp_gmm = self.checkpoint['alp_gmm']
+            if 'alp_gmm' in self.checkpoint:
+                alp_gmm = self.checkpoint['alp_gmm']
         if alp_gmm is None:
             alp_gmm = ALPGMM(env_param_lw_bounds, env_param_hi_bounds)
         params_vec = alp_gmm.sample_task()

@@ -75,6 +75,9 @@ class DesignerPlayer(Trainer):
        #self.envs.remotes[0].send(('get_player_action_space', None))
        #n_player_actions = self.envs.remotes[0].recv()
         self.playable_map = None
+        # suppose all lose or all win
+        self.last_gen_loss = design_args.num_processes
+        self.las_gen_rew.fill_()
 
     def set_active_agent(self, n_agent):
         self.active_agent = self.actor_critic.base.active_agent = n_agent
@@ -135,7 +138,7 @@ class DesignerPlayer(Trainer):
        #print('epi reward', epi_rews.shape, epi_rews)
         # assume we won
         #FIXME: specific to 1 key 1 door in zelda
-        won = cum_rews > 2
+        won = info['won']
         # reward for longer win times (harder levels)
         epi_rews += won * (self.args.max_step - (epi_rews - 2)) ** 2
         return epi_rews

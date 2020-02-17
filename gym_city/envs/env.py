@@ -33,7 +33,7 @@ class MicropolisEnv(core.Env):
                 'res_pop': 750,
                 'com_pop': 100,
                 'ind_pop': 100,
-                'traffic': 2000,
+                'traffic': 1500,
                 # i believe one plant is worth 12, the other 16?
                 'num_plants': 14,
                 'mayor_rating': 100
@@ -51,9 +51,9 @@ class MicropolisEnv(core.Env):
                 'res_pop': 1/4,
                 'com_pop': 1,
                 'ind_pop': 1,
-                'traffic': 1,
+                'traffic': 1/10,
                 'num_plants': 1,
-                'mayor_rating': 1,
+                'mayor_rating': 1/2,
                 })
 
         self.num_params = 6
