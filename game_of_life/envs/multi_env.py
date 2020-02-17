@@ -1,21 +1,22 @@
-import gym
-from gym import core, spaces
-from gym.utils import seeding
-from .gol import utils
 import argparse
 import itertools
-
-import cv2
-import numpy as np
-import torch
-from torch import ByteTensor, Tensor
-from torch.nn import Conv2d, Parameter
-from torch.nn.init import zeros_
-from .world_pytorch import World
-from .im2gif import GifWriter
 import os
 import shutil
 from collections import OrderedDict
+
+import cv2
+import gym
+import numpy as np
+import torch
+from gym import core, spaces
+from gym.utils import seeding
+from torch import ByteTensor, Tensor
+from torch.nn import Conv2d, Parameter
+from torch.nn.init import zeros_
+
+from .gol import utils
+from .im2gif import GifWriter
+from .world_pytorch import World
 
 
 class GoLMultiEnv(core.Env):
@@ -41,6 +42,7 @@ class GoLMultiEnv(core.Env):
         self.cuda = cuda
 
         self.render_gui = render
+
         if render and record:
             self.gif_writer = GifWriter()
             try:
@@ -74,6 +76,7 @@ class GoLMultiEnv(core.Env):
         self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
         self.metrics = {}
         i = 0
+
         for key, val in self.metric_trgs.items():
             self.metrics[key] = self.curr_param_vals[i]
         obs_shape = (num_proc, 1 + num_params, size, size)
@@ -96,7 +99,7 @@ class GoLMultiEnv(core.Env):
         self.view_agent = render
 
         self.gif_ep_count = 0
-        self.step_count = 0
+        self.num_step = 0
        #self.record_entropy = True
         self.world = World(self.map_width, self.map_width, prob_life=prob_life,
                            cuda=cuda, num_proc=num_proc, env=self)
@@ -117,6 +120,7 @@ class GoLMultiEnv(core.Env):
         ''' Unrolls the action vector in the same order as the pytorch model
         on its forward pass.'''
         i = 0
+
         for z in range(self.num_tools):
             for x in range(self.map_width):
                 for y in range(self.map_width):
@@ -127,6 +131,7 @@ class GoLMultiEnv(core.Env):
         action_bin = action_bin.byte()
         # indexes of separate envs
         action_ixs = torch.LongTensor(list(range(self.num_proc))).unsqueeze(1)
+
         if self.cuda:
             action_bin = action_bin.cuda()
             action_ixs = action_ixs.cuda()
@@ -134,6 +139,7 @@ class GoLMultiEnv(core.Env):
         self.action_bin, self.action_ixs = action_bin, action_ixs
         # refill these rather than creating new ones each step
         self.scalar_obs = torch.zeros(scalar_obs_shape)
+
         if self.cuda:
             self.scalar_obs = self.scalar_obs.cuda()
             self.curr_param_vals.cuda()
@@ -157,6 +163,7 @@ class GoLMultiEnv(core.Env):
         # update our scalar observation
         # TODO: is there a quicker way, that scales to high number of params?
         i = 0
+
         for v in self.trg_param_vals[0]:
             unit_v = v  / self.param_ranges[i]
             trg_channel = self.scalar_obs[:,i:i+1]
@@ -171,7 +178,12 @@ class GoLMultiEnv(core.Env):
 
     def get_pop(self):
         pop = self.world.state.sum(dim=1).sum(1).sum(1)
+
         return pop
+
+    def init_ages(self):
+        self.ages = torch.zeros((self.map_width, self.map_width))
+        self.ages = self.ages.to(torch.device('cuda:0'))
 
     def step(self, a):
         '''
@@ -181,14 +193,65 @@ class GoLMultiEnv(core.Env):
         a = a.long()
        #a.fill_(0)
         actions = self.action_idx_to_tensor(a)
+
+        self.act_tensor(actions)
+
+        if self.num_step % self.agent_steps == 0: # the agent build-turn is over
+            if self.render_gui:
+                self.agent_builds.fill_(0)
+
+            for j in range(self.sim_steps):
+               #self.world._tick()
+                if self.render_gui:
+                    self.render(agent=True)
+        self.get_curr_param_vals()
+       #loss = abs(self.trg_param_vals - self.curr_param_vals)
+       #loss = loss.squeeze(-1)
+        # loss in a 1D tensor of losses of individual envs
+       #reward = torch.Tensor((100 * 50 / (loss + 50)))
+       #reward = reward / (self.max_loss * self.max_step * self.num_proc)
+       #reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
+        if self.num_step == self.max_step:
+            terminal = np.ones(self.num_proc, dtype=bool)
+        else:
+            terminal = self.terminal
+                   # reward < 2 # impossible situation for agent
+        #reward: average fullness of board
+        #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
+
+        if self.render_gui:
+           #pass # leave this one to main loop
+            self.render() # deal with rendering now
+        info = [{}]
+        self.num_step += 1
+        obs = self.get_obs()
+        ### OVERRIDE teacher for debuggine
+       #reward = self.curr_pop
+       #reward = self.curr_pop / (self.max_step * self.num_proc)
+       #reward = 256 - self.curr_pop
+
+       #reward = reward.unsqueeze(-1)
+        reward = 0
+        self.update_ages()
+
+        return (obs, reward, terminal, info)
+
+
+
+    def act_tensor(self, actions):
+        '''Take a tensor corresponding to the game-map with actions represented as 1s.'''
         acted_state = self.world.state + actions
         new_state = self.world.state.long() ^ actions.long()
+        self.agent_dels = self.world.state.long() & actions.long()
+        # reset age of deleted tiles to 0
+        self.ages = self.ages - self.ages * self.agent_dels
+
         if self.render_gui:
             # where cells are already alive
-            self.agent_dels = self.world.state.long() & actions.long()
             agent_builds = actions - self.agent_dels
             assert(agent_builds >= 0).all()
-            assert torch.sum(self.agent_dels + agent_builds) == self.num_proc
+           #assert(torch.sum(self.agent_dels + agent_builds) == self.num_proc)
+
             if not hasattr(self, 'agent_builds'):
                 self.agent_builds = actions.float()
             else:
@@ -202,50 +265,18 @@ class GoLMultiEnv(core.Env):
             # for separate rendering
             self.render(agent=True)
         self.world.state = new_state
-        if self.step_count % self.agent_steps == 0: # the agent build-turn is over
-            if self.render_gui:
-                self.agent_builds.fill_(0)
-            for j in range(self.sim_steps):
-                self.world._tick()
-                if self.render_gui:
-                    self.render(agent=True)
-        self.get_curr_param_vals()
-       #loss = abs(self.trg_param_vals - self.curr_param_vals)
-       #loss = loss.squeeze(-1)
-        # loss in a 1D tensor of losses of individual envs
-       #reward = torch.Tensor((100 * 50 / (loss + 50)))
-       #reward = reward / (self.max_loss * self.max_step * self.num_proc)
-       #reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
-        if self.step_count == self.max_step:
-            terminal = np.ones(self.num_proc, dtype=bool)
-        else:
-            terminal = self.terminal
-                   # reward < 2 # impossible situation for agent
-        #reward: average fullness of board
-        #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
-        if self.render_gui:
-           #pass # leave this one to main loop
-            self.render() # deal with rendering now
-        info = [{}]
-        self.step_count += 1
-        obs = self.get_obs()
-        ### OVERRIDE teacher for debuggine
-       #reward = self.curr_pop
-       #reward = self.curr_pop / (self.max_step * self.num_proc)
-       #reward = 256 - self.curr_pop
 
-       #reward = reward.unsqueeze(-1)
-        reward = 0
-        return (obs, reward, terminal, info)
-
+    def update_ages(self):
+        self.ages = self.ages + (self.world.state == 0) * (-self.ages)
+        self.ages = self.ages + self.world.state
 
     def get_obs(self):
         ''' Combine scalar slices with world state to form observation. The
         agent sees only the target global parameters, leaving it to infer the
         current global properties of the map.'''
         obs = torch.cat((self.scalar_obs, self.world.state.float()), dim=1)
-        return obs
 
+        return obs
 
     def action_idx_to_tensor(self, a):
         '''
@@ -254,31 +285,35 @@ class GoLMultiEnv(core.Env):
         self.action_bin.fill_(0)
         action_bin, action_ixs = self.action_bin, self.action_ixs
         action_i = torch.cat((action_ixs, a), 1)
-        action_bin[action_i[:,0], action_i[:,1]] = 1
+        action_bin[action_i[:, 0], action_i[:, 1]] = 1
         action = action_bin
         action = action.view(self.action_shape_2D)
+
         return action
 
-
     def reset(self):
+        self.init_ages()
         self.terminal = np.zeros((self.num_proc, 1), dtype=bool)
-        self.step_count = 0
+        self.num_step = 0
         self.world.repopulate_cells()
        #self.world.prepopulate_neighbours()
         if hasattr(self, 'agent_builds'):
             self.agent_builds.fill_(0)
+
         if self.render_gui:
             self.render()
         obs = self.get_obs()
+
         return obs
 
 
     def render(self, mode=None, agent=True):
-        if not agent or self.step_count == 0:
+        if not agent or self.num_step == 0:
             rend_state = self.world.state[self.rend_idx].cpu()
             rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_arr = rend_state
-        if agent and not self.step_count == 0:
+
+        if agent and not self.num_step == 0:
             rend_state = self.rend_state[self.rend_idx].cpu()
             rend_dels = self.agent_dels[self.rend_idx].cpu()
             rend_builds = self.agent_builds[self.rend_idx].cpu()
@@ -288,14 +323,18 @@ class GoLMultiEnv(core.Env):
             rend_arr = rend_state + rend_dels + rend_builds
        #print(rend_arr)
         rend_arr = rend_arr.transpose(2, 1, 0)
+        rend_arr = rend_arr.astype(np.uint8)
+        rend_arr = rend_arr * 255
         cv2.imshow("Game of Life", rend_arr)
+
         if self.record and not self.gif_writer.done:
             gif_dir = ('{}/gifs/'.format(self.record))
             im_dir = os.path.join(gif_dir, 'im')
-            im_path = os.path.join(im_dir, 'e{:02d}_s{:04d}.png'.format(self.gif_ep_count, self.step_count))
+            im_path = os.path.join(im_dir, 'e{:02d}_s{:04d}.png'.format(self.gif_ep_count, self.num_step))
            #print('saving frame at {}'.format(im_path))
             cv2.imwrite(im_path, rend_arr)
-            if self.gif_ep_count == 0 and self.step_count == self.max_step:
+
+            if self.gif_ep_count == 0 and self.num_step == self.max_step:
                 self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
                 self.gif_ep_count = 0
         cv2.waitKey(1)
@@ -320,7 +359,11 @@ class GoLMultiEnv(core.Env):
         seed2 = seeding.hash_seed(seed1 + 1) % 2**31
         np.random.seed(seed)
         self.world.seed(seed)
+
         return [seed1, seed2]
+
+    def delete(self, x, y):
+        self.world.build_cell(x, y, alive=False)
 
 
 cv2.destroyAllWindows()
@@ -328,6 +371,6 @@ cv2.destroyAllWindows()
 def main():
     env = GoLMultiEnv()
     env.configure(render=True)
+
     while True:
         env.step(0)
-

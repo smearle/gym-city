@@ -204,6 +204,8 @@ class TileMap(object):
         print('initializing AGES')
         self.age_order = np.zeros((self.MAP_X, self.MAP_Y), dtype=int)
         self.age_order.fill(-1)
+        
+        return self.age_order
 
     def didRoadBuild(self, x, y):
        #assert self.road_networks[0, x, y] == 0

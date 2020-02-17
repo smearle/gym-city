@@ -29,7 +29,10 @@ class Extinguisher(gym.Wrapper):
             self.extinction_interval = -1
         else:
             self.extinction_interval = 1 / extinction_prob
-        self.unwrapped.micro.map.init_age_array()
+        self.init_ages()
+
+    def init_ages(self):
+        self.ages = self.unwrapped.micro.map.init_age_array()
 
     def step(self, a):
         out = self.env.step(a)
@@ -67,16 +70,17 @@ class Extinguisher(gym.Wrapper):
     def clear_border(self, x, y, r, curr_dels):
         '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
         '''
+        ages = self.ages
         for x_i in range(x - r, x + r):
             if x_i < 0 or x_i >= self.MAP_X:
                 continue
             for y_i in range(y - r, y + r):
                 if y_i < 0 or y_i >= self.MAP_X:
                     continue
-                ages = self.micro.map.age_order
                 if ages[x_i, y_i] > 0:
                    #print(x_i, y_i)
-                    self.micro.doBotTool(x_i, y_i, 'Clear', static_build=True)
+                   #self.micro.doBotTool(x_i, y_i, 'Clear', static_build=True)
+                    self.delete(x_i, y_i)
                     curr_dels += 1
                     if curr_dels == self.n_dels:
                         return curr_dels
@@ -85,9 +89,9 @@ class Extinguisher(gym.Wrapper):
     def ranDemolish(self):
         # hack this to make it w/o replacement
         print('RANDEMOLISH')
+        ages = self.ages
         curr_dels = 0
         for i in range(self.n_dels):
-            ages = self.micro.map.age_order
             ages = ages.flatten()
             age_is = np.where(ages > -1)[0]
             if len(age_is) == 0:
@@ -96,7 +100,8 @@ class Extinguisher(gym.Wrapper):
             age_i = np.random.choice(age_is)
             x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
             x, y = int(x), int(y)
-            result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+           #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+            self.delete(x, y)
             curr_dels += 1
         return curr_dels
 
@@ -105,28 +110,32 @@ class Extinguisher(gym.Wrapper):
        #for i in range(20):
         curr_dels = 0
        #np.set_printoptions(threshold=sys.maxsize)
+        ages_arr = self.ages.cpu().numpy()
         for i in range(self.n_dels):
        #for i in range((self.MAP_X * self.MAP_Y) // 90):
            #print(str(self.micro.map.age_order).replace('\n ', ' ').replace('] [', '\n'))
-            ages = self.micro.map.age_order
-            ages = ages.flatten()
+            ages = ages_arr.flatten()
             youngest = np.max(ages)
             age_is = np.where(ages > -1)[0]
             if len(age_is) == 0:
                 break
             ages = np.copy(ages)
             ages += (ages < 0) * 2 * youngest
+            print(ages)
             age_i = np.argmin(ages)
-            x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
+           #x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
+            print(age_i.shape, ages_arr.shape)
+            x, y = np.unravel_index(age_i, ages_arr.shape)
             x, y = int(x), int(y)
            #print('deleting {} {}'.format(x, y))
            #print('zone {}'.format(self.micro.map.zones[self.micro.map.zoneMap[-1, x, y]]))
-            result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+           #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+            self.delete(x, y)
            #self.render()
            #print('result {}'.format(result))
             curr_dels += 1
         # otherwise it's over!
-        self.micro.engine.setFunds(self.micro.init_funds)
+       #self.micro.engine.setFunds(self.micro.init_funds)
         return curr_dels
 
 class ImRender(gym.Wrapper):

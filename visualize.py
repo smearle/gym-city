@@ -368,13 +368,13 @@ class Plotter(object):
             figfolder = folder.replace('/logs_eval', '/eval_')
         else:
             figfolder = folder.replace('/logs', '/train_')
-        print('should be saving graph now as {}'.format(figfolder))
 
 
         if man:
-            figfile = './{}_{}_fig_man.png'.format(figfolder, header)
+            figfile = '{}_{}_fig_man.png'.format(figfolder, header)
         else:
-            figfile = './{}_{}_fig.png'.format(figfolder, header)
+            figfile = '{}_{}_fig.png'.format(figfolder, header)
+        print('should be saving graph now as {}'.format(figfile))
         plt.savefig(figfile, format='png')
         plt.show()
         plt.draw()

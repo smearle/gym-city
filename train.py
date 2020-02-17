@@ -197,24 +197,27 @@ class Trainer():
             if vec_norm is not None:
                 vec_norm.eval()
                 vec_norm.ob_rms = ob_rms
-            saved_args.num_frames = args.num_frames
-            saved_args.vis_interval = args.vis_interval
-            saved_args.eval_interval = args.eval_interval
-            saved_args.overwrite = args.overwrite
-            saved_args.n_recs = args.n_recs
-            saved_args.intra_shr = args.intra_shr
-            saved_args.inter_shr = args.inter_shr
-            saved_args.map_width = args.map_width
-            saved_args.render = args.render
-            saved_args.print_map = args.print_map
-            saved_args.load_dir = args.load_dir
-            saved_args.experiment_name = args.experiment_name
-            saved_args.log_dir = args.log_dir
-            saved_args.save_dir = args.save_dir
-            saved_args.num_processes = args.num_processes
-            saved_args.n_chan = args.n_chan
-            saved_args.prebuild = args.prebuild
-            args = saved_args
+           #saved_args.num_frames = args.num_frames
+           #saved_args.vis_interval = args.vis_interval
+           #saved_args.eval_interval = args.eval_interval
+           #saved_args.overwrite = args.overwrite
+           #saved_args.n_recs = args.n_recs
+           #saved_args.intra_shr = args.intra_shr
+           #saved_args.inter_shr = args.inter_shr
+           #saved_args.map_width = args.map_width
+           #saved_args.render = args.render
+           #saved_args.print_map = args.print_map
+           #saved_args.load_dir = args.load_dir
+           #saved_args.experiment_name = args.experiment_name
+           #saved_args.log_dir = args.log_dir
+           #saved_args.save_dir = args.save_dir
+           #saved_args.num_processes = args.num_processes
+           #saved_args.n_chan = args.n_chan
+           #saved_args.prebuild = args.prebuild
+           #args = saved_args
+            args.save_dir = saved_args.save_dir
+            args.model = saved_args.model
+            args.env_name = saved_args.env_name
         actor_critic.to(device)
 
         updates_remaining = int(args.num_frames - past_frames) // (args.num_steps * args.num_processes)

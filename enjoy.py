@@ -85,6 +85,8 @@ if isinstance(env.action_space, gym.spaces.Discrete):
         num_actions = env.venv.venv.envs[0].num_tools
     elif 'GameOfLife' in env_name:
         num_actions = 1
+    elif 'GoLMulti' in env_name:
+        num_actions = 1
     elif '-wide' in env_name:
         num_actions = env.observation_space.shape[-1]
     else:
