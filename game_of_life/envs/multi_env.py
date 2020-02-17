@@ -242,10 +242,12 @@ class GoLMultiEnv(core.Env):
         '''Take a tensor corresponding to the game-map with actions represented as 1s.'''
         acted_state = self.world.state + actions
         new_state = self.world.state.long() ^ actions.long()
+        self.agent_dels = self.world.state.long() & actions.long()
+        # reset age of deleted tiles to 0
+        self.ages = self.ages - self.ages * self.agent_dels
 
         if self.render_gui:
             # where cells are already alive
-            self.agent_dels = self.world.state.long() & actions.long()
             agent_builds = actions - self.agent_dels
             assert(agent_builds >= 0).all()
            #assert(torch.sum(self.agent_dels + agent_builds) == self.num_proc)

@@ -43,7 +43,6 @@ class ExtinguisherMulti(Extinguisher):
                 dels[(n_curr_dels < self.n_dels), 0, x_i, y_i] = 1
                 dels = self.world.state * dels
                 self.act_tensor(dels)
-                print(n_curr_dels)
                 n_curr_dels += torch.sum(dels, dim=[1, 2, 3])
                 if (n_curr_dels >= self.n_dels).all():
                     return n_curr_dels
@@ -72,7 +71,7 @@ class ExtinguisherMulti(Extinguisher):
     def delete(self, del_coords):
         dels = self.dels.fill_(0)
         for i, del_xy in enumerate(del_coords):
-            dels[i, 0][del_xy] = 1
+            dels[i, 0][tuple(del_xy)] = 1
         return self.act_tensor(dels)
 
 
@@ -81,34 +80,36 @@ class ExtinguisherMulti(Extinguisher):
        #for i in range(20):
         curr_dels = 0
        #np.set_printoptions(threshold=sys.maxsize)
-        ages_arr = self.ages.cpu().numpy()
-        ages = ages_arr
+       #ages_arr = self.ages.cpu().numpy()
         for i in range(self.n_dels):
-       #for i in range((self.MAP_X * self.MAP_Y) // 90):
-           #print(str(self.micro.map.age_order).replace('\n ', ' ').replace('] [', '\n'))
-           #ages = ages_arr.flatten()
-            youngest = np.max(ages)
-            age_is = np.where(ages > -1)
-            print(age_is)
-            if len(age_is) == 0:
-                break
-            ages = np.copy(ages)
-            ages += (ages < 0) * 2 * youngest
-            age_i = np.argmin(ages)
+            ages = self.ages.clone()
+            youngest = ages.max()
+           #builds = [torch.where(ages[i, 0] > 0) for i in range(self.num_proc)]
+           #if len(builds) == 0:
+           #    break
+           #ages += (ages < 0) * 2 * youngest
+            ages = ages.view(self.num_proc, -1)
+            age_i = torch.argmax(ages, dim=1)
            #x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
-            print(age_i, ages_arr.shape)
-            x, y = np.unravel_index(age_i, ages_arr.shape)
-            x, y = int(x), int(y)
+            age_i = age_i.unsqueeze(-1)
+            x = age_i // self.ages.shape[-2]
+            y = age_i % self.ages.shape[-1]
+            xy = torch.cat((x, y), dim=1)
            #print('deleting {} {}'.format(x, y))
            #print('zone {}'.format(self.micro.map.zones[self.micro.map.zoneMap[-1, x, y]]))
            #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-            self.delete(x, y)
+            self.delete(xy)
            #self.render()
            #print('result {}'.format(result))
             curr_dels += 1
         # otherwise it's over!
        #self.micro.engine.setFunds(self.micro.init_funds)
         return curr_dels
+
+    def reset(self):
+        self.ages.fill_(0)
+        obs = super().reset()
+        return obs
 
 
 class ParamRewMulti(gym.Wrapper):
