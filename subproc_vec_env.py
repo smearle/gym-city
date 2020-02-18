@@ -30,7 +30,9 @@ def worker(remote, parent_remote, env_fn_wrapper):
 
             break
         elif cmd == 'get_spaces':
-            remote.send((env.observation_space, env.action_space))
+            print('getting spaces envs.py')
+            spaces = env.get_spaces()
+            remote.send(spaces)
         elif cmd == 'get_param_bounds':
             param_bounds = env.get_param_bounds()
             remote.send(param_bounds)
@@ -79,7 +81,8 @@ class SubprocVecEnv(VecEnv):
             remote.close()
 
         self.remotes[0].send(('get_spaces', None))
-        observation_space, action_space = self.remotes[0].recv()
+        spaces = self.remotes[0].recv()
+        observation_space, action_space = spaces
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
 
     def get_param_bounds(self):
@@ -96,9 +99,9 @@ class SubprocVecEnv(VecEnv):
 
         return
 
-    def setMapSize(self, map_size):
+    def configure(self, map_size):
         for remote in self.remotes:
-            remote.send(('setMapSize', [map_size]))
+            remote.send(('configure', [map_size]))
             remote.recv()
 
         return
@@ -109,6 +112,11 @@ class SubprocVecEnv(VecEnv):
             remote.recv()
 
         return
+
+    def set_log_dir(self, log_dir):
+        for remote in self.remotes:
+            remote.send(('set_log_dir', log_dir))
+            remote.recv()
 
     def set_params(self, params):
         for remote in self.remotes:
@@ -141,9 +149,9 @@ class SubprocVecEnv(VecEnv):
     def set_param_bounds(self, param_bounds):
         worker = self.remotes[0]
         worker.send(('set_param_bounds', param_bounds))
-        worker.recv()
-
-        return
+        num_params = worker.recv()
+        print('{} env params'.format(num_params))
+        return num_params
 
     def step_async(self, actions):
         for remote, action in zip(self.remotes, actions):

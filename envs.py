@@ -20,7 +20,7 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ExtinguisherMulti
+from wrappers import ParamRewMulti, ExtinguisherMulti, ImRenderMulti
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -75,8 +75,13 @@ class MicropolisMonitor(bench.Monitor):
             self.needs_reset = True
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards)
+            dist_entropy = self.dist_entropy
+            if dist_entropy is None:
+                dist_entropy = 0
+            if eprew is None:
+                eprew = 0
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
-                    "e": round(self.dist_entropy, 6)}
+                    "e": round(dist_entropy, 6)}
 
             if "p" in epinfo.keys():
                 epinfo["p"] = round(self.curr_param_vals[0].item(), 6)
@@ -128,8 +133,13 @@ class MultiMonitor(MicropolisMonitor):
             self.needs_reset = True
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards) * self.env.num_proc
+            dist_entropy = self.dist_entropy
+            if dist_entropy is None:
+                dist_entropy = 0
+            if eprew is None:
+                eprew = 0
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
-                    "e": round(self.dist_entropy, 6),
+                    "e": round(dist_entropy, 6),
                     "p": round(self.trg_param_vals[0, 0].item(), 6)}
 
             for k in self.info_keywords:
@@ -209,6 +219,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
     ''' return a function which starts the environment'''
     def _thunk():
         record = args.record
+        extinction = args.extinction_type != 'None'
 
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -236,14 +247,13 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         max_step=max_step, cuda=args.cuda,
                         num_proc=args.num_processes)
                 env = ParamRewMulti(env)
-                if args.extinction_type != 'None':
+                if extinction:
                     env = ExtinguisherMulti(env, args.extinction_type, args.extinction_prob)
+                if args.im_render:
+                    env = ImRenderMulti(env, log_dir, rank)
             else:
                 multi_env = False
-                #FIXME: this is just hack to make our extinction experiment loop work.
-               #if args.extinction_type is not None:
-                if args.extinction_type != 'None':
-                    env = Extinguisher(env, args.extinction_type, args.extinction_prob)
+
 
             #FIXME: make this recognize pcgrl environments in general
 
@@ -268,16 +278,24 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                    #render = render_gui
                     render = False
 
-                if args.extinction_type is not None:
+                if extinction:
                     ages = True
                 else:
                     ages = False
-                env.setMapSize(map_width, print_map=print_map, render_gui=render,
-                        empty_start=not args.random_terrain, max_step=max_step,
+                print('poet envs.py?', args.poet)
+                env.configure(map_width,
+                        max_step=max_step,
                         rank=rank,
+                        print_map=print_map,
+                        render_gui=render,
+                        empty_start=not args.random_terrain,
                         power_puzzle=power_puzzle,
-                        record=record, random_builds=args.random_builds, poet=args.poet,
+                        record=record,
+                        random_builds=args.random_builds,
+                        poet=args.poet,
                         ages=ages)
+                if extinction:
+                    env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -318,7 +336,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = TransposeImage(env)
 
 
-        if args.im_render:
+        if args.im_render and not multi_env:
             print('wrapping in imrender')
             env = ImRender(env, log_dir, rank)
 

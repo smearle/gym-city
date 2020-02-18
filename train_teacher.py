@@ -47,9 +47,8 @@ class Teacher(Trainer):
         env_param_bounds = envs.get_param_bounds()
         # in case we want to change this dynamically in the future (e.g., we may
         # not know how much traffic the agent can possibly produce in Micropolis)
-        envs.set_param_bounds(env_param_bounds) # start with default bounds
-        env_param_bounds = env_param_bounds
-        num_env_params = 6
+        num_env_params = envs.set_param_bounds(env_param_bounds) # start with default bounds
+        num_env_params = len(env_param_bounds)
         env_param_ranges = []
         env_param_lw_bounds = []
         env_param_hi_bounds = []

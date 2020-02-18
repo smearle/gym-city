@@ -85,9 +85,13 @@ class MicropolisEnv(core.Env):
        #        'num_plants': 0,
        #        'mayor_rating':0
        #        }
-        self.city_metrics = {}
+        self.metrics = {}
         self.max_reward = 100
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
+
+    def get_spaces(self):
+        print('getting spaces')
+        return self.observation_space, self.action_space
 
     def seed(self, seed=None):
         self.np_random, seed1 = seeding.np_random(seed)
@@ -98,24 +102,38 @@ class MicropolisEnv(core.Env):
         np.random.seed(seed)
         return [seed1, seed2]
 
-    def setMapSize(self, size, **kwargs):
+    def configure(self, size, **kwargs):
         '''Do most of the actual initialization.
         '''
+        print('poet in kwargs?', kwargs)
         self.pre_gui(size, **kwargs)
+        print('poet in env.py?', self.poet)
         #TODO: this better
         if hasattr(self, 'micro'):
             self.micro.reset_params(size)
         else:
             self.micro = MicropolisControl(self, self.MAP_X, self.MAP_Y, self.PADDING,
                 rank=self.rank, power_puzzle=self.power_puzzle, gui=self.render_gui)
-        self.city_metrics = self.get_city_metrics()
-        self.last_city_metrics = self.city_metrics
+        self.metrics = self.get_metrics()
+        self.last_metrics = self.metrics
         self.post_gui()
 
-    def pre_gui(self, size, max_step=None, rank=0, print_map=False,
-            PADDING=0, static_builds=True, parallel_gui=False,
-            render_gui=False, empty_start=True, simple_reward=False,
-            power_puzzle=False, record=False, traffic_only=False, random_builds=False, poet=False, **kwargs):
+    def pre_gui(self, size,
+            max_step=None,
+            rank=0,
+            print_map=False,
+            render_gui=False,
+            empty_start=True,
+            static_builds=True,
+            power_puzzle=False,
+            record=False,
+            random_builds=False,
+            parallel_gui=False,
+            simple_reward=False,
+            traffic_only=False,
+            PADDING=0,
+            **kwargs):
+        poet = kwargs.get('poet')
         self.PADDING = PADDING
         self.rank = rank
         self.render_gui = render_gui
@@ -278,8 +296,8 @@ class MicropolisEnv(core.Env):
         if self.random_builds:
             self.randomStaticStart()
         self.micro.simTick()
-        self.city_metrics = self.get_city_metrics()
-        self.last_city_metrics = self.city_metrics
+        self.metrics = self.get_metrics()
+        self.last_metrics = self.metrics
         self.micro.setFunds(self.micro.init_funds)
        #curr_funds = self.micro.getFunds()
         self.curr_pop = 0
@@ -349,9 +367,9 @@ class MicropolisEnv(core.Env):
         if True:
             reward = 0
             for metric, trg in self.city_trgs.items():
-                last_val = self.last_city_metrics[metric]
+                last_val = self.last_metrics[metric]
                 trg_change = trg - last_val
-                val = self.city_metrics[metric]
+                val = self.metrics[metric]
                 change = val - last_val
                 if np.sign(change) != np.sign(trg_change):
                     metric_rew = -abs(change)
@@ -361,7 +379,7 @@ class MicropolisEnv(core.Env):
                     metric_rew = abs(trg_change) - abs(trg_change - change)
                 reward += metric_rew * self.weights[metric]
        #if self.render_gui and reward != 0:
-       #    print(self.city_metrics)
+       #    print(self.metrics)
        #    print(self.city_trgs)
        #    print(reward)
        #    print()
@@ -379,7 +397,7 @@ class MicropolisEnv(core.Env):
        #                for metric_name, trg in self.city_trgs.items():
 
        #            weight = self.weights[k]
-       #            loss += abs(v - self.city_metrics[k]) * weight
+       #            loss += abs(v - self.metrics[k]) * weight
        #            i += 1
 
        #    reward = (self.max_loss - loss) * max_reward / self.max_loss
@@ -415,6 +433,8 @@ class MicropolisEnv(core.Env):
         print('setting visual param bounds (TODO: forreal')
         if self.win1:
             self.win1.agentPanel.setMetricRanges(bounds)
+        print(len(bounds))
+        return len(bounds)
 
 
     def set_params(self, trgs):
@@ -424,25 +444,25 @@ class MicropolisEnv(core.Env):
         self.display_city_trgs()
        #print('set city trgs of env {} to: {}'.format(self.rank, self.city_trgs))
 
-    def get_city_metrics(self):
+    def get_metrics(self):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), \
                                      self.micro.getComPop(), \
                                      self.micro.getIndPop()
         traffic = self.micro.total_traffic
         mayor_rating = self.getRating()
         num_plants = self.micro.map.num_plants
-        city_metrics = {
+        metrics = {
                 'res_pop': res_pop,
                 'com_pop': com_pop,
                 'ind_pop': ind_pop,
                 'traffic': traffic, 'num_plants': num_plants,
                 'mayor_rating': mayor_rating
                 }
-        return city_metrics
+        return metrics
 
-    def display_city_metrics(self):
+    def display_metrics(self):
         if self.win1 is not None:
-            self.win1.agentPanel.displayMetrics(self.city_metrics)
+            self.win1.agentPanel.displayMetrics(self.metrics)
 
 
 
@@ -471,10 +491,10 @@ class MicropolisEnv(core.Env):
         self.state = self.getState()
        #print(self.state[-2])
         self.curr_pop = self.getPop()
-        self.last_city_metrics = self.city_metrics
-        self.city_metrics = self.get_city_metrics()
+        self.last_metrics = self.metrics
+        self.metrics = self.get_metrics()
         if self.render_gui:
-            self.display_city_metrics()
+            self.display_metrics()
 
        #if self.traffic_only:
        #    self.curr_pop = self.getPopReward() / 1
@@ -536,8 +556,8 @@ class MicropolisEnv(core.Env):
             self.player_step = a
         self.num_step += 1
        ## Override Reward
-       #reward = self.city_metrics['res_pop'] + self.city_metrics['com_pop']\
-       #         + self.city_metrics['ind_pop'] + self.city_metrics['traffic']
+       #reward = self.metrics['res_pop'] + self.metrics['com_pop']\
+       #         + self.metrics['ind_pop'] + self.metrics['traffic']
         return (self.state, reward, terminal, infos)
 
     def getRating(self):

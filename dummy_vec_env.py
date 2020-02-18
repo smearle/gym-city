@@ -57,7 +57,7 @@ class DDummyVecEnv(DummyVecEnv):
     def set_param_bounds(self, bounds):
         for env in self.envs:
             env.set_param_bounds(bounds)
-
+        return len(bounds)
 
     def set_params(self, params):
         for env in self.envs:

@@ -1,8 +1,13 @@
-import torch
+import copy
+import os
+
+import cv2
 import gym
 import numpy as np
-import copy
-from gym_city.wrappers import Extinguisher
+import torch
+
+from gym_city.wrappers import Extinguisher, ImRender
+
 
 class ExtinguisherMulti(Extinguisher):
     ''' Handle extinction events, for environments in which 1 env contains many (i.e. GoLMulti).
@@ -13,6 +18,7 @@ class ExtinguisherMulti(Extinguisher):
         self.dels = dels.to(self.device)
         n_curr_dels = torch.zeros((self.num_proc))
         self.n_curr_dels = n_curr_dels.to(self.device)
+        self.MAP_X = self.MAP_Y = self.map_width
 
     def init_ages(self):
         self.unwrapped.init_ages()
@@ -23,10 +29,13 @@ class ExtinguisherMulti(Extinguisher):
         n_curr_dels = self.n_curr_dels.fill_(0)
         x = np.random.randint(0, self.map_width)
         y = np.random.randint(0, self.map_width)
+
         for r in range(0, max(x, abs(self.map_width - x), y, abs(self.map_width - y))):
             n_curr_dels += self.clear_border(x, y, r, n_curr_dels)
+
             if (n_curr_dels >= self.n_dels).all():
                 break
+
         return n_curr_dels
 
     def clear_border(self, x, y, r, n_curr_dels):
@@ -34,9 +43,11 @@ class ExtinguisherMulti(Extinguisher):
         '''
         dels = self.dels.fill_(0)
         ages = self.ages
+
         for x_i in range(x - r, x + r):
             if x_i < 0 or x_i >= self.map_width:
                 continue
+
             for y_i in range(y - r, y + r):
                 if y_i < 0 or y_i >= self.map_width:
                     continue
@@ -44,8 +55,10 @@ class ExtinguisherMulti(Extinguisher):
                 dels = self.world.state * dels
                 self.act_tensor(dels)
                 n_curr_dels += torch.sum(dels, dim=[1, 2, 3])
+
                 if (n_curr_dels >= self.n_dels).all():
                     return n_curr_dels
+
         return n_curr_dels
 
     def ranDemolish(self):
@@ -53,6 +66,7 @@ class ExtinguisherMulti(Extinguisher):
         print('RANDEMOLISH')
         ages = self.ages.cpu().numpy()
         curr_dels = 0
+
         for i in range(self.n_dels):
            #ages = ages.flatten()
             builds = [np.where(ages[i, 0] > 0) for i in range(self.num_proc)]
@@ -66,12 +80,15 @@ class ExtinguisherMulti(Extinguisher):
            #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
             self.delete(del_coords)
             curr_dels += 1
+
         return curr_dels
 
     def delete(self, del_coords):
         dels = self.dels.fill_(0)
+
         for i, del_xy in enumerate(del_coords):
             dels[i, 0][tuple(del_xy)] = 1
+
         return self.act_tensor(dels)
 
 
@@ -106,11 +123,72 @@ class ExtinguisherMulti(Extinguisher):
        #self.micro.engine.setFunds(self.micro.init_funds)
         return curr_dels
 
+    def step(self, action):
+        if self.ages is not None and self.num_step % 1000 == 0:
+            self.ages = self.ages - torch.min(self.ages)
+        return super().step(action)
+
     def reset(self):
         self.ages.fill_(0)
         obs = super().reset()
+
         return obs
 
+
+class ImRenderMulti(ImRender):
+    def __init__(self, env, log_dir, rank):
+        super(ImRenderMulti, self).__init__(env, log_dir, rank)
+
+    def step(self, action):
+        self.im_render()
+        obs, rew, done, info = self.env.step(action)
+        for k, v in self.metrics.items():
+            self.metrics[k] = v.cpu().item()
+       #info = {
+       #        **info,
+       #       #**self.metrics
+       #        }
+        return obs, rew, done, info
+
+    def im_render(self):
+        state = self.world.state.clone()
+        for i in range(self.num_proc):
+            image = state[i].cpu()
+            image = np.vstack((image, image, image))
+            image = np.transpose(image, (2, 1, 0))
+            image = image.astype(np.uint8)
+            image = image * 255
+            log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
+                i, self.n_episode, self.num_step))
+            cv2.imwrite(log_dir, image)
+            if i == self.rend_idx:
+                cv2.imshow('im', image)
+                cv2.waitKey(1)
+
+            self.n_saved += 1
+       #zone_map = self.unwrapped.micro.map.zoneMap
+       #zones = self.unwrapped.micro.map.zones
+       #tile_types = self.tile_types
+       #type_colors = self.type_colors
+       #colors = self.colors
+       #for x in range(self.MAP_X):
+       #    for y in range(self.MAP_Y):
+       #        tile_type = tile_types[zones[zone_map[-1, x, y]]]
+       #        color = colors[type_colors[tile_type]]
+       #        self.image[x][y] = color
+       #self.image = np.transpose(self.image, (1, 0, 2))
+       #self.image = self.image * 255
+       #if self.unwrapped.render_gui:
+       #    cv2.imshow('im', self.image)
+       #if self.unwrapped.num_step % self.save_interval == 0:
+       #    log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
+       #        self.unwrapped.rank, self.n_episode, self.num_step))
+       #    print(log_dir)
+       #    cv2.imwrite(log_dir, self.image)
+       #    self.n_saved += 1
+
+    def set_log_dir(self, log_dir):
+        self.log_dir = log_dir
 
 class ParamRewMulti(gym.Wrapper):
     ''' Calculate reward in terms of movement toward vector of target metrics, for environments in
@@ -118,6 +196,7 @@ class ParamRewMulti(gym.Wrapper):
     '''
     def __init__(self, env):
         super(ParamRewMulti, self).__init__(env)
+
         if self.cuda:
             self.device = torch.device('cuda')
         else:
@@ -127,13 +206,15 @@ class ParamRewMulti(gym.Wrapper):
         self.last_metrics = copy.deepcopy(self.metrics)
         ob, rew, done, info = super().step(action)
         rew = self.get_reward()
+
         return ob, rew, done, info
 
     def get_reward(self):
         reward = torch.zeros(self.num_proc)
         reward = reward.to(self.device)
+
         for metric, trg in self.metric_trgs.items():
-            last_val = self.last_metrics[metric].to(self.device)
+            last_val = self.last_metrics[metric]#.to(self.device)
             trg_change = trg - last_val
             val = self.metrics[metric]
             change = val - last_val

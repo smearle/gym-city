@@ -29,11 +29,12 @@ class GoLMultiEnv(core.Env):
         self.player_builds = []
         self.action_bin = None
         self.rend_idx = -1
-        self.agent_steps = 4
-        self.sim_steps = 4
+        self.agent_steps = 1
+        self.sim_steps = 0
 
-    def configure(self, render=False, map_width=16, prob_life=20,
-             max_step=200, num_proc=1, record=None, cuda=False):
+    def configure(self, map_width=16, render=False, prob_life=20,
+             max_step=200, num_proc=1, record=None, cuda=False,
+             poet=False):
         self.num_proc = num_proc
         self.prebuild = False
         self.prebuild_steps = 50
@@ -142,7 +143,7 @@ class GoLMultiEnv(core.Env):
 
         if self.cuda:
             self.scalar_obs = self.scalar_obs.cuda()
-            self.curr_param_vals.cuda()
+            self.curr_param_vals = self.curr_param_vals.cuda()
         self.set_params(self.metric_trgs)
 
 
@@ -152,6 +153,7 @@ class GoLMultiEnv(core.Env):
 
     def set_param_bounds(self, bounds):
         self.param_bounds = bounds
+        return len(bounds)
 
 
     def set_params(self, params):
@@ -183,7 +185,8 @@ class GoLMultiEnv(core.Env):
 
     def init_ages(self):
         self.ages = torch.zeros((self.map_width, self.map_width))
-        self.ages = self.ages.to(torch.device('cuda:0'))
+        if self.cuda:
+            self.ages = self.ages.to(torch.device('cuda:0'))
 
     def step(self, a):
         '''
@@ -201,7 +204,7 @@ class GoLMultiEnv(core.Env):
                 self.agent_builds.fill_(0)
 
             for j in range(self.sim_steps):
-               #self.world._tick()
+                self.world._tick()
                 if self.render_gui:
                     self.render(agent=True)
         self.get_curr_param_vals()

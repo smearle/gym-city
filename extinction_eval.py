@@ -81,10 +81,12 @@ class ExtinctionEvaluator():
 
         if not args.evaluate and not 'GoLMulti' in env_name:
             # assume we just want to observe/interact w/ a single env.
-            args.num_proc = 1
+           #args.num_proc = 1
+            pass
         dummy_args = args
-        envs = make_vec_envs(env_name, args.seed + 1000, args.num_processes,
-                            None, args.load_dir, args.add_timestep, device=device,
+        dummy_args.poet = True
+        envs = make_vec_envs(env_name, args.seed, args.num_processes, args.gamma,
+                            args.load_dir, args.add_timestep, device=device,
                             allow_early_resets=False,
                             args=dummy_args)
         print(args.load_dir)
@@ -93,12 +95,12 @@ class ExtinctionEvaluator():
             in_width = 1
             num_inputs = envs.observation_space.n
         elif isinstance(envs.observation_space, gym.spaces.Box):
-            if len(envs.observation_space.shape) == 3:
-                in_w = envs.observation_space.shape[1]
-                in_h = envs.observation_space.shape[2]
-            else:
-                in_w = 1
-                in_h = 1
+           #if len(envs.observation_space.shape) == 3:
+            in_w = envs.observation_space.shape[-2]
+            in_h = envs.observation_space.shape[-1]
+           #else:
+           #    in_w = 1
+           #    in_h = 1
             num_inputs = envs.observation_space.shape[0]
 
         if isinstance(envs.action_space, gym.spaces.Discrete):
@@ -167,15 +169,16 @@ class ExtinctionEvaluator():
                #map_width,
                 max_step
                 )
-        envs.venv.venv.set_log_dir(im_log_dir)
+        envs.set_log_dir(im_log_dir)
         # adjust envs in general
-        envs.venv.venv.setMapSize(map_width, max_step=max_step, render=args.render)
+        envs.configure(map_width, max_step=max_step, render=args.render,
+                                  poet=args.poet)
         if extinction_type is not None:
             # adjust extinguisher wrapper
-            envs.venv.venv.set_extinction_type(extinction_type, extinction_prob, extinction_dels)
+            envs.set_extinction_type(extinction_type, extinction_prob, extinction_dels)
         # adjust image render wrapper
-        envs.venv.venv.reset_episodes(im_log_dir)
-        envs.venv.venv.init_storage()
+        envs.reset_episodes(im_log_dir)
+       #envs.init_storage()
         recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
         masks = torch.zeros(1, 1)
         obs = envs.reset()
@@ -201,10 +204,9 @@ class ExtinctionEvaluator():
                         pass
            #print(exp_infos)
             if args.render:
-                envs.venv.venv.render()
+                envs.render()
 
             if done.any():
-                print(done)
                 n_episode += np.sum(done.astype(int))
             player_act = None
 
@@ -316,7 +318,7 @@ class ExtinctionExperimenter():
                #64
                 ]
         self.xt_types = [
-               #'None',
+                'None',
                 'age',
                 'spatial',
                 'random'
@@ -331,8 +333,9 @@ class ExtinctionExperimenter():
        #       #0.05,
        #       #0.1
        #        ]
-        exp_name = 'test_map:{}_xtprob:{}_xtdels:{}'.format(
+        exp_name = 'test_map:{}_col:{}_xtprob:{}_xtdels:{}'.format(
                 self.map_sizes[0],
+                args.active_column,
                 float(self.xt_probs[0]),
                 self.xt_dels[0])
         self.log_dir = log_dir
@@ -374,16 +377,17 @@ if __name__ == "__main__":
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
-        'MicropolisEnv-v0_w16_1000s_noExtinct.bkp',
+       #'MicropolisEnv-v0_w16_300s_noExtinction.test',
+        'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 
     #TODO: hacky; detect incomplete folders automatically,
     #     should save numpy object w/ stats in folder
     if not VIS_ONLY:
-        try:
-            EXPERIMENTER.run_experiments()
-        # broadcast problem when sizing up map #TODO: adjust vec_envs to prevent this
-        except ValueError as ve:
-            print(ve)
+        EXPERIMENTER.run_experiments()
+       #try:
+       ## broadcast problem when sizing up map #TODO: adjust vec_envs to prevent this
+       #except ValueError as ve:
+       #    print(ve)
     EXPERIMENTER.visualize_experiments()
