@@ -171,8 +171,8 @@ class ExtinctionEvaluator():
                 )
         envs.set_log_dir(im_log_dir)
         # adjust envs in general
-        envs.configure(map_width, max_step=max_step, render=args.render,
-                                  poet=args.poet)
+        envs.configure(map_width, max_step=max_step, render=args.render, num_proc=args.num_processes,
+                                  poet=args.poet, cuda=not args.no_cuda)
         if extinction_type is not None:
             # adjust extinguisher wrapper
             envs.set_extinction_type(extinction_type, extinction_prob, extinction_dels)
@@ -198,8 +198,9 @@ class ExtinctionEvaluator():
                     exp_infos[k] = np.array((max_step))
             else:
                 for k, v in infos[0].items():
+                    print(k, v)
                     if k in exp_infos:
-                        exp_infos[k] = exp_infos[k] + [v]
+                        exp_infos[k] = exp_infos[k] + [torch.mean(v.float())]
                     else:
                         pass
            #print(exp_infos)
@@ -311,14 +312,15 @@ class ExtinctionExperimenter():
         args.env_name = env_name
         # Experiment global parameters
         self.n_epis = 20
-        self.max_step = [1000]
+       #self.max_step = [1000]
+        self.max_step = [args.max_step]
         self.map_sizes = [
                 16,
                #32,
                #64
                 ]
         self.xt_types = [
-                'None',
+               #'None',
                 'age',
                 'spatial',
                 'random'
@@ -378,7 +380,7 @@ if __name__ == "__main__":
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-        'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
+        'GoLMultiEnv-v0_w16_300s_noTick',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

@@ -64,7 +64,7 @@ class ExtinguisherMulti(Extinguisher):
     def ranDemolish(self):
         # hack this to make it w/o replacement
         print('RANDEMOLISH')
-        ages = self.ages.cpu().numpy()
+        ages = self.unwrapped.ages.cpu().numpy()
         curr_dels = 0
 
         for i in range(self.n_dels):
@@ -84,6 +84,7 @@ class ExtinguisherMulti(Extinguisher):
         return curr_dels
 
     def delete(self, del_coords):
+        print(del_coords)
         dels = self.dels.fill_(0)
 
         for i, del_xy in enumerate(del_coords):
@@ -99,7 +100,7 @@ class ExtinguisherMulti(Extinguisher):
        #np.set_printoptions(threshold=sys.maxsize)
        #ages_arr = self.ages.cpu().numpy()
         for i in range(self.n_dels):
-            ages = self.ages.clone()
+            ages = self.unwrapped.ages.clone()
             youngest = ages.max()
            #builds = [torch.where(ages[i, 0] > 0) for i in range(self.num_proc)]
            #if len(builds) == 0:
@@ -142,13 +143,15 @@ class ImRenderMulti(ImRender):
     def step(self, action):
         self.im_render()
         obs, rew, done, info = self.env.step(action)
+        info = info[0]
+        print(info)
         for k, v in self.metrics.items():
-            self.metrics[k] = v.cpu().item()
+            info[k] = v.cpu()
        #info = {
        #        **info,
        #       #**self.metrics
        #        }
-        return obs, rew, done, info
+        return obs, rew, done, [info]
 
     def im_render(self):
         state = self.world.state.clone()
@@ -161,9 +164,9 @@ class ImRenderMulti(ImRender):
             log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
                 i, self.n_episode, self.num_step))
             cv2.imwrite(log_dir, image)
-            if i == self.rend_idx:
-                cv2.imshow('im', image)
-                cv2.waitKey(1)
+           #if i == self.rend_idx:
+           #    cv2.imshow('im', image)
+           #    cv2.waitKey(1)
 
             self.n_saved += 1
        #zone_map = self.unwrapped.micro.map.zoneMap

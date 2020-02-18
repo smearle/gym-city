@@ -243,7 +243,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             if 'golmulti' in env_id.lower():
                 multi_env = True
                 env.configure(map_width=map_width, render=render_gui,
-                        prob_life = args.prob_life, record=record_dir,
+                        prob_life=args.prob_life, record=record_dir,
                         max_step=max_step, cuda=args.cuda,
                         num_proc=args.num_processes)
                 env = ParamRewMulti(env)

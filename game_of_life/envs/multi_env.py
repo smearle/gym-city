@@ -235,7 +235,6 @@ class GoLMultiEnv(core.Env):
 
        #reward = reward.unsqueeze(-1)
         reward = 0
-        self.update_ages()
 
         return (obs, reward, terminal, info)
 
@@ -247,7 +246,7 @@ class GoLMultiEnv(core.Env):
         new_state = self.world.state.long() ^ actions.long()
         self.agent_dels = self.world.state.long() & actions.long()
         # reset age of deleted tiles to 0
-        self.ages = self.ages - self.ages * self.agent_dels
+       #self.ages = self.ages - self.ages * self.agent_dels
 
         if self.render_gui:
             # where cells are already alive
@@ -268,6 +267,7 @@ class GoLMultiEnv(core.Env):
             # for separate rendering
             self.render(agent=True)
         self.world.state = new_state
+        self.update_ages()
 
     def update_ages(self):
         self.ages = self.ages + (self.world.state == 0) * (-self.ages)
@@ -365,8 +365,9 @@ class GoLMultiEnv(core.Env):
 
         return [seed1, seed2]
 
-    def delete(self, x, y):
-        self.world.build_cell(x, y, alive=False)
+   #def delete(self, x, y):
+
+   #   #self.world.build_cell(x, y, alive=False)
 
 
 cv2.destroyAllWindows()
