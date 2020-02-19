@@ -198,7 +198,6 @@ class ExtinctionEvaluator():
                     exp_infos[k] = np.array((max_step))
             else:
                 for k, v in infos[0].items():
-                    print(k, v)
                     if k in exp_infos:
                         exp_infos[k] = exp_infos[k] + [torch.mean(v.float())]
                     else:
@@ -320,10 +319,10 @@ class ExtinctionExperimenter():
                #64
                 ]
         self.xt_types = [
-               #'None',
                 'age',
                 'spatial',
-                'random'
+                'random',
+                'None',
                 ]
         # TODO: automate xt_probs
         self.xt_probs = [args.extinction_prob]
@@ -380,7 +379,7 @@ if __name__ == "__main__":
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-        'GoLMultiEnv-v0_w16_300s_noTick',
+        'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 
