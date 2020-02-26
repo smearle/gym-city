@@ -185,7 +185,10 @@ class ExtinctionEvaluator():
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
+        n_epis = 2
         exp_infos = {}
+        # all envs must be on same step relative to start of episode in this implementation
+        n_step = 0
         while n_episode < n_epis:
             with torch.no_grad():
                 value, action, _, recurrent_hidden_states = actor_critic.act(
@@ -195,25 +198,32 @@ class ExtinctionEvaluator():
             obs, reward, done, infos = envs.step(action)
             if exp_infos == {}:
                 for k, v in infos[0].items():
-                    exp_infos[k] = np.array((max_step))
+                    exp_infos[k] = np.zeros(shape=(max_step + 1, n_epis))
             else:
                 for k, v in infos[0].items():
                     if k in exp_infos:
-                        exp_infos[k] = exp_infos[k] + [torch.mean(v.float())]
+                        print(exp_infos)
+                        print(v)
+                        exp_infos[k][n_step][n_episode: n_episode + n_epis] = v
                     else:
                         pass
-           #print(exp_infos)
             if args.render:
                 envs.render()
 
             if done.any():
+                assert done.all()
+                n_step = 0
                 n_episode += np.sum(done.astype(int))
+            else:
+                n_step += 1
             player_act = None
 
             if infos[0]:
                 if 'player_move' in infos[0].keys():
                     player_act = infos[0]['player_move']
            #masks.fill_(0.0 if done else 1.0)
+
+        print(exp_infos)
         envs.reset()
 
 #def run_experiment():

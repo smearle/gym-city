@@ -218,9 +218,9 @@ class ImRender(gym.Wrapper):
         self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
         self.image = np.transpose(self.image, (1, 0, 2))
         self.rank = rank
-        if self.unwrapped.render_gui:
-            _ = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
-            cv2.imshow('im', self.image)
+       #if self.unwrapped.render_gui:
+       #    _ = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
+       #    cv2.imshow('im', self.image)
 
     def step(self, action):
         self.im_render()
