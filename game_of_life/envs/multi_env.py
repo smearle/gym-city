@@ -65,7 +65,8 @@ class GoLMultiEnv(core.Env):
         self.metric_trgs = OrderedDict({
                #'pop': 0 # aim for empty board
                #'prob_life':
-                'pop': max_pop,
+                'pop': 150,
+               #'pop': max_pop,
                 # aim for max possible pop (roughly?)
                 })
         self.metric_weights = {'pop': 1}
