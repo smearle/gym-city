@@ -84,7 +84,6 @@ class ExtinguisherMulti(Extinguisher):
         return curr_dels
 
     def delete(self, del_coords):
-        print(del_coords)
         dels = self.dels.fill_(0)
 
         for i, del_xy in enumerate(del_coords):
@@ -144,7 +143,6 @@ class ImRenderMulti(ImRender):
         self.im_render()
         obs, rew, done, info = self.env.step(action)
         info = info[0]
-        print(info)
         for k, v in self.metrics.items():
             info[k] = v.cpu()
        #info = {
