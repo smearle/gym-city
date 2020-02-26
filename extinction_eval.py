@@ -313,16 +313,12 @@ class ExtinctionExperimenter():
         self.n_epis = 20
        #self.max_step = [1000]
         self.max_step = [args.max_step]
-        self.map_sizes = [
-                16,
-               #32,
-               #64
-                ]
+        #
         self.xt_types = [
+                'None',
                 'age',
                 'spatial',
                 'random',
-                'None',
                 ]
         # TODO: automate xt_probs
         self.xt_probs = [args.extinction_prob]
@@ -369,17 +365,19 @@ class ExtinctionExperimenter():
         '''
         Visualize compressibility data stored in subfolders of the current directory.
         '''
+        print(self.im_log_dir)
         return visualize_experiments(self.im_log_dir)
 
 
 if __name__ == "__main__":
-    VIS_ONLY = False
-   #VIS_ONLY = True
+   #VIS_ONLY = False
+    VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-        'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
+       #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
+        'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

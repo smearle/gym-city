@@ -30,7 +30,7 @@ class GoLMultiEnv(core.Env):
         self.action_bin = None
         self.rend_idx = -1
         self.agent_steps = 1
-        self.sim_steps = 0
+        self.sim_steps = 1
 
     def configure(self, map_width=16, render=False, prob_life=20,
              max_step=200, num_proc=1, record=None, cuda=False,
