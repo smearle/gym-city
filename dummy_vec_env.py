@@ -43,9 +43,9 @@ class DDummyVecEnv(DummyVecEnv):
                 self.buf_obs[0][i] = obs_tuple
         return self.buf_obs
 
-    def render(self):
+    def render(self, mode=None):
         for env in self.envs:
-            env.render()
+            env.render(mode=mode)
 
     def get_param_bounds(self):
         return self.envs[0].get_param_bounds()
@@ -63,9 +63,9 @@ class DDummyVecEnv(DummyVecEnv):
         for env in self.envs:
             env.set_params(params)
 
-    def setMapSize(self, size, **kwargs):
+    def configure(self, size, **kwargs):
         for env in self.envs:
-            env.setMapSize(size, **kwargs)
+            env.configure(size, **kwargs)
 
     def set_save_dir(self, save_dir):
         for env in self.envs:

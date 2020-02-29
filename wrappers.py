@@ -63,7 +63,7 @@ class ExtinguisherMulti(Extinguisher):
 
     def ranDemolish(self):
         # hack this to make it w/o replacement
-        print('RANDEMOLISH')
+       #print('RANDEMOLISH')
         ages = self.unwrapped.ages.cpu().numpy()
         curr_dels = 0
 

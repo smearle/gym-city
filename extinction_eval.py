@@ -199,14 +199,17 @@ class ExtinctionEvaluator():
             if exp_infos == {}:
                 for k, v in infos[0].items():
                     exp_infos[k] = np.zeros(shape=(max_step + 1, n_epis))
+                exp_infos['reward'] = np.zeros(shape=(max_step + 1, n_epis))
             else:
                 for k, v in infos[0].items():
                     if k in exp_infos:
-                        print(exp_infos)
-                        print(v)
+                       #print(exp_infos)
+                       #print(v.shape)
                         exp_infos[k][n_step][n_episode: n_episode + n_epis] = v
                     else:
                         pass
+               #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
+                exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = reward
             if args.render:
                 envs.render()
 
@@ -223,7 +226,13 @@ class ExtinctionEvaluator():
                     player_act = infos[0]['player_move']
            #masks.fill_(0.0 if done else 1.0)
 
+        # take average over episodes at each timestep
+        for k, v in exp_infos.items():
+            exp_infos[k] = np.mean(v, axis=1)
         print(exp_infos)
+        np_save_dir = '{}/exp_infos'.format(im_log_dir)
+        np.save(np_save_dir, exp_infos)
+        print(np_save_dir)
         envs.reset()
 
 #def run_experiment():
@@ -238,7 +247,7 @@ class ExtinctionEvaluator():
 #            for extinction_interval in extinction_intervals:
 #                evaluator.run_experiment(map_size, extinction_type, extinction_interval)
 
-def get_xy(exp_dir):
+def get_xy_cmprs(exp_dir):
     '''Plot the mean episode by mean size of the functional jpeg in terms of timestep.
     - exp_dir: location of images
     Return xy coordinates of mean episode
@@ -249,6 +258,8 @@ def get_xy(exp_dir):
 
     for im in ims:
         step_search = re.search(r'([\d]+)\.jpg', im)
+        if not step_search:
+            continue
         step = step_search.group(1)
         im_path = os.path.join(exp_dir, im)
         size = os.stat(im_path).st_size
@@ -270,7 +281,9 @@ def get_xy(exp_dir):
     xs, ys = zip(*xy)
     return xs, ys
 
-def visualize_experiments(log_dir):
+
+
+def visualize_metric(log_dir, metric='compressibility'):
     '''Visualize results from extinction-compressibility experiments.
      - load-dir: stores folder of experiments, within which are compressed images named by rank and
        episode
@@ -294,7 +307,11 @@ def visualize_experiments(log_dir):
         exp_title = ' '.join(xt_dir.split('/')[-2:])
         if os.path.isfile(xt_dir):
             continue
-        x, y = get_xy(xt_dir)
+        if metric == 'compressibility':
+            x, y = get_xy_cmprs(xt_dir)
+        else:
+            x, y = get_xy_metric(xt_dir, metric)
+
         exp_plot, = plt.plot(x, y)
         print(xt_type)
         exp_plot.set_label(xt_type)
@@ -302,14 +319,23 @@ def visualize_experiments(log_dir):
     srch_xtprob = re.search(r'xtprob\:(\d.[\d]+)', log_dir)
     xt_prob = srch_xtprob.group(1)
     xt_interval = int(1 / float(xt_prob))
-    graph_title = 'extinction interval = {}'.format(xt_interval)
-    plt.title(graph_title)
+   #graph_title = 'extinction interval = {}'.format(xt_interval)
+   #plt.title(graph_title)
     plt.xlabel('timesteps')
-    plt.ylabel('bytes per jpg')
+    if metric == 'compressibility':
+        print('DOIIINN')
+        plt.ylabel('bytes per jpg')
+    else:
+        plt.ylabel(metric)
     plt.xticks([25 * i for i in range(5)])
-    plt.legend()
-    plt.savefig(os.path.join(log_dir, '{}.png'.format(graph_title)), format='png')
-       #plt.show()
+       #p
+def get_xy_metric(exp_dir, metric):
+    info_dir = os.path.join('{}'.format(exp_dir), 'exp_infos.npy')
+    exp_infos = np.load(info_dir, allow_pickle=True).item()
+    xy = enumerate(exp_infos[metric])
+    xy = sorted(xy, key = lambda x: int(x[0]))
+    xs, ys = zip(*xy)
+    return xs, ys
 
 class ExtinctionExperimenter():
     '''
@@ -375,19 +401,33 @@ class ExtinctionExperimenter():
         '''
         Visualize compressibility data stored in subfolders of the current directory.
         '''
-        print(self.im_log_dir)
-        return visualize_experiments(self.im_log_dir)
-
+        plt.figure(figsize=(18,10))
+        visualize_metric(self.im_log_dir)
+        param_bounds = self.evaluator.envs.get_param_bounds()
+        n_params = len(param_bounds) + 3
+        n_cols = 3
+        n_rows = n_params // n_cols
+        i = 1
+        plt.subplot(n_rows, n_cols, i)
+        param_bounds['reward'] = None
+        for param in param_bounds:
+            visualize_metric(self.im_log_dir, metric=param)
+            i += 1
+            plt.subplot(n_cols, n_rows, i)
+        plt.legend()
+        graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
+        plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
-   #VIS_ONLY = False
+    VIS_ONLY = False
     VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
+        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
-        'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
+       #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

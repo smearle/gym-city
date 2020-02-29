@@ -90,7 +90,7 @@ class Extinguisher(gym.Wrapper):
 
     def ranDemolish(self):
         # hack this to make it w/o replacement
-        print('RANDEMOLISH')
+       #print('RANDEMOLISH')
         ages = self.ages
         curr_dels = 0
         for i in range(self.n_dels):
