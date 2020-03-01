@@ -162,25 +162,28 @@ class ExtinctionEvaluator():
         args = self.args
         actor_critic = self.actor_critic
         envs = self.envs
-        im_log_dir = '{}/xttyp:{}_stp:{}'.format(
+        im_log_dir = '{}/width:{}_xttyp:{}_xtprob:{}_stp:{}'.format(
                 self.im_log_dir,
+                map_width,
                 extinction_type,
-               #extinction_prob,
-               #map_width,
+                extinction_prob,
                 max_step
                 )
         envs.set_log_dir(im_log_dir)
         # adjust envs in general
         envs.configure(map_width, max_step=max_step, render=args.render, num_proc=args.num_processes,
                                   poet=args.poet, cuda=not args.no_cuda)
+        print(envs.observation_space)
+        envs.observation_space, _ = envs.get_spaces()
         if extinction_type is not None:
             # adjust extinguisher wrapper
             envs.set_extinction_type(extinction_type, extinction_prob, extinction_dels)
         # adjust image render wrapper
         envs.reset_episodes(im_log_dir)
-       #envs.init_storage()
         recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
         masks = torch.zeros(1, 1)
+        print(envs.observation_space)
+        envs.init_storage()
         obs = envs.reset()
         #obs = torch.Tensor(obs)
         player_act = None
@@ -209,6 +212,8 @@ class ExtinctionEvaluator():
                     else:
                         pass
                #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
+                if n_step != 0:
+                    reward = reward + exp_infos['reward'][n_step-1][n_episode: n_episode + n_epis]
                 exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = reward
             if args.render:
                 envs.render()
@@ -261,6 +266,7 @@ def get_xy_cmprs(exp_dir):
         if not step_search:
             continue
         step = step_search.group(1)
+        print(step)
         im_path = os.path.join(exp_dir, im)
         size = os.stat(im_path).st_size
 
@@ -283,52 +289,8 @@ def get_xy_cmprs(exp_dir):
 
 
 
-def visualize_metric(log_dir, metric='compressibility'):
-    '''Visualize results from extinction-compressibility experiments.
-     - load-dir: stores folder of experiments, within which are compressed images named by rank and
-       episode
-    '''
-    log_dir = log_dir
-    xtinct_dirs = os.listdir(log_dir)
-    xt_dir_paths = [os.path.join(log_dir, xt_dir) for xt_dir in xtinct_dirs]
-    # make sure the order of local and global paths correspond
-    dirs_types = zip(xtinct_dirs, xt_dir_paths)
-    dirs_types = sorted(dirs_types, key = lambda x: str(x[0]))
-    xtinct_dirs, xt_dir_paths = zip(*dirs_types)
-    xt_ims = [os.listdir(xt_dir) for xt_dir in xt_dir_paths if not os.path.isfile(xt_dir) ]
 
-    for i, trial_name in enumerate(xtinct_dirs):
-        print(trial_name)
-        srch_xttyp = re.search(r'xttyp\:([a-zA-Z]+)', trial_name)
-        if srch_xttyp is None:
-            continue
-        xt_type = srch_xttyp.group(1)
-        xt_dir = xt_dir_paths[i]
-        exp_title = ' '.join(xt_dir.split('/')[-2:])
-        if os.path.isfile(xt_dir):
-            continue
-        if metric == 'compressibility':
-            x, y = get_xy_cmprs(xt_dir)
-        else:
-            x, y = get_xy_metric(xt_dir, metric)
 
-        exp_plot, = plt.plot(x, y)
-        print(xt_type)
-        exp_plot.set_label(xt_type)
-
-    srch_xtprob = re.search(r'xtprob\:(\d.[\d]+)', log_dir)
-    xt_prob = srch_xtprob.group(1)
-    xt_interval = int(1 / float(xt_prob))
-   #graph_title = 'extinction interval = {}'.format(xt_interval)
-   #plt.title(graph_title)
-    plt.xlabel('timesteps')
-    if metric == 'compressibility':
-        print('DOIIINN')
-        plt.ylabel('bytes per jpg')
-    else:
-        plt.ylabel(metric)
-    plt.xticks([25 * i for i in range(5)])
-       #p
 def get_xy_metric(exp_dir, metric):
     info_dir = os.path.join('{}'.format(exp_dir), 'exp_infos.npy')
     exp_infos = np.load(info_dir, allow_pickle=True).item()
@@ -357,19 +319,22 @@ class ExtinctionExperimenter():
                 'random',
                 ]
         # TODO: automate xt_probs
-        self.xt_probs = [args.extinction_prob]
         self.xt_dels = [15]
-        self.map_sizes = [args.map_width]
-       #self.xt_probs = [
-       #        0.005,
-       #       #0.01,
-       #       #0.05,
-       #       #0.1
-       #        ]
-        exp_name = 'test_map:{}_col:{}_xtprob:{}_xtdels:{}'.format(
-                self.map_sizes[0],
+       #self.map_sizes = [args.map_width]
+        self.map_sizes = [
+                16,
+                32,
+                64,
+                ]
+        self.xt_probs = [
+               #0.005,
+                0.01,
+                0.02,
+                0.04,
+                ]
+        exp_name = 'test_col:{}_xtprob:{}_xtdels:{}'.format(
                 args.active_column,
-                float(self.xt_probs[0]),
+                self.xt_probs[0],
                 self.xt_dels[0])
         self.log_dir = log_dir
         args.load_dir = log_dir
@@ -382,6 +347,106 @@ class ExtinctionExperimenter():
             pass
         self.im_log_dir = im_log_dir
         self.evaluator = ExtinctionEvaluator(args, im_log_dir)
+
+    def visualize_metric(self, inner_grid, n_row_outer, n_col_outer, log_dir, metric='compressibility'):
+        '''Visualize results from extinction-compressibility experiments.
+         - load-dir: stores folder of experiments, within which are compressed images named by rank and
+           episode
+        '''
+        log_dir = log_dir
+        xtinct_dirs = os.listdir(log_dir)
+        xt_dir_paths = [os.path.join(log_dir, xt_dir) for xt_dir in xtinct_dirs]
+        # make sure the order of local and global paths correspond
+        dirs_types = zip(xtinct_dirs, xt_dir_paths)
+        dirs_types = sorted(dirs_types, key = lambda x: str(x[0]))
+        xtinct_dirs, xt_dir_paths = zip(*dirs_types)
+        xt_ims = [os.listdir(xt_dir) for xt_dir in xt_dir_paths if not os.path.isfile(xt_dir) ]
+
+        metrics2labels = {
+                'ind_pop': ('industrial', 'population'),
+                'res_pop': ('residential', 'population'),
+                'com_pop': ('commercial', 'population'),
+                'num_plants': ('power plants', 'population'), 
+                'traffic': ('traffic', 'population'),
+                'mayor_rating': ('mayor rating', '\% approval'),
+                'reward': ('fitness', 'reward'),
+                'compressibility': ('inverse compressibility', 'bytes per jpeg'),
+                }
+
+        j = 0
+        n_row = 0
+        for map_size in self.map_sizes:
+            n_col = 0
+            for xt_prob in self.xt_probs:
+                ax = self.fig.add_subplot(inner_grid[j])
+                y_label = ''
+                if n_col == 0: #and n_col_outer == 0:
+                    y_label += 'map-size = {}\n\n'.format(map_size)
+                plt_title = ''
+                metric_title, metric_y_label = metrics2labels[metric]
+                if n_row == 1:
+                    y_label += '{}'.format(metric_y_label)
+                plt.ylabel(y_label)
+                plt_title = ''
+                x_label = ''
+                if n_col == 1 and n_row == 0:
+                    plt_title += '{}'.format(metric_title)
+                if n_row == 0:
+                    x_label += 'xt freq. = {}'.format(xt_prob)
+                    plt.xlabel(x_label)
+                    ax.xaxis.set_label_position('top')
+               #ax.xaxis.tick_top()
+                plt.title(plt_title)
+                if n_row == 2 and n_col == 1:
+                    plt.xlabel('timesteps')
+                for i, trial_name in enumerate(xtinct_dirs):
+                    print(trial_name)
+                    srch_xttyp = re.search(r'xttyp\:([a-zA-Z]+)', trial_name)
+                    if srch_xttyp is None:
+                        continue
+                    xt_type = srch_xttyp.group(1)
+                    xt_dir = xt_dir_paths[i]
+                    srch_xtprob = re.search(r'xtprob\:({})'.format(xt_prob), trial_name)
+                    if srch_xtprob is None:
+                        continue
+                    xt_interval = int(1 / float(xt_prob))
+                    srch_width = re.search(r'width\:({})'.format(map_size), trial_name)
+                    if srch_width is None:
+                        continue
+                    exp_title = ' '.join(xt_dir.split('/')[-2:])
+                    if os.path.isfile(xt_dir):
+                        continue
+                    if metric == 'compressibility':
+                        x, y = get_xy_cmprs(xt_dir)
+                    else:
+                        x, y = get_xy_metric(xt_dir, metric)
+
+                    exp_plot, = ax.plot(x, y)
+                    print(xt_type)
+                    exp_plot.set_label(xt_type)
+
+                if n_col != 0:
+                   #ax.set_yticks([])
+                    plt.ylabel('')
+                if n_row != 2:
+                    ax.set_xticks([])
+                if n_row != 0:
+                    plt.title('')
+                self.fig.add_subplot(ax)
+                j += 1
+                n_col += 1
+            n_row += 1
+
+      ##graph_title = 'extinction interval = {}'.format(xt_interval)
+      ##plt.title(graph_title)
+      # plt.xlabel('timesteps')
+      # if metric == 'compressibility':
+      #     print('DOIIINN')
+      #     plt.ylabel('bytes per jpeg')
+      # else:
+      #     plt.ylabel(metric)
+      ##plt.xticks([25 * i for i in range(5)])
+      # plt.legend()
 
     def run_experiments(self):
         '''Run experiments and produce data.'''
@@ -401,21 +466,31 @@ class ExtinctionExperimenter():
         '''
         Visualize compressibility data stored in subfolders of the current directory.
         '''
-        plt.figure(figsize=(18,10))
-        visualize_metric(self.im_log_dir)
         param_bounds = self.evaluator.envs.get_param_bounds()
-        n_params = len(param_bounds) + 3
-        n_cols = 3
-        n_rows = n_params // n_cols
-        i = 1
-        plt.subplot(n_rows, n_cols, i)
         param_bounds['reward'] = None
+        n_params = len(param_bounds) + 2
+        n_cols = 1
+        n_rows = n_params // n_cols
+        fig = plt.figure(figsize=(n_cols * 16, n_rows * 16), constrained_layout=False)
+        self.fig = fig
+        i = 0
+        outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.0, hspace=0.4)
+        n_row = 0
+        n_col = 0
+        inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.0)
+        print(dir(inner_grid))
+       #inner_grid.set_title('poo')
+        self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric='compressibility')
         for param in param_bounds:
-            visualize_metric(self.im_log_dir, metric=param)
             i += 1
-            plt.subplot(n_cols, n_rows, i)
-        plt.legend()
+            n_row = i // n_cols
+            n_col = i % n_cols
+            inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.0)
+            self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric=param)
+
         graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
+        fig.suptitle(self.evaluator.args.env_name)
+        fig.tight_layout()
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":

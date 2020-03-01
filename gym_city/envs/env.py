@@ -184,6 +184,7 @@ class MicropolisEnv(core.Env):
         low_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=-1)
         high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
         self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = float)
+        print('reset obs space to: {}'.format(self.observation_space))
         self.state = None
         self.intsToActions = {}
         self.actionsToInts = np.zeros((self.num_tools, self.MAP_X, self.MAP_Y))

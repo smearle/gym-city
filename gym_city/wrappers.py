@@ -209,7 +209,7 @@ class ImRender(gym.Wrapper):
        #    pass
         self.im_log_dir = im_log_dir
         # save the image at regular intervals
-        self.save_interval = 10
+        self.save_interval = 1
         self.n_saved = 0
         self.n_episode = 0
         self.tile_types = tile_types
@@ -232,6 +232,8 @@ class ImRender(gym.Wrapper):
         return obs, rew, done, info
 
     def reset_episodes(self, im_log_dir):
+        self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
+        self.image = np.transpose(self.image, (1, 0, 2))
         self.n_episode = 0
         print('reset epis, imrender log dir: {}'.format(self.im_log_dir))
         self.im_log_dir = im_log_dir
@@ -266,6 +268,6 @@ class ImRender(gym.Wrapper):
         if self.unwrapped.num_step % self.save_interval == 0:
             log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
                 self.unwrapped.rank, self.n_episode, self.num_step))
-            print(log_dir)
+           #print(log_dir)
             cv2.imwrite(log_dir, self.image)
             self.n_saved += 1

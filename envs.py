@@ -500,6 +500,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
         observation_space = gym.spaces.Box(
             low=low, high=high, dtype=venv.observation_space.dtype)
         VecEnvWrapper.__init__(self, venv, observation_space=observation_space)
+        self.device = device
 
     def step_wait(self):
         obs, rews, news, infos = self.venv.step_wait()
@@ -518,6 +519,14 @@ class VecPyTorchFrameStack(VecEnvWrapper):
         obs = self.venv.reset()
         self.stacked_obs.zero_()
        #print(self.stacked_obs.shape, obs.shape)
+        try:
+            self.stacked_obs[:, -self.shape_dim0:] = obs
+        # hack to dynamically change map size
+        except RuntimeError:
+            wos, _ = self.venv.get_spaces()  # wrapped ob space
+            self.shape_dim0 = wos.shape[0]
+            low = np.repeat(wos.low, self.nstack, axis=0)
+            self.stacked_obs = torch.zeros((self.venv.num_envs,) + low.shape).to(self.device)
         self.stacked_obs[:, -self.shape_dim0:] = obs
 
         return self.stacked_obs
