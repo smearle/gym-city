@@ -212,8 +212,6 @@ class ExtinctionEvaluator():
                     else:
                         pass
                #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
-                if n_step != 0:
-                    reward = reward + exp_infos['reward'][n_step-1][n_episode: n_episode + n_epis]
                 exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = reward
             if args.render:
                 envs.render()
@@ -366,7 +364,7 @@ class ExtinctionExperimenter():
                 'ind_pop': ('industrial', 'population'),
                 'res_pop': ('residential', 'population'),
                 'com_pop': ('commercial', 'population'),
-                'num_plants': ('power plants', 'population'), 
+                'num_plants': ('power plants', 'population'),
                 'traffic': ('traffic', 'population'),
                 'mayor_rating': ('mayor rating', '\% approval'),
                 'reward': ('fitness', 'reward'),
