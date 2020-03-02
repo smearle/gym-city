@@ -192,6 +192,7 @@ class ExtinctionEvaluator():
         exp_infos = {}
         # all envs must be on same step relative to start of episode in this implementation
         n_step = 0
+        last_rew = None
         while n_episode < n_epis:
             with torch.no_grad():
                 value, action, _, recurrent_hidden_states = actor_critic.act(
@@ -211,8 +212,13 @@ class ExtinctionEvaluator():
                         exp_infos[k][n_step][n_episode: n_episode + n_epis] = v
                     else:
                         pass
+                if last_rew is not None:
+                    cum_rew = reward + last_rew
+                else:
+                    cum_rew = reward
+                last_rew = cum_rew
                #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
-                exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = reward
+                exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = cum_rew
             if args.render:
                 envs.render()
 
@@ -231,7 +237,7 @@ class ExtinctionEvaluator():
 
         # take average over episodes at each timestep
         for k, v in exp_infos.items():
-            exp_infos[k] = np.mean(v, axis=1)
+            exp_infos[k] = np.mean(v, axis=1), np.std(v, axis=1)
         print(exp_infos)
         np_save_dir = '{}/exp_infos'.format(im_log_dir)
         np.save(np_save_dir, exp_infos)
@@ -292,10 +298,13 @@ def get_xy_cmprs(exp_dir):
 def get_xy_metric(exp_dir, metric):
     info_dir = os.path.join('{}'.format(exp_dir), 'exp_infos.npy')
     exp_infos = np.load(info_dir, allow_pickle=True).item()
-    xy = enumerate(exp_infos[metric])
+    xy = enumerate(exp_infos[metric][0])
+    x_std = enumerate(exp_infos[metric][1])
     xy = sorted(xy, key = lambda x: int(x[0]))
+    x_std = sorted(x_std, key = lambda x: int(x[0]))
     xs, ys = zip(*xy)
-    return xs, ys
+    _, stds = zip(*x_std)
+    return xs, ys, stds
 
 class ExtinctionExperimenter():
     '''
@@ -306,7 +315,7 @@ class ExtinctionExperimenter():
         env_name = log_dir.split('/')[-1].split('_')[0]
         args.env_name = env_name
         # Experiment global parameters
-        self.n_epis = 20
+        self.n_epis = 1
        #self.max_step = [1000]
         self.max_step = [args.max_step]
         #
@@ -370,13 +379,15 @@ class ExtinctionExperimenter():
                 'reward': ('fitness', 'reward'),
                 'compressibility': ('inverse compressibility', 'bytes per jpeg'),
                 }
-
         j = 0
         n_row = 0
+        inner_axes = []
+        xmin, xmax, ymin, ymax = 0, 0, 0, 0
         for map_size in self.map_sizes:
             n_col = 0
             for xt_prob in self.xt_probs:
                 ax = self.fig.add_subplot(inner_grid[j])
+                inner_axes.append(ax)
                 y_label = ''
                 if n_col == 0: #and n_col_outer == 0:
                     y_label += 'map-size = {}\n\n'.format(map_size)
@@ -390,7 +401,7 @@ class ExtinctionExperimenter():
                 if n_col == 1 and n_row == 0:
                     plt_title += '{}'.format(metric_title)
                 if n_row == 0:
-                    x_label += 'xt freq. = {}'.format(xt_prob)
+                    x_label +='extinction frequency = {}'.format(xt_prob)
                     plt.xlabel(x_label)
                     ax.xaxis.set_label_position('top')
                #ax.xaxis.tick_top()
@@ -398,7 +409,6 @@ class ExtinctionExperimenter():
                 if n_row == 2 and n_col == 1:
                     plt.xlabel('timesteps')
                 for i, trial_name in enumerate(xtinct_dirs):
-                    print(trial_name)
                     srch_xttyp = re.search(r'xttyp\:([a-zA-Z]+)', trial_name)
                     if srch_xttyp is None:
                         continue
@@ -416,15 +426,24 @@ class ExtinctionExperimenter():
                         continue
                     if metric == 'compressibility':
                         x, y = get_xy_cmprs(xt_dir)
+                        e = None
                     else:
-                        x, y = get_xy_metric(xt_dir, metric)
+                        x, y, e = get_xy_metric(xt_dir, metric)
 
-                    exp_plot, = ax.plot(x, y)
-                    print(xt_type)
+                    exp_plot = ax.errorbar(x, y, e, alpha=0.5)
                     exp_plot.set_label(xt_type)
-
+                    xmin_i, xmax_i = ax.get_xlim()
+                    ymin_i, ymax_i = ax.get_ylim()
+                    if xmin_i < xmin:
+                        xmin = xmin_i
+                    if xmax_i > xmax:
+                        xmax = xmax_i
+                    if ymin_i < ymin:
+                        ymin=ymin_i
+                    if ymax_i > ymax:
+                        ymax = ymax_i
                 if n_col != 0:
-                   #ax.set_yticks([])
+                    ax.set_yticks([])
                     plt.ylabel('')
                 if n_row != 2:
                     ax.set_xticks([])
@@ -434,6 +453,9 @@ class ExtinctionExperimenter():
                 j += 1
                 n_col += 1
             n_row += 1
+        for ax in inner_axes:
+            ax.set_xlim([xmin, xmax])
+            ax.set_ylim([ymin, ymax])
 
       ##graph_title = 'extinction interval = {}'.format(xt_interval)
       ##plt.title(graph_title)
@@ -469,13 +491,13 @@ class ExtinctionExperimenter():
         n_params = len(param_bounds) + 1
         n_cols = 1
         n_rows = n_params // n_cols
-        fig = plt.figure(figsize=(n_cols * 16, n_rows * 5), constrained_layout=False)
+        fig = plt.figure(figsize=(n_cols * 16, n_rows * 10), constrained_layout=False)
         self.fig = fig
         i = 0
         outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.0, hspace=0.4)
         n_row = 0
         n_col = 0
-        inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.0)
+        inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
         print(dir(inner_grid))
        #inner_grid.set_title('poo')
         self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric='compressibility')
@@ -483,13 +505,13 @@ class ExtinctionExperimenter():
             i += 1
             n_row = i // n_cols
             n_col = i % n_cols
-            inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.0)
+            inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
             self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric=param)
 
         graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
         fig.suptitle(self.evaluator.args.env_name)
         fig.tight_layout()
-        fig.subplots_adjust(top=0.95, bottom=0.1)
+        fig.subplots_adjust(top=0.95, bottom=0.01)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
