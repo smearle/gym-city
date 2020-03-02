@@ -74,7 +74,7 @@ import os
 import time
 import random
 from . import cellengine
-import gobject
+from gi.repository import GObject as gobject
 import cairo
 from pyMicropolis.cellEngine import cellengine
 import xml.dom.minidom
@@ -317,8 +317,8 @@ def CreateTestEngine():
     engine.steps = 1
     engine.frob = 5
     engine.neighborhood = 46
-    #engine.neighborhood = 37
-    #engine.LoadRule('WORMS')
+   #engine.neighborhood = 37
+   #engine.LoadRule('WORMS2')
     engine.Garble()
 
     return engine
