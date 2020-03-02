@@ -1,8 +1,10 @@
 import copy
+import csv
 import glob
 import os
 import time
-from collections import deque, OrderedDict
+from collections import OrderedDict, deque
+from shutil import copyfile
 
 import gym
 import numpy as np
@@ -10,21 +12,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import csv
-
 
 import algo
 from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
-from storage import RolloutStorage, CuriosityRolloutStorage
+from storage import CuriosityRolloutStorage, RolloutStorage
+from teachDRL.teachers.algos.alp_gmm import ALPGMM
+from train import Trainer, init_agent
 from utils import get_vec_normalize
 from visualize import Plotter
-from shutil import copyfile
-from teachDRL.teachers.algos.alp_gmm import ALPGMM
-from train import init_agent, Trainer
-
-
 
 
 class Teacher(Trainer):
@@ -35,6 +32,7 @@ class Teacher(Trainer):
         d = super().get_save_dict()
         d['alp_gmm'] = self.alp_gmm
         d['param_hist'] = self.param_hist
+
         return d
 
     def __init__(self):
@@ -53,6 +51,7 @@ class Teacher(Trainer):
         env_param_lw_bounds = []
         env_param_hi_bounds = []
         i = 0
+
         for k, v in env_param_bounds.items():
             if i < num_env_params:
                 env_param_ranges += [abs(v[1] - v[0])]
@@ -62,9 +61,11 @@ class Teacher(Trainer):
             else:
                 break
         alp_gmm = None
+
         if self.checkpoint:
             if 'alp_gmm' in self.checkpoint:
                 alp_gmm = self.checkpoint['alp_gmm']
+
         if alp_gmm is None:
             alp_gmm = ALPGMM(env_param_lw_bounds, env_param_hi_bounds)
         params_vec = alp_gmm.sample_task()
@@ -102,6 +103,7 @@ class Teacher(Trainer):
             # sample random environment parameters
             params_vec = alp_gmm.sample_task()
             prm_i = 0
+
             for k, v in env_param_bounds.items():
                 if prm_i < num_env_params:
                     params[k] = params_vec[prm_i]

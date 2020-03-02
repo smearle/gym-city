@@ -73,6 +73,9 @@ class DDummyVecEnv(DummyVecEnv):
         for env in self.envs:
             env.set_params(params)
 
+    def get_param_trgs(self):
+        return self.envs[0].get_param_trgs()
+
     def configure(self, size, **kwargs):
         print('configurin dummy')
         for env in self.envs:

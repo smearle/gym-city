@@ -445,6 +445,9 @@ class MicropolisEnv(core.Env):
         self.display_city_trgs()
        #print('set city trgs of env {} to: {}'.format(self.rank, self.city_trgs))
 
+    def get_param_trgs(self):
+        return self.city_trgs
+
     def get_metrics(self):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), \
                                      self.micro.getComPop(), \

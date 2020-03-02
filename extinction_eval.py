@@ -430,8 +430,9 @@ class ExtinctionExperimenter():
                     else:
                         x, y, e = get_xy_metric(xt_dir, metric)
 
-                    exp_plot = ax.errorbar(x, y, e, alpha=0.5)
-                    exp_plot.set_label(xt_type)
+                    markers, caps, bars = ax.errorbar(x, y, e)
+                    [bar.set_alpha(0.3) for bar in bars]
+                    markers.set_label(xt_type)
                     xmin_i, xmax_i = ax.get_xlim()
                     ymin_i, ymax_i = ax.get_ylim()
                     if xmin_i < xmin:
@@ -453,9 +454,20 @@ class ExtinctionExperimenter():
                 j += 1
                 n_col += 1
             n_row += 1
+        ax.legend()
+        i = 0
         for ax in inner_axes:
+            if metric in self.param_trgs:
+                trg = self.param_trgs[metric]
+                trg_height = min(trg, (ymax - ymin) * 0.97 + ymin)
+                txt_height = trg_height - 0.05 * (ymax- ymin)
+                e_xmin, e_xmax = xmin + (xmax - xmin) * 0.05, xmax - (xmax - xmin) * 0.05
+                ax.hlines(trg_height, e_xmin, e_xmax, linestyles='dashed', colors='grey', label='target')
+                if i == len(inner_axes) - 1:
+                    ax.annotate('target = {}'.format(int(trg)), (e_xmin, txt_height))
             ax.set_xlim([xmin, xmax])
             ax.set_ylim([ymin, ymax])
+            i += 1
 
       ##graph_title = 'extinction interval = {}'.format(xt_interval)
       ##plt.title(graph_title)
@@ -487,6 +499,7 @@ class ExtinctionExperimenter():
         Visualize compressibility data stored in subfolders of the current directory.
         '''
         param_bounds = self.evaluator.envs.get_param_bounds()
+        self.param_trgs = self.evaluator.envs.get_param_trgs()
         param_bounds['reward'] = None
         n_params = len(param_bounds) + 1
         n_cols = 1
@@ -494,7 +507,7 @@ class ExtinctionExperimenter():
         fig = plt.figure(figsize=(n_cols * 16, n_rows * 10), constrained_layout=False)
         self.fig = fig
         i = 0
-        outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.0, hspace=0.4)
+        outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.0, hspace=0.1)
         n_row = 0
         n_col = 0
         inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
@@ -511,7 +524,7 @@ class ExtinctionExperimenter():
         graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
         fig.suptitle(self.evaluator.args.env_name)
         fig.tight_layout()
-        fig.subplots_adjust(top=0.95, bottom=0.01)
+        fig.subplots_adjust(top=0.97, bottom=0.01)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
