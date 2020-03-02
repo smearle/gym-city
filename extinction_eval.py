@@ -466,10 +466,10 @@ class ExtinctionExperimenter():
         '''
         param_bounds = self.evaluator.envs.get_param_bounds()
         param_bounds['reward'] = None
-        n_params = len(param_bounds) + 2
+        n_params = len(param_bounds) + 1
         n_cols = 1
         n_rows = n_params // n_cols
-        fig = plt.figure(figsize=(n_cols * 16, n_rows * 16), constrained_layout=False)
+        fig = plt.figure(figsize=(n_cols * 16, n_rows * 5), constrained_layout=False)
         self.fig = fig
         i = 0
         outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.0, hspace=0.4)
@@ -489,6 +489,7 @@ class ExtinctionExperimenter():
         graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
         fig.suptitle(self.evaluator.args.env_name)
         fig.tight_layout()
+        fig.subplots_adjust(top=0.95, bottom=0.1)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
