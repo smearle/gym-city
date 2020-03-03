@@ -29,7 +29,7 @@ class MicropolisEnv(core.Env):
         self.player_step = False
         self.static_player_builds = False
     ### MIXED
-        self.city_trgs = OrderedDict({
+        self.metric_trgs = OrderedDict({
                 'res_pop': 750,
                 'com_pop': 100,
                 'ind_pop': 100,
@@ -38,7 +38,7 @@ class MicropolisEnv(core.Env):
                 'num_plants': 14,
                 'mayor_rating': 100
                 })
-        self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
+        self.trg_param_vals = np.array([v for v in self.metric_trgs.values()])
         self.param_bounds = OrderedDict({
                 'res_pop': (0, 750),
                 'com_pop': (0, 100),
@@ -69,7 +69,7 @@ class MicropolisEnv(core.Env):
                 self.max_loss += rng * weight
                 i += 1
    ### MIXED
-       #self.city_trgs = {
+       #self.metric_trgs = {
        #        'res_pop': 1,
        #        'com_pop': 4,
        #        'ind_pop': 4,
@@ -77,7 +77,7 @@ class MicropolisEnv(core.Env):
        #        'num_plants': 0,
        #        'mayor_rating': 0}
   ### Traffic
-       #self.city_trgs = {
+       #self.metric_trgs = {
        #        'res_pop': 1,
        #        'com_pop': 4,
        #        'ind_pop': 4,
@@ -174,7 +174,7 @@ class MicropolisEnv(core.Env):
         self.num_obs_channels = self.micro.map.num_features + self.num_scalars \
                 + self.num_density_maps + num_user_features
         if self.poet:
-            self.num_obs_channels += len(self.city_trgs)
+            self.num_obs_channels += len(self.metric_trgs)
         #ac_low = np.zeros((3))
        #ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
        #self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
@@ -196,17 +196,17 @@ class MicropolisEnv(core.Env):
         self.mayor_rating = 50
         self.last_mayor_rating = self.mayor_rating
         self.last_priority_road_net_size = 0
-        self.display_city_trgs()
+        self.display_metric_trgs()
         if self.render_gui and self.rank == 0:
             self.render()
 
     def get_param_bounds(self):
         return self.param_bounds
 
-    def display_city_trgs(self):
+    def display_metric_trgs(self):
         if self.win1 is not None:
-            self.win1.agentPanel.displayTrgs(self.city_trgs)
-        return self.city_trgs
+            self.win1.agentPanel.displayTrgs(self.metric_trgs)
+        return self.metric_trgs
 
 
     def mapIntsToActionsChunk(self):
@@ -282,7 +282,7 @@ class MicropolisEnv(core.Env):
                                   'NuclearPowerPlant', static_build=True)
 
     def reset(self):
-        self.display_city_trgs()
+        self.display_metric_trgs()
         if True:
            #if self.render_gui:
             if False:
@@ -325,7 +325,7 @@ class MicropolisEnv(core.Env):
         if self.poet:
             for j in range(3):
                 scalars[j] = scalars[j] / self.param_ranges[j]
-            trg_metrics = [v for k, v in self.city_trgs.items()]
+            trg_metrics = [v for k, v in self.metric_trgs.items()]
             for i in range(len(trg_metrics)):
                 trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
             scalars += trg_metrics
@@ -367,7 +367,7 @@ class MicropolisEnv(core.Env):
         '''
         if True:
             reward = 0
-            for metric, trg in self.city_trgs.items():
+            for metric, trg in self.metric_trgs.items():
                 last_val = self.last_metrics[metric]
                 trg_change = trg - last_val
                 val = self.metrics[metric]
@@ -381,7 +381,7 @@ class MicropolisEnv(core.Env):
                 reward += metric_rew * self.weights[metric]
        #if self.render_gui and reward != 0:
        #    print(self.metrics)
-       #    print(self.city_trgs)
+       #    print(self.metric_trgs)
        #    print(reward)
        #    print()
 
@@ -389,13 +389,13 @@ class MicropolisEnv(core.Env):
        #    max_reward = self.max_reward
        #    loss = 0
        #    i = 0
-       #    for k, v in self.city_trgs.items():
+       #    for k, v in self.metric_trgs.items():
        #        if i == self.num_params:
        #            break
        #        else:
        #            if True:
        #                reward = 0
-       #                for metric_name, trg in self.city_trgs.items():
+       #                for metric_name, trg in self.metric_trgs.items():
 
        #            weight = self.weights[k]
        #            loss += abs(v - self.metrics[k]) * weight
@@ -440,13 +440,13 @@ class MicropolisEnv(core.Env):
 
     def set_params(self, trgs):
         for k, v in trgs.items():
-            self.city_trgs[k] = v
-        self.trg_param_vals = np.array([v for v in self.city_trgs.values()])
-        self.display_city_trgs()
-       #print('set city trgs of env {} to: {}'.format(self.rank, self.city_trgs))
+            self.metric_trgs[k] = v
+        self.trg_param_vals = np.array([v for v in self.metric_trgs.values()])
+        self.display_metric_trgs()
+       #print('set city trgs of env {} to: {}'.format(self.rank, self.metric_trgs))
 
     def get_param_trgs(self):
-        return self.city_trgs
+        return self.metric_trgs
 
     def get_metrics(self):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), \
@@ -590,19 +590,19 @@ class MicropolisEnv(core.Env):
             env.step(env.action_space.sample())
 
     def set_res_weight(self, val):
-        self.city_trgs['res_pop']= val
+        self.metric_trgs['res_pop']= val
 
     def set_com_weight(self, val):
-        self.city_trgs['com_pop'] = val
+        self.metric_trgs['com_pop'] = val
 
     def set_ind_weight(self, val):
-        self.city_trgs['ind_pop'] = val
+        self.metric_trgs['ind_pop'] = val
 
     def set_traffic_weight(self, val):
-        self.city_trgs['traffic'] = val
+        self.metric_trgs['traffic'] = val
 
     def set_plants_weight(self, val):
-        self.city_trgs['num_plants'] = val
+        self.metric_trgs['num_plants'] = val
 
     def set_rating_weight(self,val):
-        self.city_trgs['mayor_rating'] = val
+        self.metric_trgs['mayor_rating'] = val

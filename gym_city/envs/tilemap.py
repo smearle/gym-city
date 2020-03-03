@@ -204,7 +204,7 @@ class TileMap(object):
         print('initializing AGES')
         self.age_order = np.zeros((self.MAP_X, self.MAP_Y), dtype=int)
         self.age_order.fill(-1)
-        
+
         return self.age_order
 
     def didRoadBuild(self, x, y):
@@ -467,7 +467,7 @@ class TileMap(object):
             if self.paint:
                 self.acted[x, y] = 1
             if self.track_ages:
-                self.age_order[x][y] = self.micro.env.num_step
+                self.age_order[x][y] = np.max(self.age_order) + 1
             return
         else:
             x0, y0 = max(0, x - 1), max(0, y - 1)
@@ -526,15 +526,15 @@ class TileMap(object):
 
 
 
-        net = None
-        if was_road and not is_road:
-            self.num_roads -= 1
-            self.didRoadDelete(x, y)
-        elif not was_road and is_road:
-            self.didRoadBuild(x, y)
-            self.num_roads += 1
-            if self.priority_road_net is None:
-                self.priority_road_net = next(iter(self.road_net_sizes))
+       #net = None
+       #if was_road and not is_road:
+       #    self.num_roads -= 1
+       #    self.didRoadDelete(x, y)
+       #elif not was_road and is_road:
+       #    self.didRoadBuild(x, y)
+       #    self.num_roads += 1
+       #    if self.priority_road_net is None:
+       #        self.priority_road_net = next(iter(self.road_net_sizes))
 
         if was_plant and not is_plant:
             assert self.num_plants > 0

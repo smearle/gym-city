@@ -5,6 +5,7 @@ import shutil
 import re
 import time
 
+import matplotlib
 import matplotlib.pyplot as plt
 import gym
 import numpy as np
@@ -20,6 +21,12 @@ from model import Policy
 from utils import get_vec_normalize
 
 #plt.switch_backend('agg')
+
+#font = {'family' : 'normal',
+#       #'weight' : 'bold',
+#        'size'   : 12}
+#
+#matplotlib.rc('font', **font)
 
 def parse_cl_args():
     #TODO: away with this function, in theory.
@@ -188,7 +195,7 @@ class ExtinctionEvaluator():
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
-        n_epis = 2
+        n_epis = 20
         exp_infos = {}
         # all envs must be on same step relative to start of episode in this implementation
         n_step = 0
@@ -320,8 +327,8 @@ class ExtinctionExperimenter():
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-                'None',
-                'age',
+               #'None',
+               #'age',
                 'spatial',
                 'random',
                 ]
@@ -375,9 +382,9 @@ class ExtinctionExperimenter():
                 'com_pop': ('commercial', 'population'),
                 'num_plants': ('power plants', 'population'),
                 'traffic': ('traffic', 'population'),
-                'mayor_rating': ('mayor rating', '\% approval'),
+                'mayor_rating': ('mayor rating', '% approval'),
                 'reward': ('fitness', 'reward'),
-                'compressibility': ('inverse compressibility', 'bytes per jpeg'),
+                'jpeg_size': ('inverse compressibility', 'bytes per jpeg'),
                 }
         j = 0
         n_row = 0
@@ -389,8 +396,8 @@ class ExtinctionExperimenter():
                 ax = self.fig.add_subplot(inner_grid[j])
                 inner_axes.append(ax)
                 y_label = ''
-                if n_col == 0: #and n_col_outer == 0:
-                    y_label += 'map-size = {}\n\n'.format(map_size)
+                if n_col == 0 and n_col_outer == 0:
+                    y_label += 'map size = {}\n\n'.format(map_size)
                 plt_title = ''
                 metric_title, metric_y_label = metrics2labels[metric]
                 if n_row == 1:
@@ -431,7 +438,7 @@ class ExtinctionExperimenter():
                         x, y, e = get_xy_metric(xt_dir, metric)
 
                     markers, caps, bars = ax.errorbar(x, y, e)
-                    [bar.set_alpha(0.3) for bar in bars]
+                    [bar.set_alpha(0.03) for bar in bars]
                     markers.set_label(xt_type)
                     xmin_i, xmax_i = ax.get_xlim()
                     ymin_i, ymax_i = ax.get_ylim()
@@ -454,16 +461,17 @@ class ExtinctionExperimenter():
                 j += 1
                 n_col += 1
             n_row += 1
-        ax.legend()
+        if n_col_outer == 1:
+            ax.legend(fancybox=True, framealpha=0.5)
         i = 0
         for ax in inner_axes:
             if metric in self.param_trgs:
                 trg = self.param_trgs[metric]
                 trg_height = min(trg, (ymax - ymin) * 0.97 + ymin)
-                txt_height = trg_height - 0.05 * (ymax- ymin)
+                txt_height = trg_height - 0.1 * (ymax- ymin)
                 e_xmin, e_xmax = xmin + (xmax - xmin) * 0.05, xmax - (xmax - xmin) * 0.05
                 ax.hlines(trg_height, e_xmin, e_xmax, linestyles='dashed', colors='grey', label='target')
-                if i == len(inner_axes) - 1:
+                if i == len(inner_axes) - 1 and n_col_outer == 1:
                     ax.annotate('target = {}'.format(int(trg)), (e_xmin, txt_height))
             ax.set_xlim([xmin, xmax])
             ax.set_ylim([ymin, ymax])
@@ -500,31 +508,35 @@ class ExtinctionExperimenter():
         '''
         param_bounds = self.evaluator.envs.get_param_bounds()
         self.param_trgs = self.evaluator.envs.get_param_trgs()
-        param_bounds['reward'] = None
-        n_params = len(param_bounds) + 1
-        n_cols = 1
+        params = list(self.param_trgs.keys())
+        params.append('jpeg_size')
+        params.append('reward')
+        n_params = len(params)
+        n_cols = 2
         n_rows = n_params // n_cols
-        fig = plt.figure(figsize=(n_cols * 16, n_rows * 10), constrained_layout=False)
+        fig = plt.figure(figsize=(n_cols * 8, n_rows * 16 / 4), constrained_layout=False)
         self.fig = fig
         i = 0
-        outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.0, hspace=0.1)
+        outer_grid = fig.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.25)
         n_row = 0
         n_col = 0
         inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
         print(dir(inner_grid))
-       #inner_grid.set_title('poo')
-        self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric='compressibility')
-        for param in param_bounds:
-            i += 1
+       #self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric='compressibility')
+        for param in params:
             n_row = i // n_cols
             n_col = i % n_cols
             inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
             self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric=param)
+            i += 1
 
-        graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
-        fig.suptitle(self.evaluator.args.env_name)
+       #graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
+        graph_title = 'size_X_xtprob'
+        envs2titles = {'MicropolisEnv-v0': 'SimCity'}
+        title = envs2titles[self.evaluator.args.env_name]
+        fig.suptitle(title)
         fig.tight_layout()
-        fig.subplots_adjust(top=0.97, bottom=0.01)
+        fig.subplots_adjust(top=0.96, bottom=0.05)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
@@ -534,7 +546,7 @@ if __name__ == "__main__":
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm',
+        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
         ))

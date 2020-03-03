@@ -126,6 +126,7 @@ class ExtinguisherMulti(Extinguisher):
     def step(self, action):
         if self.ages is not None and self.num_step % 1000 == 0:
             self.ages = self.ages - torch.min(self.ages)
+
         return super().step(action)
 
     def reset(self):
@@ -143,6 +144,7 @@ class ImRenderMulti(ImRender):
         self.im_render()
         obs, rew, done, info = self.env.step(action)
         info = info[0]
+
         for k, v in self.metrics.items():
             info[k] = v.cpu()
        #info = {
@@ -153,6 +155,7 @@ class ImRenderMulti(ImRender):
 
     def im_render(self):
         state = self.world.state.clone()
+
         for i in range(self.num_proc):
             image = state[i].cpu()
             image = np.vstack((image, image, image))
@@ -190,6 +193,68 @@ class ImRenderMulti(ImRender):
 
     def set_log_dir(self, log_dir):
         self.log_dir = log_dir
+
+class ParamRew(gym.Wrapper):
+    def __init__(self, env):
+        super(ParamRew, self).__init__(env)
+        self.num_params = 2 * len(self.metrics)
+        self.weights = {}
+
+        for k, v in self.metrics.items():
+            self.weights[k] = 1
+        for k, v in self.weights.items():
+            self.param_bounds['{}_weight'.format(k)] = (0, 1)
+
+    def getState(self):
+        scalars = super().getState()
+        trg_weights = [v for k, v in self.weights.items()]
+        scalars += trg_weights
+        return scalars
+
+    def set_params(self, params):
+        i = 0
+
+        for k, _ in self.metric_trgs.items():
+            self.metric_trgs[k] = params[k]
+            i += 1
+
+        for k in self.weights:
+            self.weights[k] = params['{}_weight'.format(k)]
+            i += 1
+
+    def step(self, action):
+        self.last_metrics = copy.deepcopy(self.metrics)
+        ob, rew, done, info = super().step(action)
+        rew = self.get_reward()
+
+        return ob, rew, done, info
+
+    def get_reward(self):
+        reward = 0
+
+        for metric, trg in self.metric_trgs.items():
+            val = self.metrics[metric]
+            last_val = self.last_metrics[metric]
+            trg_change = trg - last_val
+            change = val - last_val
+            metric_rew = 0
+            same_sign = (change < 0) == (trg_change < 0)
+            # changed in wrong direction
+
+            if not same_sign:
+                metric_rew -= abs(change)
+            else:
+                less_change = abs(change) < abs(trg_change)
+                # changed not too much, in the right direction
+
+                if less_change:
+                    metric_rew += abs(change)
+                else:
+                    metric_rew += abs(trg_change) - abs(trg_change - change)
+            reward += metric_rew * self.weights[metric]
+        reward = reward / sum([w for _, w in self.weights.items()])
+
+        return reward
 
 class ParamRewMulti(gym.Wrapper):
     ''' Calculate reward in terms of movement toward vector of target metrics, for environments in

@@ -20,7 +20,7 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ExtinguisherMulti, ImRenderMulti
+from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, ImRenderMulti
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -294,6 +294,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         random_builds=args.random_builds,
                         poet=args.poet,
                         ages=ages)
+                if True:
+                    env = ParamRew(env)
                 if extinction:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 

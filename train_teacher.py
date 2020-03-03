@@ -43,10 +43,10 @@ class Teacher(Trainer):
         envs = self.envs
         args = self.args
         env_param_bounds = envs.get_param_bounds()
+        num_env_params = len(env_param_bounds)
         # in case we want to change this dynamically in the future (e.g., we may
         # not know how much traffic the agent can possibly produce in Micropolis)
-        num_env_params = envs.set_param_bounds(env_param_bounds) # start with default bounds
-        num_env_params = len(env_param_bounds)
+        envs.set_param_bounds(env_param_bounds) # start with default bounds
         env_param_ranges = []
         env_param_lw_bounds = []
         env_param_hi_bounds = []
@@ -73,7 +73,6 @@ class Teacher(Trainer):
 
         params = OrderedDict()
         print('\n env_param_bounds', env_param_bounds)
-        print(params_vec)
         trial_remaining = args.max_step
         trial_reward = 0
 

@@ -40,7 +40,7 @@ class Extinguisher(gym.Wrapper):
        #if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
        #if self.num_step % 1000 == 0:
-       #    self.ages = self.ages - np.min(self.ages)
+            self.ages = self.ages - np.min(self.ages)
         return out
 
     def extinguish(self, extinction_type='age'):
@@ -223,11 +223,12 @@ class ImRender(gym.Wrapper):
        #    cv2.imshow('im', self.image)
 
     def step(self, action):
-        self.im_render()
+        jpeg_size = self.im_render()
         obs, rew, done, info = self.env.step(action)
         info = {
                 **info,
                 **self.metrics,
+                'jpeg_size': jpeg_size,
                 }
         return obs, rew, done, info
 
@@ -271,3 +272,5 @@ class ImRender(gym.Wrapper):
            #print(log_dir)
             cv2.imwrite(log_dir, self.image)
             self.n_saved += 1
+            size = os.stat(log_dir).st_size
+            return size
