@@ -229,7 +229,6 @@ class ImRender(gym.Wrapper):
         if True:
             if self.num_step % 10 == 0 and self.win1.editMapView.buffer is not None:
                 self.win1.editMapView.buffer.write_to_png(os.path.join(self.im_log_dir, 'rank {}, episode {}, step {}'.format(self.rank, self.n_episode, self.num_step)))
-                self.win1.editMapView.currentView.changeScale(2)
         obs, rew, done, info = self.env.step(action)
         info = {
                 **info,
@@ -254,6 +253,9 @@ class ImRender(gym.Wrapper):
             pass
 
     def reset(self):
+        if self.MAP_X == 64:
+            self.win1.editMapView.changeScale(0.77)
+            self.win1.editMapView.centerOnTile(40, 23)
         self.n_episode += 1
         return self.env.reset()
 
