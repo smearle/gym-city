@@ -238,6 +238,9 @@ class ImRender(gym.Wrapper):
         return obs, rew, done, info
 
     def reset_episodes(self, im_log_dir):
+        if self.MAP_X == 64:
+            self.win1.editMapView.changeScale(0.77)
+            self.win1.editMapView.centerOnTile(40, 23)
         self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
         self.image = np.transpose(self.image, (1, 0, 2))
         self.n_episode = 0
@@ -253,9 +256,6 @@ class ImRender(gym.Wrapper):
             pass
 
     def reset(self):
-        if self.MAP_X == 64:
-            self.win1.editMapView.changeScale(0.77)
-            self.win1.editMapView.centerOnTile(40, 23)
         self.n_episode += 1
         return self.env.reset()
 

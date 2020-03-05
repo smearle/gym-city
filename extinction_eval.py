@@ -346,9 +346,8 @@ class ExtinctionExperimenter():
                 0.02,
                 0.04,
                 ]
-        exp_name = 'test_col:{}_xtprob:{}_xtdels:{}'.format(
+        exp_name = 'test_col:{}_xtdels:{}'.format(
                 args.active_column,
-                self.xt_probs[0],
                 self.xt_dels[0])
         self.log_dir = log_dir
         args.load_dir = log_dir
