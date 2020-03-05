@@ -195,7 +195,7 @@ class ExtinctionEvaluator():
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
-        n_epis = 20
+        n_epis = 1
         exp_infos = {}
         # all envs must be on same step relative to start of episode in this implementation
         n_step = 0
@@ -327,8 +327,8 @@ class ExtinctionExperimenter():
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-               #'None',
-               #'age',
+                'age',
+                'None',
                 'spatial',
                 'random',
                 ]
@@ -346,9 +346,8 @@ class ExtinctionExperimenter():
                 0.02,
                 0.04,
                 ]
-        exp_name = 'test_col:{}_xtprob:{}_xtdels:{}'.format(
+        exp_name = 'test_col:{}_xtdels:{}'.format(
                 args.active_column,
-                self.xt_probs[0],
                 self.xt_dels[0])
         self.log_dir = log_dir
         args.load_dir = log_dir
@@ -436,7 +435,6 @@ class ExtinctionExperimenter():
                         e = None
                     else:
                         x, y, e = get_xy_metric(xt_dir, metric)
-                        y, e = y *
 
                     markers, caps, bars = ax.errorbar(x, y, e)
                     [bar.set_alpha(0.03) for bar in bars]
@@ -542,12 +540,13 @@ class ExtinctionExperimenter():
 
 if __name__ == "__main__":
     VIS_ONLY = False
-    VIS_ONLY = True
+   #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
         'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+       #'MicropolisEnv-v0_w16_200s_noXt3_alpgmm_weighted',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
         ))

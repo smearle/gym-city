@@ -512,7 +512,6 @@ class TileDrawingArea(gtk.DrawingArea):
 
     def configTileEngine(self, tengine):
 
-        print('ASSS')
         tengine.setBuffer(None)
         tengine.width = 1
         tengine.height = 1
