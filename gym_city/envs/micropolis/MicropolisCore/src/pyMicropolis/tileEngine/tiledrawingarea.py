@@ -668,7 +668,6 @@ class TileDrawingArea(gtk.DrawingArea):
 
             self.prepareToRenderTiles(ctx)
 
-#           print("renderTilesLazy BEGIN")
             self.tengine.renderTilesLazy(
                     ctx,
                     self.tileFunction,
@@ -684,7 +683,6 @@ class TileDrawingArea(gtk.DrawingArea):
                     self.tileCacheSurfaces,
                     self.tileState
              )
-#       print("renderTilesLazy END")
 
         ctxWindowBuffer.save()
 

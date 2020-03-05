@@ -134,6 +134,9 @@ class MicropolisControl():
         self.win1=win1
         self.player_builds = []
 
+    def get_map_image(self):
+        return self.engine.get_map_image()
+
     def reset_params(self, size):
         '''Change map-size of existing controller object.'''
         # gui is irrelevant here (only passed to micropolis)

@@ -40,7 +40,7 @@ class Extinguisher(gym.Wrapper):
        #if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
        #if self.num_step % 1000 == 0:
-            self.ages = self.ages - np.min(self.ages)
+           #self.ages = self.ages - np.min(self.ages)
         return out
 
     def extinguish(self, extinction_type='age'):

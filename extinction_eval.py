@@ -436,6 +436,7 @@ class ExtinctionExperimenter():
                         e = None
                     else:
                         x, y, e = get_xy_metric(xt_dir, metric)
+                        y, e = y *
 
                     markers, caps, bars = ax.errorbar(x, y, e)
                     [bar.set_alpha(0.03) for bar in bars]

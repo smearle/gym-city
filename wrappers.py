@@ -252,7 +252,7 @@ class ParamRew(gym.Wrapper):
                 else:
                     metric_rew += abs(trg_change) - abs(trg_change - change)
             reward += metric_rew * self.weights[metric]
-        reward = reward / sum([w for _, w in self.weights.items()])
+        reward = reward / (sum([w for _, w in self.weights.items()]) + 0.001)
 
         return reward
 

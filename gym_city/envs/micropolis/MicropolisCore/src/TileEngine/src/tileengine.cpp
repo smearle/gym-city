@@ -257,6 +257,7 @@ void TileEngine::renderTiles(
     int renderRows,
     double alpha)
 {
+    cairo_surface_write_to_png(tilesSurf, "/home/sme/map state.png");
 
     if ((tileFunction != Py_None) &&
 	!PyCallable_Check(tileFunction)) {
