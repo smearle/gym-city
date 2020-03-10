@@ -327,8 +327,8 @@ class ExtinctionExperimenter():
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-                'None',
-                'age',
+               #'None',
+               #'age',
                 'spatial',
                 'random',
                 ]

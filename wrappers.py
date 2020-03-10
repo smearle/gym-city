@@ -145,14 +145,20 @@ class ExtinguisherMulti(Extinguisher):
         super(ExtinguisherMulti, self).__init__(env, xt_type, xt_probs, xt_dels)
         dels = torch.zeros((self.num_proc, 1, self.map_width, self.map_width), dtype=torch.int8)
         self.dels = dels.to(self.device)
-        n_curr_dels = torch.zeros((self.num_proc))
+        n_curr_dels = torch.zeros((self.num_proc), dtype=torch.int8)
         self.n_curr_dels = n_curr_dels.to(self.device)
         self.MAP_X = self.MAP_Y = self.map_width
+        self.dels = dels.to(self.device)
+
+    def set_extinction_type(self, xt_type, xt_prob, xt_dels):
+        super().set_extinction_type(xt_type, xt_prob, xt_dels)
+        self.n_dels = torch.zeros((self.num_proc), dtype=torch.int8).fill_(xt_dels)
+        self.n_dels = self.n_dels.to(self.device)
 
     def configure(self, map_width, **kwargs):
+        self.env.configure(map_width, **kwargs)
         dels = torch.zeros((self.num_proc, 1, self.map_width, self.map_width), dtype=torch.int8)
         self.dels = dels.to(self.device)
-        self.env.configure(map_width, **kwargs)
 
     def init_ages(self):
         self.unwrapped.init_ages()
@@ -166,7 +172,7 @@ class ExtinguisherMulti(Extinguisher):
 
         for r in range(0, max(x, abs(self.map_width - x), y, abs(self.map_width - y))):
             n_curr_dels += self.clear_border(x, y, r, n_curr_dels)
-
+            print(n_curr_dels, self.n_dels)
             if (n_curr_dels >= self.n_dels).all():
                 break
 
@@ -178,19 +184,20 @@ class ExtinguisherMulti(Extinguisher):
         dels = self.dels.fill_(0)
         ages = self.ages
 
-        for x_i in range(x - r, x + r):
+        for x_i in (x - r, x + r):
             if x_i < 0 or x_i >= self.map_width:
                 continue
 
-            for y_i in range(y - r, y + r):
+            for y_i in (y - r, y + r):
                 if y_i < 0 or y_i >= self.map_width:
                     continue
                 dels[(n_curr_dels < self.n_dels), 0, x_i, y_i] = 1
+                print(dels.shape)
                 dels = self.world.state * dels
                 self.act_tensor(dels)
-                n_curr_dels += torch.sum(dels, dim=[1, 2, 3])
+                n_curr_dels += torch.sum(dels.int(), dim=[1, 2, 3])
 
-                if (n_curr_dels >= self.n_dels).all():
+                if (n_curr_dels >= self.n_dels).all() or torch.sum(self.world.state) == 0:
                     return n_curr_dels
 
         return n_curr_dels
@@ -201,7 +208,7 @@ class ExtinguisherMulti(Extinguisher):
         ages = self.unwrapped.ages.cpu().numpy()
         curr_dels = 0
 
-        for i in range(self.n_dels):
+        for i in range(self.n_dels[0]):
            #ages = ages.flatten()
             builds = [np.where(ages[i, 0] > 0) for i in range(self.num_proc)]
             build_ix = [zip(builds[j][0], builds[j][1]) for j in range(self.num_proc)]
@@ -504,9 +511,10 @@ class ParamRewMulti(ParamRew):
         reward = reward.to(self.device)
 
         for metric, trg in self.metric_trgs.items():
-            last_val = self.last_metrics[metric]#.to(self.device)
+            last_val = self.last_metrics[metric].to(self.device)
             trg_change = trg - last_val
             val = self.metrics[metric]
+            val = val.to(self.device)
             change = val - last_val
             metric_rew = torch.zeros(self.num_proc)
             metric_rew = metric_rew.to(self.device)
