@@ -53,7 +53,6 @@ class Extinguisher(gym.Wrapper):
             curr_dels = self.localWipe()
         if extinction_type == 'random':
             curr_dels = self.ranDemolish()
-       #print('{} deletions'.format(curr_dels))
         return curr_dels
 
     def localWipe(self):
@@ -79,7 +78,6 @@ class Extinguisher(gym.Wrapper):
                 if y_i < 0 or y_i >= self.MAP_X:
                     continue
                 if ages[x_i, y_i] > 0:
-                   #print(x_i, y_i)
                    #self.micro.doBotTool(x_i, y_i, 'Clear', static_build=True)
                     self.delete(x_i, y_i)
                     curr_dels += 1
@@ -151,6 +149,11 @@ class ExtinguisherMulti(Extinguisher):
         self.n_curr_dels = n_curr_dels.to(self.device)
         self.MAP_X = self.MAP_Y = self.map_width
 
+    def configure(self, map_width, **kwargs):
+        dels = torch.zeros((self.num_proc, 1, self.map_width, self.map_width), dtype=torch.int8)
+        self.dels = dels.to(self.device)
+        self.env.configure(map_width, **kwargs)
+
     def init_ages(self):
         self.unwrapped.init_ages()
 
@@ -216,8 +219,8 @@ class ExtinguisherMulti(Extinguisher):
 
     def delete(self, del_coords):
         dels = self.dels.fill_(0)
-
         for i, del_xy in enumerate(del_coords):
+            print(i, del_xy)
             dels[i, 0][tuple(del_xy)] = 1
 
         return self.act_tensor(dels)
@@ -447,6 +450,9 @@ class ParamRew(gym.Wrapper):
 
         return ob, rew, done, info
 
+    def get_param_trgs(self):
+        return self.metric_trgs
+
     def get_reward(self):
         reward = 0
 
@@ -474,7 +480,7 @@ class ParamRew(gym.Wrapper):
 
         return reward
 
-class ParamRewMulti(gym.Wrapper):
+class ParamRewMulti(ParamRew):
     ''' Calculate reward in terms of movement toward vector of target metrics, for environments in
     which 1 env actually contains multiple (i.e. GoLMulti).
     '''
@@ -515,5 +521,4 @@ class ParamRewMulti(gym.Wrapper):
             reward += metric_rew * self.metric_weights[metric]
         reward = reward.unsqueeze(-1)
         reward = reward.to(torch.device('cpu'))
-       #print(reward)
         return reward

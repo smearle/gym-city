@@ -327,7 +327,7 @@ class ExtinctionExperimenter():
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-               #'None',
+                'None',
                 'age',
                 'spatial',
                 'random',
@@ -336,9 +336,9 @@ class ExtinctionExperimenter():
         self.xt_dels = [15]
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
-                16,
+               #16,
                 32,
-                64,
+               #64,
                 ]
         self.xt_probs = [
                #0.005,
