@@ -15,12 +15,12 @@ from baselines.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 #from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from dummy_vec_env import DDummyVecEnv as DummyVecEnv
-from gym_city.wrappers import Extinguisher, ImRender
+from gym_city.wrappers import ImRenderMicropolis
 from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, ImRenderMulti
+from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti
 
 
 class MicropolisMonitor(bench.Monitor):

@@ -7,146 +7,16 @@ import gzip
 import gym
 import numpy as np
 import cv2
-
-class Extinguisher(gym.Wrapper):
-    '''Trigger intermittent extinction events.'''
-    def __init__(self, env,
-                 extinction_type=None,
-                 extinction_prob=0.1,
-                 xt_dels=15
-                 ):
-        super(Extinguisher, self).__init__(env)
-        self.set_extinction_type(extinction_type, extinction_prob, xt_dels)
-       #self.n_dels = int((self.MAP_X * self.MAP_Y) * 0.004)
-        print('Wrapping env in Extinguisher')
-
-    def set_extinction_type(self, extinction_type, extinction_prob, extinction_dels):
-        '''Set parameters relating to the extinction event.'''
-        self.extinction_type = extinction_type
-        self.extinction_prob = extinction_prob
-        self.n_dels = extinction_dels
-        if extinction_prob == 0:
-            self.extinction_interval = -1
-        else:
-            self.extinction_interval = 1 / extinction_prob
-        self.init_ages()
-
-    def init_ages(self):
-        self.ages = self.unwrapped.micro.map.init_age_array()
-
-    def step(self, a):
-        out = self.env.step(a)
-        if self.num_step % self.extinction_interval == 0:
-       #if np.random.rand() <= self.extinction_prob:
-            self.extinguish(self.extinction_type)
-       #if self.num_step % 1000 == 0:
-           #self.ages = self.ages - np.min(self.ages)
-        return out
-
-    def extinguish(self, extinction_type='age'):
-        ''' Cause some kind of extinction event to occur.'''
-        curr_dels = 0
-        if extinction_type == 'Monster':
-            curr_dels = self.micro.engine.makeMonster()
-        if extinction_type == 'age':
-            curr_dels = self.elderCleanse()
-        if extinction_type == 'spatial':
-            curr_dels = self.localWipe()
-        if extinction_type == 'random':
-            curr_dels = self.ranDemolish()
-       #print('{} deletions'.format(curr_dels))
-        return curr_dels
-
-    def localWipe(self):
-        # assume square map
-        print('LOCALWIPE')
-        curr_dels = 0
-        x = np.random.randint(0, self.MAP_X)
-        y = np.random.randint(0, self.MAP_Y)
-        for r in range(0, max(x, abs(self.MAP_X - x), y, abs(self.MAP_Y - y))):
-            curr_dels = self.clear_border(x, y, r, curr_dels)
-            if curr_dels >= self.n_dels:
-                break
-        return curr_dels
-
-    def clear_border(self, x, y, r, curr_dels):
-        '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
-        '''
-        ages = self.ages
-        for x_i in range(x - r, x + r):
-            if x_i < 0 or x_i >= self.MAP_X:
-                continue
-            for y_i in range(y - r, y + r):
-                if y_i < 0 or y_i >= self.MAP_X:
-                    continue
-                if ages[x_i, y_i] > 0:
-                   #print(x_i, y_i)
-                   #self.micro.doBotTool(x_i, y_i, 'Clear', static_build=True)
-                    self.delete(x_i, y_i)
-                    curr_dels += 1
-                    if curr_dels == self.n_dels:
-                        return curr_dels
-        return curr_dels
-
-    def ranDemolish(self):
-        # hack this to make it w/o replacement
-       #print('RANDEMOLISH')
-        ages = self.ages
-        curr_dels = 0
-        for i in range(self.n_dels):
-            ages = ages.flatten()
-            age_is = np.where(ages > -1)[0]
-            if len(age_is) == 0:
-                break
-           #age_i = np.random.choice(np.where(ages_flat > -1))
-            age_i = np.random.choice(age_is)
-            x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
-            x, y = int(x), int(y)
-           #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-            self.delete(x, y)
-            curr_dels += 1
-        return curr_dels
-
-    def elderCleanse(self):
-        print('\n AGEIST VIOLENCE')
-       #for i in range(20):
-        curr_dels = 0
-       #np.set_printoptions(threshold=sys.maxsize)
-        ages_arr = self.ages#.cpu().numpy()
-        for i in range(self.n_dels):
-       #for i in range((self.MAP_X * self.MAP_Y) // 90):
-           #print(str(self.micro.map.age_order).replace('\n ', ' ').replace('] [', '\n'))
-            ages = ages_arr.flatten()
-            youngest = np.max(ages)
-            age_is = np.where(ages > -1)[0]
-            if len(age_is) == 0:
-                break
-            ages = np.copy(ages)
-            ages += (ages < 0) * 2 * youngest
-            age_i = np.argmin(ages)
-           #x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
-            x, y = np.unravel_index(age_i, ages_arr.shape)
-            x, y = int(x), int(y)
-           #print('deleting {} {}'.format(x, y))
-           #print('zone {}'.format(self.micro.map.zones[self.micro.map.zoneMap[-1, x, y]]))
-            self.delete(x, y)
-           #self.render()
-           #print('result {}'.format(result))
-            curr_dels += 1
-        # otherwise it's over!
-       #self.micro.engine.setFunds(self.micro.init_funds)
-        return curr_dels
-
-    def delete(self, x, y):
-        result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-        return result
+import wrappers
 
 
-class ImRender(gym.Wrapper):
+
+
+class ImRenderMicropolis(wrappers.ImRender):
     ''' Render micropolis as simple image.
     '''
     def __init__(self, env, log_dir, rank):
-        super(ImRender, self).__init__(env)
+        super(ImRenderMicropolis, self).__init__(env)
         tile_types = {
             'Residential': 'Residential',
             'Commercial' : 'Commercial',
@@ -195,69 +65,26 @@ class ImRender(gym.Wrapper):
             'Magenta': [1, 0, 1],
             'Cyan': [1, 1, 0],
                 }
-        # TODO: put the extinction-type part of this log_dir in the appropriate wrapper
-        im_log_dir = log_dir
-       #im_log_dir = os.path.join(log_dir, 'imRender')
-       #try:
-       #    os.mkdir(im_log_dir)
-       #except FileExistsError:
-       #    pass
-       #im_log_dir = os.path.join(im_log_dir, 'None')
-       #try:
-       #    os.mkdir(im_log_dir)
-       #except FileExistsError:
-       #    pass
-        self.im_log_dir = im_log_dir
-        # save the image at regular intervals
-        self.save_interval = 1
-        self.n_saved = 0
-        self.n_episode = 0
+
         self.tile_types = tile_types
         self.type_colors = type_colors
         self.colors = colors
-        self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
-        self.image = np.transpose(self.image, (1, 0, 2))
-        self.rank = rank
-       #if self.unwrapped.render_gui:
-       #    _ = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
-       #    cv2.imshow('im', self.image)
         self.win1.resize(1000, 10000)
 
     def step(self, action):
-        jpeg_size = self.im_render()
+       #jpeg_size = self.im_render()
         # save image of map
         if True:
             if self.num_step % 10 == 0 and self.win1.editMapView.buffer is not None:
-                self.win1.editMapView.buffer.write_to_png(os.path.join(self.im_log_dir, 'rank {}, episode {}, step {}'.format(self.rank, self.n_episode, self.num_step)))
-        obs, rew, done, info = self.env.step(action)
-        info = {
-                **info,
-                **self.metrics,
-                'jpeg_size': jpeg_size,
-                }
+                self.win1.editMapView.buffer.write_to_png(os.path.join(self.im_log_dir, 'rank {}, episode {}, step {}.png'.format(self.rank, self.n_episode, self.num_step)))
+        obs, rew, done, info = super().step(action)
         return obs, rew, done, info
 
     def reset_episodes(self, im_log_dir):
         if self.MAP_X == 64:
             self.win1.editMapView.changeScale(0.77)
             self.win1.editMapView.centerOnTile(40, 23)
-        self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
-        self.image = np.transpose(self.image, (1, 0, 2))
-        self.n_episode = 0
-        print('reset epis, imrender log dir: {}'.format(self.im_log_dir))
-        self.im_log_dir = im_log_dir
-       #self.im_log_dir = self.im_log_dir.split('/')[:-1]
-       #self.im_log_dir = '/'.join(self.im_log_dir)
-       #self.im_log_dir = os.path.join(self.im_log_dir, str(self.env.extinction_type))
-        print('reset epis, renamed imrender log dir: {}'.format(self.im_log_dir))
-        try:
-            os.mkdir(self.im_log_dir)
-        except FileExistsError:
-            pass
-
-    def reset(self):
-        self.n_episode += 1
-        return self.env.reset()
+        return super().reset_episodes(im_log_dir)
 
     def im_render(self):
         zone_map = self.unwrapped.micro.map.zoneMap

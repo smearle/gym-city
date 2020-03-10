@@ -195,7 +195,7 @@ class ExtinctionEvaluator():
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
-        n_epis = 20
+        n_epis = 2
         exp_infos = {}
         # all envs must be on same step relative to start of episode in this implementation
         n_step = 0
@@ -225,7 +225,7 @@ class ExtinctionEvaluator():
                     cum_rew = reward
                 last_rew = cum_rew
                #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
-                exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = cum_rew
+                exp_infos['reward'][n_step][n_episode: n_episode + n_epis] = cum_rew.squeeze(-1)
             if args.render:
                 envs.render()
 
@@ -328,7 +328,7 @@ class ExtinctionExperimenter():
         #
         self.xt_types = [
                #'None',
-               #'age',
+                'age',
                 'spatial',
                 'random',
                 ]
@@ -336,8 +336,8 @@ class ExtinctionExperimenter():
         self.xt_dels = [15]
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
-               #16,
-               #32,
+                16,
+                32,
                 64,
                 ]
         self.xt_probs = [
@@ -546,9 +546,9 @@ if __name__ == "__main__":
         'trained_models',
         'a2c_FractalNet_drop',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
-       #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
+        'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

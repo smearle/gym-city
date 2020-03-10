@@ -147,15 +147,18 @@ class GoLMultiEnv(core.Env):
             self.curr_param_vals = self.curr_param_vals.cuda()
         self.set_params(self.metric_trgs)
 
+    def init_storage(self):
+        pass
+
+    def get_spaces(self):
+        return self.observation_space, self.action_space
 
     def get_param_bounds(self):
         return self.param_bounds
 
-
     def set_param_bounds(self, bounds):
         self.param_bounds = bounds
         return len(bounds)
-
 
     def set_params(self, params):
         print('Updated env targets: {}'.format(params))
@@ -255,7 +258,7 @@ class GoLMultiEnv(core.Env):
             assert(agent_builds >= 0).all()
            #assert(torch.sum(self.agent_dels + agent_builds) == self.num_proc)
 
-            if not hasattr(self, 'agent_builds'):
+            if not hasattr(self, 'agent_builds') or self.agent_builds.shape != actions.shape:
                 self.agent_builds = actions.float()
             else:
                 # agent builds accumulate on rendered board during agent's build-turn
