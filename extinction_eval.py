@@ -436,15 +436,15 @@ class ExtinctionExperimenter():
                     exp_title = ' '.join(xt_dir.split('/')[-2:])
                     if os.path.isfile(xt_dir):
                         continue
-                    if metric == 'compressibility':
-                        x, y = get_xy_cmprs(xt_dir)
-                        e = None
-                    else:
-                        x, y, e = get_xy_metric(xt_dir, metric)
+                   #if metric == 'compressibility':
+                   #    x, y = get_xy_cmprs(xt_dir)
+                   #    e = None
+                   #else:
+                    x, y, e = get_xy_metric(xt_dir, metric)
                       # y, e = y *
 
                     markers, caps, bars = ax.errorbar(x, y, e)
-                    [bar.set_alpha(0) for bar in bars]
+                    [bar.set_alpha(0.03) for bar in bars]
                     markers.set_label(xt_type)
                     xmin_i, xmax_i = ax.get_xlim()
                     ymin_i, ymax_i = ax.get_ylim()
@@ -480,7 +480,7 @@ class ExtinctionExperimenter():
                 ax.set_xlim([xmin, xmax])
                 ax.set_ylim([ymin, ymax])
                 k += 1
-        if n_col_outer == 1:
+        if n_col_outer == 0:
             ax.legend(fancybox=True, framealpha=0.5)
 
 
@@ -519,7 +519,7 @@ class ExtinctionExperimenter():
         params.append('jpeg_size')
         params.append('reward')
         n_params = len(params)
-        n_cols = 2
+        n_cols = 1
         n_rows = math.ceil(n_params / n_cols)
         fig = plt.figure(figsize=(n_cols * 8, n_rows * 16 / 4), constrained_layout=False)
         self.fig = fig
@@ -543,7 +543,7 @@ class ExtinctionExperimenter():
         title = envs2titles[self.evaluator.args.env_name]
         fig.suptitle(title)
         fig.tight_layout()
-        fig.subplots_adjust(top=0.9, bottom=0.05)
+        fig.subplots_adjust(top=0.95, bottom=0.05)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":

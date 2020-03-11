@@ -171,32 +171,53 @@ class ExtinguisherMulti(Extinguisher):
         x = np.random.randint(0, self.map_width)
         y = np.random.randint(0, self.map_width)
 
-        for r in range(0, max(x, abs(self.map_width - x), y, abs(self.map_width - y))):
-            n_curr_dels += self.clear_border(x, y, r, n_curr_dels)
+        for r in range(0, self.map_width):
+            print(r, n_curr_dels)
+            n_curr_dels = self.clear_border(x, y, r, n_curr_dels)
             if (n_curr_dels >= self.n_dels).all():
+                print('max dels')
                 break
+
 
         return n_curr_dels
 
     def clear_border(self, x, y, r, n_curr_dels):
         '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
         '''
-        dels = self.dels.fill_(0)
-        ages = self.ages
+
+        self.dels.fill_(0)
+        def del_at_tile(x, y, n_curr_dels):
+            dels = self.dels
+            dels[(n_curr_dels < self.n_dels), 0, x_i, y_i] = 1
+
+            if (n_curr_dels >= self.n_dels).all() or (self.metrics['pop'] == 0).all():
+                return False
+
+        def do_dels(n_curr_dels):
+            print(self.dels[0])
+            self.act_tensor(self.dels)
+            n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
 
         for x_i in (x - r, x + r):
             if x_i < 0 or x_i >= self.map_width:
                 continue
 
-            for y_i in (y - r, y + r):
+            for y_i in range(y - r, y + r):
                 if y_i < 0 or y_i >= self.map_width:
                     continue
-                dels[(n_curr_dels < self.n_dels), 0, x_i, y_i] = 1
-                dels = self.world.state * dels
-                self.act_tensor(dels)
-                n_curr_dels += torch.sum(dels.int(), dim=[1, 2, 3])
+                if not del_at_tile(x_i, y_i, n_curr_dels):
+                    do_dels(n_curr_dels)
+                    return n_curr_dels
 
-                if (n_curr_dels >= self.n_dels).all() or (self.metrics['pop'] == 0).all():
+        for y_i in (y - r, y + r):
+            if x_i < 0 or x_i >= self.map_width:
+                continue
+
+            for x_i in range(x - r, x + r):
+                if x_i < 0 or x_i >= self.map_width:
+                    continue
+                if not del_at_tile(x_i, y_i, n_curr_dels):
+                    do_dels(n_curr_dels)
                     return n_curr_dels
 
         return n_curr_dels
@@ -396,7 +417,7 @@ class ImRenderMulti(ImRender):
            #    cv2.waitKey(1)
 
             self.n_saved += 1
-            return size
+        return size
        #zone_map = self.unwrapped.micro.map.zoneMap
        #zones = self.unwrapped.micro.map.zones
        #tile_types = self.tile_types
