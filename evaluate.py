@@ -164,6 +164,7 @@ class Evaluator(object):
        #while len(eval_episode_rewards) < self.num_eval_processes:
        #while i < self.args.max_step:
             with torch.no_grad():
+                obs = obs.to(self.device)
                 _, action, eval_recurrent_hidden_states, _ = self.actor_critic.act(
                     obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
 

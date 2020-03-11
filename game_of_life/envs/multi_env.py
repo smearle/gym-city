@@ -32,7 +32,7 @@ class GoLMultiEnv(core.Env):
         self.agent_steps = 1
         self.sim_steps = 1
 
-    def configure(self, map_width=16, render=False, prob_life=20,
+    def configure(self, map_width, render=False, prob_life=20,
              max_step=200, num_proc=1, record=None, cuda=False,
              poet=False):
         self.num_proc = num_proc
@@ -60,8 +60,10 @@ class GoLMultiEnv(core.Env):
                 'pop': (0, max_pop)
                 })
         self.param_ranges = [abs(ub-lb) for lb, ub in self.param_bounds.values()]
-        max_loss = sum(self.param_ranges)
-        self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
+        self.metric_weights = {'pop': 1}
+        self.param_ranges = self.param_ranges + [1 for i in self.metric_weights]
+       #max_loss = sum(self.param_ranges)
+       #self.max_loss = torch.zeros(size=(self.num_proc,)).fill_(max_loss)
         self.metric_trgs = OrderedDict({
                #'pop': 0 # aim for empty board
                #'prob_life':
@@ -69,19 +71,19 @@ class GoLMultiEnv(core.Env):
                #'pop': max_pop,
                 # aim for max possible pop (roughly?)
                 })
-        self.metric_weights = {'pop': 1}
-        num_params = len(self.metric_trgs)
+        num_params = len(self.metric_trgs) + len(self.metric_weights)
         # so that we can calculate the loss of each sim separately
         self.trg_param_vals = torch.Tensor([v for v in self.metric_trgs.values()])
-        self.trg_param_vals = self.trg_param_vals.unsqueeze(0).expand(self.num_proc,
+        self.trg_param_vals = self.trg_param_vals.unsqueeze(-1).expand(self.num_proc,
                 num_params)
         self.curr_param_vals = torch.zeros(self.trg_param_vals.shape)
         self.metrics = {}
         i = 0
 
         for key, val in self.metric_trgs.items():
-            self.metrics[key] = self.curr_param_vals[i]
-        obs_shape = (num_proc, 1 + num_params, size, size)
+            self.metrics[key] = self.curr_param_vals[:,i]
+            i += 1
+        obs_shape = (1 + 1 * num_params, size, size)
         scalar_obs_shape = (num_proc, num_params, size, size)
         self.num_params = num_params
         slice_shape = (num_proc, 1, size, size)
@@ -117,7 +119,7 @@ class GoLMultiEnv(core.Env):
         self.intsToActions = [[] for pixel in range(self.num_tools * self.map_width **2)]
         self.actionsToInts = np.zeros((self.num_tools, self.map_width, self.map_width))
 
-        self.terminal = np.zeros((self.num_proc, 1), dtype=bool)
+        self.terminal = torch.zeros((self.num_proc, 1), dtype=bool)
 
         ''' Unrolls the action vector in the same order as the pytorch model
         on its forward pass.'''
@@ -169,11 +171,11 @@ class GoLMultiEnv(core.Env):
         # update our scalar observation
         # TODO: is there a quicker way, that scales to high number of params?
         i = 0
-
         for v in self.trg_param_vals[0]:
             unit_v = v  / self.param_ranges[i]
             trg_channel = self.scalar_obs[:,i:i+1]
             trg_channel.fill_(unit_v)
+            i += 1
 
 
     def get_curr_param_vals(self):
@@ -219,9 +221,9 @@ class GoLMultiEnv(core.Env):
        #reward = reward / (self.max_loss * self.max_step * self.num_proc)
        #reward = torch.Tensor((self.max_loss - loss) * 100 / (self.max_loss * self.max_step * self.num_proc))
         if self.num_step == self.max_step:
-            terminal = np.ones(self.num_proc, dtype=bool)
+            terminal = torch.ones(self.num_proc, dtype=bool)
         else:
-            terminal = self.terminal
+            terminal = self.metrics['pop'] == 0
                    # reward < 2 # impossible situation for agent
         #reward: average fullness of board
         #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
@@ -239,7 +241,6 @@ class GoLMultiEnv(core.Env):
 
        #reward = reward.unsqueeze(-1)
         reward = 0
-
         return (obs, reward, terminal, info)
 
 
@@ -281,7 +282,8 @@ class GoLMultiEnv(core.Env):
         ''' Combine scalar slices with world state to form observation. The
         agent sees only the target global parameters, leaving it to infer the
         current global properties of the map.'''
-        obs = torch.cat((self.scalar_obs, self.world.state.float()), dim=1)
+       #obs = torch.cat((self.scalar_obs, self.world.state.float()), dim=1)
+        obs = self.world.state.float()
 
         return obs
 
@@ -300,7 +302,7 @@ class GoLMultiEnv(core.Env):
 
     def reset(self):
         self.init_ages()
-        self.terminal = np.zeros((self.num_proc, 1), dtype=bool)
+        self.terminal = torch.zeros((self.num_proc, 1), dtype=bool)
         self.num_step = 0
         self.world.repopulate_cells()
        #self.world.prepopulate_neighbours()
@@ -328,7 +330,6 @@ class GoLMultiEnv(core.Env):
             rend_dels = np.vstack((rend_dels * 0, rend_dels * 0, rend_dels * 1))
             rend_builds = np.vstack((rend_builds * 0, rend_builds * 1, rend_builds * 0))
             rend_arr = rend_state + rend_dels + rend_builds
-       #print(rend_arr)
         rend_arr = rend_arr.transpose(2, 1, 0)
         rend_arr = rend_arr.astype(np.uint8)
         rend_arr = rend_arr * 255
@@ -338,7 +339,6 @@ class GoLMultiEnv(core.Env):
             gif_dir = ('{}/gifs/'.format(self.record))
             im_dir = os.path.join(gif_dir, 'im')
             im_path = os.path.join(im_dir, 'e{:02d}_s{:04d}.png'.format(self.gif_ep_count, self.num_step))
-           #print('saving frame at {}'.format(im_path))
             cv2.imwrite(im_path, rend_arr)
 
             if self.gif_ep_count == 0 and self.num_step == self.max_step:

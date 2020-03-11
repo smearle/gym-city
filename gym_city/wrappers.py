@@ -16,7 +16,7 @@ class ImRenderMicropolis(wrappers.ImRender):
     ''' Render micropolis as simple image.
     '''
     def __init__(self, env, log_dir, rank):
-        super(ImRenderMicropolis, self).__init__(env)
+        super(ImRenderMicropolis, self).__init__(env, log_dir, rank)
         tile_types = {
             'Residential': 'Residential',
             'Commercial' : 'Commercial',

@@ -277,7 +277,8 @@ class Trainer():
         elif isinstance(envs.observation_space, gym.spaces.Box):
             if 'golmulti' in args.env_name.lower():
                 multi_env = True
-                observation_space_shape = envs.observation_space.shape[1:]
+               #observation_space_shape = envs.observation_space.shape[1:]
+                observation_space_shape = envs.observation_space.shape
             else:
                 multi_env = False
                 observation_space_shape = envs.observation_space.shape

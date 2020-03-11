@@ -350,7 +350,7 @@ class FullyConv(NNBase):
         act = self.act(act)
        #assert (act > 0).all
         for i in range(int(math.log(self.map_width, 2))):
-            vac = F.relu(self.val_shrink(val))
+            val = F.relu(self.val_shrink(val))
         val = self.val(val)
        #assert (act > 0).all
         return val.view(val.shape[0], -1), act, rhxs

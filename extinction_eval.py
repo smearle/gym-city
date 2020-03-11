@@ -4,6 +4,7 @@ import os
 import shutil
 import re
 import time
+import math
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -70,6 +71,7 @@ class ExtinctionEvaluator():
             args.cuda = False
             device = torch.device('cpu')
             map_location = torch.device('cpu')
+        self.device = device
         try:
             checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
                                     map_location=map_location)
@@ -189,13 +191,12 @@ class ExtinctionEvaluator():
         envs.reset_episodes(im_log_dir)
         recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
         masks = torch.zeros(1, 1)
-        print(envs.observation_space)
         envs.init_storage()
-        obs = envs.reset()
+        obs = envs.reset().to(self.device)
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
-        n_epis = 2
+        self.n_epis = n_epis
         exp_infos = {}
         # all envs must be on same step relative to start of episode in this implementation
         n_step = 0
@@ -207,6 +208,7 @@ class ExtinctionEvaluator():
                     player_act=player_act)
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
+            obs = obs.to(self.device)
             if exp_infos == {}:
                 for k, v in infos[0].items():
                     exp_infos[k] = np.zeros(shape=(max_step + 1, n_epis))
@@ -214,8 +216,8 @@ class ExtinctionEvaluator():
             else:
                 for k, v in infos[0].items():
                     if k in exp_infos:
-                       #print(exp_infos)
-                       #print(v.shape)
+                        if isinstance(v, torch.Tensor):
+                            v = v.cpu()
                         exp_infos[k][n_step][n_episode: n_episode + n_epis] = v
                     else:
                         pass
@@ -229,10 +231,12 @@ class ExtinctionEvaluator():
             if args.render:
                 envs.render()
 
-            if done.any():
-                assert done.all()
+            if done.all():
                 n_step = 0
-                n_episode += np.sum(done.astype(int))
+                if isinstance(done, torch.Tensor):
+                    n_episode += torch.sum(done)
+                elif isinstance(done, np.ndarray):
+                    n_episode += np.sum(done)
             else:
                 n_step += 1
             player_act = None
@@ -245,7 +249,6 @@ class ExtinctionEvaluator():
         # take average over episodes at each timestep
         for k, v in exp_infos.items():
             exp_infos[k] = np.mean(v, axis=1), np.std(v, axis=1)
-        print(exp_infos)
         np_save_dir = '{}/exp_infos'.format(im_log_dir)
         np.save(np_save_dir, exp_infos)
         print(np_save_dir)
@@ -322,7 +325,7 @@ class ExtinctionExperimenter():
         env_name = log_dir.split('/')[-1].split('_')[0]
         args.env_name = env_name
         # Experiment global parameters
-        self.n_epis = 1
+        self.n_epis = 20
        #self.max_step = [1000]
         self.max_step = [args.max_step]
         #
@@ -333,12 +336,12 @@ class ExtinctionExperimenter():
                 'random',
                 ]
         # TODO: automate xt_probs
-        self.xt_dels = [15]
+        self.xt_dels = [25]
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
-               #16,
+                16,
                 32,
-               #64,
+                64,
                 ]
         self.xt_probs = [
                #0.005,
@@ -376,6 +379,9 @@ class ExtinctionExperimenter():
         xt_ims = [os.listdir(xt_dir) for xt_dir in xt_dir_paths if not os.path.isfile(xt_dir) ]
 
         metrics2labels = {
+                # Game of Life
+                'pop': ('Living Cells', 'population'),
+                # Micropolis
                 'ind_pop': ('industrial', 'population'),
                 'res_pop': ('residential', 'population'),
                 'com_pop': ('commercial', 'population'),
@@ -387,10 +393,10 @@ class ExtinctionExperimenter():
                 }
         j = 0
         n_row = 0
-        inner_axes = []
         xmin, xmax, ymin, ymax = 0, 0, 0, 0
         for map_size in self.map_sizes:
             n_col = 0
+            inner_axes = []
             for xt_prob in self.xt_probs:
                 ax = self.fig.add_subplot(inner_grid[j])
                 inner_axes.append(ax)
@@ -438,7 +444,7 @@ class ExtinctionExperimenter():
                       # y, e = y *
 
                     markers, caps, bars = ax.errorbar(x, y, e)
-                    [bar.set_alpha(0.03) for bar in bars]
+                    [bar.set_alpha(0) for bar in bars]
                     markers.set_label(xt_type)
                     xmin_i, xmax_i = ax.get_xlim()
                     ymin_i, ymax_i = ax.get_ylim()
@@ -461,21 +467,22 @@ class ExtinctionExperimenter():
                 j += 1
                 n_col += 1
             n_row += 1
+            k = 0
+            for ax in inner_axes:
+                if metric in self.param_trgs:
+                    trg = self.param_trgs[metric]
+                    trg_height = min(trg, (ymax - ymin) * 0.97 + ymin)
+                    txt_height = trg_height - 0.1 * (ymax- ymin)
+                    e_xmin, e_xmax = xmin + (xmax - xmin) * 0.05, xmax - (xmax - xmin) * 0.05
+                    ax.hlines(trg_height, e_xmin, e_xmax, linestyles='dashed', colors='grey', label='target')
+                    if k == len(inner_axes) - 2 and n_row == 2:
+                        ax.annotate('target = {}'.format(int(trg)), (e_xmin, txt_height))
+                ax.set_xlim([xmin, xmax])
+                ax.set_ylim([ymin, ymax])
+                k += 1
         if n_col_outer == 1:
             ax.legend(fancybox=True, framealpha=0.5)
-        i = 0
-        for ax in inner_axes:
-            if metric in self.param_trgs:
-                trg = self.param_trgs[metric]
-                trg_height = min(trg, (ymax - ymin) * 0.97 + ymin)
-                txt_height = trg_height - 0.1 * (ymax- ymin)
-                e_xmin, e_xmax = xmin + (xmax - xmin) * 0.05, xmax - (xmax - xmin) * 0.05
-                ax.hlines(trg_height, e_xmin, e_xmax, linestyles='dashed', colors='grey', label='target')
-                if i == len(inner_axes) - 1 and n_col_outer == 1:
-                    ax.annotate('target = {}'.format(int(trg)), (e_xmin, txt_height))
-            ax.set_xlim([xmin, xmax])
-            ax.set_ylim([ymin, ymax])
-            i += 1
+
 
       ##graph_title = 'extinction interval = {}'.format(xt_interval)
       ##plt.title(graph_title)
@@ -513,7 +520,7 @@ class ExtinctionExperimenter():
         params.append('reward')
         n_params = len(params)
         n_cols = 2
-        n_rows = n_params // n_cols
+        n_rows = math.ceil(n_params / n_cols)
         fig = plt.figure(figsize=(n_cols * 8, n_rows * 16 / 4), constrained_layout=False)
         self.fig = fig
         i = 0
@@ -521,7 +528,6 @@ class ExtinctionExperimenter():
         n_row = 0
         n_col = 0
         inner_grid = outer_grid[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
-        print(dir(inner_grid))
        #self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric='compressibility')
         for param in params:
             n_row = i // n_cols
@@ -532,11 +538,12 @@ class ExtinctionExperimenter():
 
        #graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
         graph_title = 'size_X_xtprob'
-        envs2titles = {'MicropolisEnv-v0': 'SimCity'}
+        envs2titles = {'MicropolisEnv-v0': 'SimCity',
+                       'GoLMultiEnv-v0': 'Game of Life'}
         title = envs2titles[self.evaluator.args.env_name]
         fig.suptitle(title)
         fig.tight_layout()
-        fig.subplots_adjust(top=0.96, bottom=0.05)
+        fig.subplots_adjust(top=0.9, bottom=0.05)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
@@ -544,11 +551,13 @@ if __name__ == "__main__":
    #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
-        'a2c_FractalNet_drop',
+       #'a2c_FractalNet_drop',
+        'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
-        'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
+       #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
+        'GoLMultiEnv-v0_w16_200s_jinkyFix.test',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 
@@ -559,5 +568,4 @@ if __name__ == "__main__":
        #try:
        ## broadcast problem when sizing up map #TODO: adjust vec_envs to prevent this
        #except ValueError as ve:
-       #    print(ve)
     EXPERIMENTER.visualize_experiments()

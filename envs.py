@@ -20,7 +20,7 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti
+from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -340,7 +340,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
         if args.im_render and not multi_env:
             print('wrapping in imrender')
-            env = ImRender(env, log_dir, rank)
+            if 'micropolis' in args.env_name.lower():
+                env = ImRenderMicropolis(env, log_dir, rank)
 
         assert env is not None
 
