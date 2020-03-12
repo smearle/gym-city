@@ -551,13 +551,13 @@ if __name__ == "__main__":
    #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
-       #'a2c_FractalNet_drop',
-        'a2c_FractalNet',
+        'a2c_FractalNet_drop',
+       #'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
-       #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
+        'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
-        'GoLMultiEnv-v0_w16_200s_jinkyFix.test',
+       #'GoLMultiEnv-v0_w16_200s_jinkyFix.test',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

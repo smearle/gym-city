@@ -34,12 +34,13 @@ class Extinguisher(gym.Wrapper):
         self.ages = self.unwrapped.micro.map.init_age_array()
 
     def step(self, a):
-        out = self.env.step(a)
         if self.num_step % self.extinction_interval == 0:
        #if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
        #if self.num_step % 1000 == 0:
            #self.ages = self.ages - np.min(self.ages)
+        out = self.env.step(a)
+
         return out
 
     def extinguish(self, extinction_type='age'):
@@ -187,7 +188,7 @@ class ExtinguisherMulti(Extinguisher):
 
     def do_dels(self):
         self.act_tensor(self.dels)
-        self.n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
+       #self.n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
         self.dels = self.dels.fill_(0)
 
     def clear_border(self, x, y, r):
@@ -220,26 +221,31 @@ class ExtinguisherMulti(Extinguisher):
 
     def ranDemolish(self):
         print('RANDEMOLISH, step {}'.format(self.num_step))
-        ages = self.unwrapped.ages.cpu().numpy()
-        curr_dels = 0
+       #ages = self.unwrapped.ages.cpu().numpy()
+        start_pop = torch.sum(self.world.state)
+        n_dels = self.n_dels[0]
+        age_dist = (self.ages > 0) * 10000000 + 0.0001
+        samples = torch.multinomial(age_dist.view(self.ages.size(0), -1), n_dels)
+        proc_ixs = torch.zeros(samples.shape, dtype=int)
+        proc_ixs[torch.arange(0, samples.size(0), 1), :] = torch.arange(0, samples.size(0)).unsqueeze(-1).expand(samples.shape)
+        xs = samples // self.ages.size(-1)
+        ys = samples % self.ages.size(-1)
+        self.dels[proc_ixs.flatten(), 0, xs.flatten(), ys.flatten()] = 1
+        self.dels = self.dels * self.world.state
+        self.do_dels()
+        end_pop = torch.sum(self.world.state)
+        print('pop diff {}'.format(start_pop - end_pop))
+            # sample an index for each process in the batch
 
-        for i in range(self.n_dels[0]):
-           #ages = ages.flatten()
-            builds = [np.where(ages[i, 0] > 0) for i in range(self.num_proc)]
-            build_ix = [zip(builds[j][0], builds[j][1]) for j in range(self.num_proc)]
-            build_ix = [list(build_ix[j]) for j in range(self.num_proc)]
-           #if len(age_is) == 0:
-           #    break
-           #age_i = np.random.choice(np.where(ages_flat > -1))
-            del_i = [np.random.choice(len(build_ix[j])) for j in range(self.num_proc)]
-            del_coords = [build_ix[j][del_i[j]] for j in range(self.num_proc)]
-           #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
-            self.delete(del_coords)
-            curr_dels += 1
-            if (self.metrics['pop'] == 0).all():
-                break
+        #   del_i = [np.random.choice(len(build_ix[j])) for j in range(self.num_proc)]
+        #   del_coords = [build_ix[j][del_i[j]] for j in range(self.num_proc)]
+        #  #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+        #   self.delete(del_coords)
+        #   curr_dels += 1
+        #   if (self.metrics['pop'] == 0).all():
+        #       break
 
-        return curr_dels
+        # return curr_dels
 
     def delete(self, del_coords):
         dels = self.dels.fill_(0)
@@ -283,9 +289,12 @@ class ExtinguisherMulti(Extinguisher):
 
     def step(self, action):
         if self.ages is not None and self.num_step % 1000 == 0:
-            self.ages = self.ages - torch.min(self.ages)
+            self.ages = self.ages - torch.min(self.ages) + 1
+        # (reset age to zero in case of new deletions) and increment age of active cells
 
-        return super().step(action)
+        self.ages = (self.ages * self.world.state) + self.world.state
+        result = super().step(action)
+        return result
 
     def reset(self):
         self.ages.fill_(0)
