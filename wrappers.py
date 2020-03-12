@@ -167,37 +167,34 @@ class ExtinguisherMulti(Extinguisher):
     def localWipe(self):
         # assume square map
         print('LOCALWIPE')
-        n_curr_dels = self.n_curr_dels.fill_(0)
+        self.n_curr_dels = self.n_curr_dels.fill_(0)
         x = np.random.randint(0, self.map_width)
         y = np.random.randint(0, self.map_width)
 
         for r in range(0, self.map_width):
-            print(r, n_curr_dels)
-            n_curr_dels = self.clear_border(x, y, r, n_curr_dels)
-            if (n_curr_dels >= self.n_dels).all():
+            self.clear_border(x, y, r)
+            print(self.n_curr_dels, r)
+            if (self.n_curr_dels >= self.n_dels).all():
                 print('max dels')
                 break
 
+    def del_at_tile(self, x, y, n_curr_dels):
+        self.dels[(self.n_curr_dels < self.n_dels), 0, x, y] = 1
+        self.dels = self.dels * self.world.state
+        if (self.n_curr_dels >= self.n_dels).all() or (self.metrics['pop'] == 0).all():
+            return False
+        return True
 
-        return n_curr_dels
+    def do_dels(self):
+        self.act_tensor(self.dels)
+        self.n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
+        self.dels = self.dels.fill_(0)
 
-    def clear_border(self, x, y, r, n_curr_dels):
+    def clear_border(self, x, y, r):
         '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
         '''
-
-        self.dels.fill_(0)
-        def del_at_tile(x, y, n_curr_dels):
-            dels = self.dels
-            dels[(n_curr_dels < self.n_dels), 0, x_i, y_i] = 1
-
-            if (n_curr_dels >= self.n_dels).all() or (self.metrics['pop'] == 0).all():
-                return False
-
-        def do_dels(n_curr_dels):
-            print(self.dels[0])
-            self.act_tensor(self.dels)
-            n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
-
+       #self.n_curr_dels = n_curr_dels
+        self.dels = self.dels.fill_(0)
         for x_i in (x - r, x + r):
             if x_i < 0 or x_i >= self.map_width:
                 continue
@@ -205,25 +202,23 @@ class ExtinguisherMulti(Extinguisher):
             for y_i in range(y - r, y + r):
                 if y_i < 0 or y_i >= self.map_width:
                     continue
-                if not del_at_tile(x_i, y_i, n_curr_dels):
-                    do_dels(n_curr_dels)
-                    return n_curr_dels
+                if not self.del_at_tile(x_i, y_i, self.n_curr_dels):
+                    self.do_dels()
+                    return self.n_curr_dels
 
         for y_i in (y - r, y + r):
-            if x_i < 0 or x_i >= self.map_width:
+            if y_i < 0 or y_i >= self.map_width:
                 continue
 
             for x_i in range(x - r, x + r):
                 if x_i < 0 or x_i >= self.map_width:
                     continue
-                if not del_at_tile(x_i, y_i, n_curr_dels):
-                    do_dels(n_curr_dels)
-                    return n_curr_dels
-
-        return n_curr_dels
+                if not self.del_at_tile(x_i, y_i, self.n_curr_dels):
+                    self.do_dels()
+                    return self.n_curr_dels
+        self.do_dels()
 
     def ranDemolish(self):
-        # hack this to make it w/o replacement
         print('RANDEMOLISH, step {}'.format(self.num_step))
         ages = self.unwrapped.ages.cpu().numpy()
         curr_dels = 0

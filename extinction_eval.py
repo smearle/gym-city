@@ -332,15 +332,15 @@ class ExtinctionExperimenter():
         self.xt_types = [
                #'None',
                #'age',
-                'spatial',
+               #'spatial',
                 'random',
                 ]
         # TODO: automate xt_probs
         self.xt_dels = [25]
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
-                16,
-                32,
+               #16,
+               #32,
                 64,
                 ]
         self.xt_probs = [
@@ -543,7 +543,7 @@ class ExtinctionExperimenter():
         title = envs2titles[self.evaluator.args.env_name]
         fig.suptitle(title)
         fig.tight_layout()
-        fig.subplots_adjust(top=0.95, bottom=0.05)
+        fig.subplots_adjust(top=0.92, bottom=0.05)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title)), format='png')
 
 if __name__ == "__main__":
