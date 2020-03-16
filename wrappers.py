@@ -297,7 +297,7 @@ class ExtinguisherMulti(Extinguisher):
         return result
 
     def reset(self):
-        self.ages.fill_(0)
+        self.ages = self.world.state.fill_(0)
         obs = super().reset()
 
         return obs
@@ -344,7 +344,6 @@ class ImRender(gym.Wrapper):
         return obs, rew, done, info
 
     def reset_episodes(self, im_log_dir):
-
         self.image = np.zeros((self.MAP_X, self.MAP_Y, 3))
         self.image = np.transpose(self.image, (1, 0, 2))
         self.n_episode = 0
