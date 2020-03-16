@@ -259,15 +259,13 @@ class ExtinctionEvaluator():
         # take average over episodes at each timestep
         for k in exp_infos:
             final_infos[k] = exp_infos[k][-1, :]
-        print(final_infos)
         for k, v in exp_infos.items():
             # the saved dictionary stores the mean over episodes at each time
             exp_infos[k] = np.mean(v, axis=1), np.std(v, axis=1)
         np_save_dir = '{}/exp_infos'.format(im_log_dir)
         np.save(np_save_dir, exp_infos)
-        np.save(np_save_dir, p_values)
-        print(np_save_dir)
         envs.reset()
+        return final_infos
 
 #def run_experiment():
 #    '''Measure True under various conditions.'''
@@ -546,10 +544,18 @@ class ExtinctionExperimenter():
                     for xtt in self.xt_types:
                         if xtt is None:
                             xtp = 0
-                            evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
+                            fina_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
                         else:
                             for xtp in self.xt_probs:
-                                evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
+                                final_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
+        pvals = {}
+        for k in final_infos:
+            for j in final_infos:
+                kj = '{}_{}'.format(k, j)
+                x = final_infos[k]
+                y = final_infos[j]
+                pvals[kj] = mannwhitneyu(x, y)
+        print(pvals)
 
     def visualize_experiments(self):
         '''
@@ -593,13 +599,13 @@ if __name__ == "__main__":
    #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
-       #'a2c_FractalNet_drop',
-        'a2c_FractalNet',
+        'a2c_FractalNet_drop',
+       #'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
-       #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
-        'GoLMultiEnv-v0_w16_200s_jinkyFix.test',
+        'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
+       #'GoLMultiEnv-v0_w16_200s_jinkyFix.test',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 
