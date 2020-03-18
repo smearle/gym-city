@@ -49,7 +49,7 @@ class Extinguisher(gym.Wrapper):
         if extinction_type == 'Monster':
             curr_dels = self.micro.engine.makeMonster()
         if extinction_type == 'age':
-            curr_dels = self.elderCleanse()
+            curr_dels = self.age_event()
         if extinction_type == 'spatial':
             curr_dels = self.localWipe()
         if extinction_type == 'random':
@@ -105,7 +105,7 @@ class Extinguisher(gym.Wrapper):
             curr_dels += 1
         return curr_dels
 
-    def elderCleanse(self):
+    def age_event(self):
         print('\n AGEIST VIOLENCE')
        #for i in range(20):
         curr_dels = 0
@@ -254,7 +254,7 @@ class ExtinguisherMulti(Extinguisher):
         return self.act_tensor(dels)
 
 
-    def elderCleanse(self):
+    def age_event(self):
         print('\n AGEIST VIOLENCE')
        #for i in range(20):
         curr_dels = 0
@@ -267,8 +267,11 @@ class ExtinguisherMulti(Extinguisher):
            #if len(builds) == 0:
            #    break
            #ages += (ages < 0) * 2 * youngest
+           #print(ages.shape)
             ages = ages.view(self.num_proc, -1)
+           #print(ages.shape)
             age_i = torch.argmax(ages, dim=1)
+           #print(age_i)
            #x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
             age_i = age_i.unsqueeze(-1)
             x = age_i // self.MAP_Y
@@ -297,7 +300,7 @@ class ExtinguisherMulti(Extinguisher):
         return result
 
     def reset(self):
-        self.ages = self.world.state.fill_(0)
+        self.ages = copy.deepcopy(self.world.state.fill_(0))
         obs = super().reset()
 
         return obs

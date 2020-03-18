@@ -342,18 +342,21 @@ class ExtinctionExperimenter():
         env_name = log_dir.split('/')[-1].split('_')[0]
         args.env_name = env_name
         # Experiment global parameters
-        self.n_epis = 20
+        self.n_epis = 40
        #self.max_step = [1000]
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-               #'None',
-               #'age',
-               #'spatial',
+                'age',
+                'None',
+                'spatial',
                 'random',
                 ]
         # TODO: automate xt_probs
-        self.xt_dels = [25]
+        if 'golmulti' in env_name.lower():
+            self.xt_dels = [25]
+        elif 'micropolis' in env_name.lower():
+            self.xt_dels = [15]
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
                 16,
@@ -538,24 +541,59 @@ class ExtinctionExperimenter():
         '''Run experiments and produce data.'''
         evaluator = self.evaluator
 
+        all_final_infos = {}
         for mst in self.max_step:
             for msz in self.map_sizes:
                 for xtd in self.xt_dels:
+                    xtt_infos = {}
                     for xtt in self.xt_types:
                         if xtt is None:
-                            xtp = 0
-                            fina_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
+                            xtps = [0]
                         else:
-                            for xtp in self.xt_probs:
+                            xtps = self.xt_probs
+                            for xtp in xtps:
                                 final_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
-        pvals = {}
-        for k in final_infos:
-            for j in final_infos:
-                kj = '{}_{}'.format(k, j)
-                x = final_infos[k]
-                y = final_infos[j]
-                pvals[kj] = mannwhitneyu(x, y)
-        print(pvals)
+                               #run_id = 's{}_w{}_xtd{}_xtp{}'.format(mst, msz, xtd, xtp)
+                                # FIXME: only works for this particular paper!
+                                run_id = 'map size = {}, extinction frequency = {}'.format(msz, xtp)
+                                if run_id not in all_final_infos:
+                                    all_final_infos[run_id] = {xtt: final_infos}
+                                else:
+                                    all_final_infos[run_id][xtt] = final_infos
+        run_pvals = {}
+        print(all_final_infos)
+        self.metrics = {}
+        for run in all_final_infos:
+            p_vals = {}
+            # compare every pair of extinction types
+            for t1 in all_final_infos[run]:
+                for t2 in all_final_infos[run]:
+                    if t1 == t2:
+                        continue
+                    # w.r.t. each metric
+                    for m in all_final_infos[run][t1]:
+                        pval_name = '{}_{}_{}'.format(m, t1, t2)
+                        x = all_final_infos[run][t1][m]
+                        y = all_final_infos[run][t2][m]
+                        try:
+                            p_vals[pval_name] = mannwhitneyu(x, y)
+                        except ValueError:
+                            p_vals[pval_name] = None
+                        self.metrics[m] = None
+            run_pvals[run] = p_vals
+        save_path = os.path.join(self.log_dir, 'pvals.npy')
+        print(save_path)
+        np.save(save_path, p_vals)
+        print(run_pvals)
+
+    def visualize_p_vals(self):
+        save_path = os.path.join(self.log_dir, 'pvals.npy')
+        run_p_vals = np.load(save_path, allow_pickle=True)
+        for run in run_p_vals:
+            for t1 in self.xt_types:
+                for t2 in self.xt_types:
+                    for m in self.metrics:
+                        p_name = '{}_{}_{}'.format(m, t1, t2)
 
     def visualize_experiments(self):
         '''
@@ -596,15 +634,15 @@ class ExtinctionExperimenter():
 
 if __name__ == "__main__":
     VIS_ONLY = False
-   #VIS_ONLY = True
+    VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
        #'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
-        'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
+       #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_jinkyFix.test',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
@@ -618,3 +656,4 @@ if __name__ == "__main__":
        ## broadcast problem when sizing up map #TODO: adjust vec_envs to prevent this
        #except ValueError as ve:
     EXPERIMENTER.visualize_experiments()
+    EXPERIMENTER.visualize_p_vals()

@@ -190,7 +190,7 @@ class GoLMultiEnv(core.Env):
         return pop
 
     def init_ages(self):
-        self.ages = torch.zeros((self.map_width, self.map_width))
+        self.ages = torch.zeros((self.num_proc, 1, self.map_width, self.map_width))
         if self.cuda:
             self.ages = self.ages.to(torch.device('cuda:0'))
 
