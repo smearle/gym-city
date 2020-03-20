@@ -879,9 +879,6 @@ class SubFractal(nn.Module):
         else:
             self.join_masks['skip'] = False
             self.join_masks['body'] = True
-            self.f_c_A.set_active_column(col_n)
-            self.f_c_B.set_active_column(col_n)
-
 
 
     def get_join_masks(self):

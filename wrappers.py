@@ -174,9 +174,7 @@ class ExtinguisherMulti(Extinguisher):
 
         for r in range(0, self.map_width):
             self.clear_border(x, y, r)
-            print(self.n_curr_dels, r)
             if (self.n_curr_dels >= self.n_dels).all():
-                print('max dels')
                 break
 
     def del_at_tile(self, x, y, n_curr_dels):
