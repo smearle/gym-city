@@ -215,9 +215,11 @@ class Trainer():
            #saved_args.n_chan = args.n_chan
            #saved_args.prebuild = args.prebuild
            #args = saved_args
+            args.eval_interval = saved_args.eval_interval
             args.save_dir = saved_args.save_dir
             args.model = saved_args.model
             args.env_name = saved_args.env_name
+            args.poet = saved_args.poet
         actor_critic.to(device)
 
         updates_remaining = int(args.num_frames - past_frames) // (args.num_steps * args.num_processes)
@@ -282,9 +284,13 @@ class Trainer():
             else:
                 multi_env = False
                 observation_space_shape = envs.observation_space.shape
+               #if '-wide-' in args.env_name:
+               #    observation_space_shape = (observation_space_shape[1],
+               #            observation_space_shape[2], observation_space_shape[0])
             self.multi_env = multi_env
-
             if len(observation_space_shape) == 3:
+               #print(observation_space_shape)
+               #raise Exception
                 in_w = observation_space_shape[1]
                 in_h = observation_space_shape[2]
             else:
@@ -325,15 +331,27 @@ class Trainer():
                 out_w = 1
                 out_h = 1
             num_actions = envs.action_space.shape[-1]
-        print('num actions {}'.format(num_actions))
+        # for PCGRL
+        elif isinstance(envs.action_space, gym.spaces.MultiDiscrete):
+            raise Exception
+            out_w = envs.action_space.nvec[0]
+            out_h = envs.action_space.nvec[1]
+            num_actions = envs.action_space.nvec[2]
+        print('envs.action_space: {}'.format(envs.action_space))
+        print('observation space {}'.format(observation_space_shape))
+        print('out w, out_h, num actions {}, {}, {}'.format(out_w, out_h, num_actions))
         self.in_w, self.in_h, self.num_inputs = in_w, in_h, num_inputs
         self.out_w, self.out_h, self.num_actions = out_w, out_h, num_actions
 
 
     def make_vec_envs(self, args):
-        envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
-                args=args)
+        try:
+            envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
+                    args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
+                    args=args)
+        except gym.error.UnregisteredEnv as err:
+            print(err, '\n available envs: \n{}'.format(gym.envs.registry.all()))
+            raise err
 
         return envs
 
@@ -406,6 +424,7 @@ class Trainer():
                     icm_enabled=args.curiosity,
                     deterministic=False)
 
+       #print('action in train.py: {}'.format(action))
         # Observe reward and next obs
         obs, reward, done, infos = envs.step(action)
 

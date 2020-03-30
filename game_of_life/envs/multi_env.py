@@ -305,6 +305,7 @@ class GoLMultiEnv(core.Env):
         self.terminal = torch.zeros((self.num_proc, 1), dtype=bool)
         self.num_step = 0
         self.world.repopulate_cells()
+        self.get_curr_param_vals()
        #self.world.prepopulate_neighbours()
         if hasattr(self, 'agent_builds'):
             self.agent_builds.fill_(0)

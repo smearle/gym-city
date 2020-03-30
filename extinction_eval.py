@@ -200,7 +200,6 @@ class ExtinctionEvaluator():
         #obs = torch.Tensor(obs)
         player_act = None
         n_episode = 0
-        self.n_epis = 50
         exp_infos = {}
         # all envs must be on same step relative to start of episode in this implementation
         n_step = 0
@@ -347,10 +346,10 @@ class ExtinctionExperimenter():
         self.max_step = [args.max_step]
         #
         self.xt_types = [
+                'random',
+                'spatial',
                 'age',
                 'None',
-                'spatial',
-                'random',
                 ]
         # TODO: automate xt_probs
         if 'golmulti' in env_name.lower():
@@ -360,14 +359,14 @@ class ExtinctionExperimenter():
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
                 16,
-                32,
-                64,
+               #32,
+               #64,
                 ]
         self.xt_probs = [
                #0.005,
                 0.01,
-                0.02,
-                0.04,
+               #0.02,
+               #0.04,
                 ]
         exp_name = 'test_col:{}_xtdels:{}'.format(
                 args.active_column,
@@ -417,42 +416,50 @@ class ExtinctionExperimenter():
 
         all_p_vals = np.load(os.path.join(self.im_log_dir, 'pvals.npy'), allow_pickle=True).item()
         inner_grid1 = self.inner_grid1
-        inner_grid2 = self.inner_grid2
+       #inner_grid2 = self.inner_grid2
         for map_size in self.map_sizes:
             n_col = 0
             inner_axes1 = []
             inner_axes2 = []
-            print(all_p_vals)
+           #print(all_p_vals)
             n_xtt = len(self.xt_types)
-            table_data = np.empty((n_xtt, n_xtt))
+            table_data = np.empty((n_xtt - 1, n_xtt)).tolist()
+            table_fill = np.empty((n_xtt - 1, n_xtt), dtype=object)
+            table_fill.fill((0,0,0,0))
+            table_fill = table_fill.tolist()
             rows = cols = self.xt_types
             for xt_prob in self.xt_probs:
                 plt.figure(2)
                 xt_i = 0
-                for xtt1 in self.xt_types:
+                for xtt1_i in range(len(self.xt_types) - 1):
+                    xtt1 = self.xt_types[xtt1_i]
                     xt_j = 0
-                    for xtt2 in self.xt_types:
-                        if xtt1 != xtt2:
+                    for xtt2_i in range(len(self.xt_types)):
+                        xtt2 = self.xt_types[xtt2_i]
+                        if xt_j <= xt_i:
+                            table_data[xt_i][xt_j] = ''
+                        elif xtt1 != xtt2:
                             p_vals = all_p_vals['{}_{}'.format(map_size, xt_prob)]['{}_{}_{}'.format(metric, xtt1, xtt2)]
                             if p_vals is None:
-                                table_data[xt_i][xt_j] = None
+                                table_data[xt_i][xt_j] = 'nan'
                             else:
-                                table_data[xt_i][xt_j] = '{0:.0E}'.format(p_vals[1])
+                                if p_vals[1] < 0.05:
+                                    table_fill[xt_i][xt_j] = (0, 1, 0, 0.5)
+                                table_data[xt_i][xt_j] = '{0:0.0e}'.format(p_vals[1])
                         else:
                             table_data[xt_i][xt_j] = '1'
                         xt_j += 1
                     xt_i += 1
-                ax2= self.fig2.add_subplot(inner_grid2[j])
+               #ax2= self.fig2.add_subplot(inner_grid2[j])
                #if n_col != 0:
                #    rows = None
                #else:
                #    rows = self.xt_types
-                table  = ax2.table(table_data, rowLabels=rows, colLabels=cols, loc='center')
                 plt.subplots_adjust(left=0.2, bottom=0.2)
                #ax2.get_xaxis().set_visible(False)
                #ax2.get_yaxis().set_visible(False)
-                self.fig2.add_subplot(ax2)
-                inner_axes2.append(ax2)
+               #self.fig2.add_subplot(ax2)
+               #inner_axes2.append(ax2)
                 plt.figure(1)
                 ax1= self.fig1.add_subplot(inner_grid1[j])
                 inner_axes1.append(ax1)
@@ -460,18 +467,15 @@ class ExtinctionExperimenter():
 
                 if n_col == 0 and n_col_outer == 0:
                     y_label += 'map size = {}\n\n'.format(map_size)
-                y_label2 = y_label
                 plt_title = ''
                 metric_title, metric_y_label = metrics2labels[metric]
 
                 if n_row == 1:
                     y_label += '{}'.format(metric_y_label)
                 plt.ylabel(y_label)
-                plt.figure(2)
-                plt.ylabel(y_label2)
                 plt.figure(1)
                 plt_title = ''
-                ax2.patch.set_alpha(0.4)
+               #ax2.patch.set_alpha(0.4)
                 x_label = ''
 
                 if n_col == 1 and n_row == 0:
@@ -481,14 +485,12 @@ class ExtinctionExperimenter():
                     x_label +='extinction frequency = {}'.format(xt_prob)
                     plt.figure(1)
                     plt.xlabel(x_label)
-                    plt.figure(2)
                     plt.xlabel(x_label)
                     ax1.xaxis.set_label_position('top')
-                    ax2.xaxis.set_label_position('top')
+                   #ax2.xaxis.set_label_position('top')
                #ax.xaxis.tick_top()
                 plt.figure(1)
                 plt.title(plt_title)
-                plt.figure(2)
                 plt.title(plt_title)
                 plt.figure(1)
 
@@ -502,11 +504,12 @@ class ExtinctionExperimenter():
                         continue
                     xt_type = srch_xttyp.group(1)
                     xt_dir = xt_dir_paths[i]
-                    srch_xtprob = re.search(r'xtprob\:({})'.format(xt_prob), trial_name)
+                    if xt_type != 'None':
+                        srch_xtprob = re.search(r'xtprob\:({})'.format(xt_prob), trial_name)
 
-                    if srch_xtprob is None:
-                        continue
-                    xt_interval = int(1 / float(xt_prob))
+                        if srch_xtprob is None:
+                            continue
+                        xt_interval = int(1 / float(xt_prob))
                     srch_width = re.search(r'width\:({})'.format(map_size), trial_name)
 
                     if srch_width is None:
@@ -546,6 +549,8 @@ class ExtinctionExperimenter():
                     if ymax_i > ymax:
                         ymax = ymax_i
 
+               #print('metric {}, size {}, prob {}'.format(metric, map_size, xt_prob))
+               #print('ymin {} ymax {}'.format(ymin, ymax))
                 if n_col != 0:
                     ax1.set_yticks([])
                     plt.ylabel('')
@@ -556,14 +561,22 @@ class ExtinctionExperimenter():
                 if n_row != 0:
                     plt.title('')
                 self.fig1.add_subplot(ax1)
-                ax2.set_yticks([])
-                ax2.set_xticks([])
+               #ax2.set_yticks([])
+               #ax2.set_xticks([])
+                if n_col == 1 and n_row == 1:
+                    ax1.legend(fancybox=True, framealpha=0.5)
                 j += 1
+                if n_row == 2:
+                    bottom = -0.7
+                else:
+                    bottom = -0.4
+                table  = ax1.table(table_data, rowLabels=rows[:-1], colLabels=cols, loc='bottom', bbox=[0.2, bottom, 0.8, 0.4], cellColours=table_fill)
                 n_col += 1
             n_row += 1
             k = 0
 
             for ax1 in inner_axes1:
+
                 if metric in self.param_trgs:
                     trg = self.param_trgs[metric]
                     trg_height = min(trg, (ymax - ymin) * 0.97 + ymin)
@@ -573,12 +586,16 @@ class ExtinctionExperimenter():
 
                     if k == len(inner_axes1) - 2 and n_row == 2:
                         ax1.annotate('target = {}'.format(int(trg)), (e_xmin, txt_height))
+                if metric == 'jpeg_size':# and map_size == 64:
+                    ymin = 600
+
                 ax1.set_xlim([xmin, xmax])
                 ax1.set_ylim([ymin, ymax])
                 k += 1
 
-        if n_col_outer == 0:
-            ax1.legend(fancybox=True, framealpha=0.5)
+
+
+
 
 
       ##graph_title = 'extinction interval = {}'.format(xt_interval)
@@ -602,15 +619,21 @@ class ExtinctionExperimenter():
                 for xtd in self.xt_dels:
                     xtt_infos = {}
                     for xtt in self.xt_types:
-                        if xtt is None:
+                        if xtt == 'None':
                             xtps = [0]
                         else:
                             xtps = self.xt_probs
-                            for xtp in xtps:
-                                final_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
-                               #run_id = 's{}_w{}_xtd{}_xtp{}'.format(mst, msz, xtd, xtp)
-                                # FIXME: only works for this particular paper!
-                                run_id = '{}_{}'.format(msz, xtp)
+                        for xtp in xtps:
+                            final_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
+                           #run_id = 's{}_w{}_xtd{}_xtp{}'.format(mst, msz, xtd, xtp)
+                            # FIXME: only works for this particular paper!
+                            # copy paste the results for None-type extinction to entries for all probabilities
+                            # FIXME: avoid this copy-pasting
+                            if xtt == 'None':
+                                run_ids = ['{}_{}'.format(msz, xtp_dum) for xtp_dum in self.xt_probs]
+                            else:
+                                run_ids = ['{}_{}'.format(msz, xtp)]
+                            for run_id in run_ids:
                                 if run_id not in all_final_infos:
                                     all_final_infos[run_id] = {xtt: final_infos}
                                 else:
@@ -654,14 +677,13 @@ class ExtinctionExperimenter():
         if 'golmulti' in self.evaluator.args.env_name.lower():
             n_cols = 1
         n_rows = math.ceil(n_params / n_cols)
-        fig1 = plt.figure(1, figsize=(n_cols * 8, n_rows * 16 / 4), constrained_layout=False)
-        fig2 = plt.figure(2, figsize=(n_cols * 16, n_rows * 6), constrained_layout=False)
+        fig1 = plt.figure(1, figsize=(n_cols * 9, n_rows * 8), constrained_layout=False)
         plt.figure(1)
         self.fig1 = fig1
-        self.fig2 = fig2
+       #self.fig2 = fig2
         i = 0
-        outer_grid1 = fig1.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.25)
-        outer_grid2 = fig2.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.25)
+        outer_grid1 = fig1.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.3)
+       #outer_grid2 = fig2.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.25)
         n_row = 0
         n_col = 0
        #inner_grid1 = outer_grid1[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
@@ -670,8 +692,8 @@ class ExtinctionExperimenter():
         for param in params:
             n_row = i // n_cols
             n_col = i % n_cols
-            self.inner_grid1 = outer_grid1[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
-            self.inner_grid2 = outer_grid2[i].subgridspec(3, 3, wspace=0.3, hspace=0.1)
+            self.inner_grid1 = outer_grid1[i].subgridspec(3, 3, wspace=0.0, hspace=0.4)
+           #self.inner_grid2 = outer_grid2[i].subgridspec(3, 3, wspace=0.3, hspace=0.1)
             self.visualize_metric(n_row, n_col, self.im_log_dir, metric=param)
             i += 1
 
@@ -683,25 +705,23 @@ class ExtinctionExperimenter():
         title = envs2titles[self.evaluator.args.env_name]
         fig1.suptitle(title)
         fig1.tight_layout()
-        fig2.tight_layout()
-        fig1.subplots_adjust(top=0.92, bottom=0.05)
+        fig1.subplots_adjust(top=0.96, bottom=0.05)
         plt.figure(1)
         plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title1)), format='png')
-        plt.figure(2)
-        plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title2)), format='png')
+       #plt.savefig(os.path.join(self.log_dir, '{}.png'.format(graph_title2)), format='png')
 
 if __name__ == "__main__":
     VIS_ONLY = False
-    VIS_ONLY = True
+   #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
-        'a2c_FractalNet_drop',
-       #'a2c_FractalNet',
+       #'a2c_FractalNet_drop',
+        'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
-        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
-       #'GoLMultiEnv-v0_w16_200s_jinkyFix',
+       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+        'GoLMultiEnv-v0_w16_200s_jinkyFix',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

@@ -7,6 +7,7 @@ class DDummyVecEnv(DummyVecEnv):
     #TODO: test with multiple envs
     def __init__(self, env_fns):
         DummyVecEnv.__init__(self, env_fns)
+        print('obs and act spaces on DDummyVecEnv init: {}, {}'.format(self.observation_space, self.action_space))
         self.init_storage()
 
     def init_storage(self):

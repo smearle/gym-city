@@ -176,24 +176,31 @@ class ExtinguisherMulti(Extinguisher):
             self.clear_border(x, y, r)
             if (self.n_curr_dels >= self.n_dels).all():
                 break
+        self.do_dels()
+       #print('n_dels: {}'.format(self.n_dels))
 
-    def del_at_tile(self, x, y, n_curr_dels):
+    def del_at_tile(self, x, y):
         self.dels[(self.n_curr_dels < self.n_dels), 0, x, y] = 1
         self.dels = self.dels * self.world.state
+        self.n_curr_dels = torch.sum(self.dels, dim=[1, 2, 3])
         if (self.n_curr_dels >= self.n_dels).all() or (self.metrics['pop'] == 0).all():
             return False
         return True
 
     def do_dels(self):
         self.act_tensor(self.dels)
+        n_new_dels = torch.sum(self.dels, dim=[1, 2, 3])
+        print('deleted: {}'.format(n_new_dels))
+        print('n_curr_dels: {}'.format(self.n_curr_dels))
+       #self.n_curr_dels += n_new_dels.int()
        #self.n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
         self.dels = self.dels.fill_(0)
+        cv2.waitKey(10)
 
     def clear_border(self, x, y, r):
         '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
         '''
        #self.n_curr_dels = n_curr_dels
-        self.dels = self.dels.fill_(0)
         for x_i in (x - r, x + r):
             if x_i < 0 or x_i >= self.map_width:
                 continue
@@ -201,9 +208,8 @@ class ExtinguisherMulti(Extinguisher):
             for y_i in range(y - r, y + r):
                 if y_i < 0 or y_i >= self.map_width:
                     continue
-                if not self.del_at_tile(x_i, y_i, self.n_curr_dels):
-                    self.do_dels()
-                    return self.n_curr_dels
+                if not self.del_at_tile(x_i, y_i):
+                    return
 
         for y_i in (y - r, y + r):
             if y_i < 0 or y_i >= self.map_width:
@@ -212,12 +218,11 @@ class ExtinguisherMulti(Extinguisher):
             for x_i in range(x - r, x + r):
                 if x_i < 0 or x_i >= self.map_width:
                     continue
-                if not self.del_at_tile(x_i, y_i, self.n_curr_dels):
-                    self.do_dels()
-                    return self.n_curr_dels
-        self.do_dels()
+                if not self.del_at_tile(x_i, y_i):
+                    return
 
     def ranDemolish(self):
+        self.n_curr_dels = self.n_curr_dels.fill_(0)
         print('RANDEMOLISH, step {}'.format(self.num_step))
        #ages = self.unwrapped.ages.cpu().numpy()
         start_pop = torch.sum(self.world.state)
@@ -253,6 +258,7 @@ class ExtinguisherMulti(Extinguisher):
 
 
     def age_event(self):
+        self.n_curr_dels = self.n_curr_dels.fill_(0)
         print('\n AGEIST VIOLENCE')
        #for i in range(20):
         curr_dels = 0
@@ -299,6 +305,7 @@ class ExtinguisherMulti(Extinguisher):
 
     def reset(self):
         self.ages = copy.deepcopy(self.world.state.fill_(0))
+        self.n_curr_dels = self.n_curr_dels.fill_(0)
         obs = super().reset()
 
         return obs
@@ -361,7 +368,12 @@ class ImRender(gym.Wrapper):
 
     def reset(self):
         self.n_episode += 1
-        return self.env.reset()
+        obs = self.env.reset()
+        jpeg_size = self.im_render()
+        info = {
+                'jpeg_size': jpeg_size,
+                }
+        return obs, info
 
     def im_render(self):
         zone_map = self.unwrapped.micro.map.zoneMap

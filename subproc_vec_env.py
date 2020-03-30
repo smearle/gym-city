@@ -31,7 +31,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             break
         elif cmd == 'get_spaces':
             print('getting spaces envs.py')
-            spaces = env.get_spaces()
+            spaces = env.observation_space, env.action_space
             remote.send(spaces)
         elif cmd == 'get_param_bounds':
             param_bounds = env.get_param_bounds()
@@ -76,14 +76,17 @@ class SubprocVecEnv(VecEnv):
         for p in self.ps:
             p.daemon = True # if the main process crashes, we should not cause things to hang
             p.start()
+        self.remotes[0].send(('get_spaces', None))
+        spaces = self.remotes[0].recv()
 
         for remote in self.work_remotes:
             remote.close()
 
-        self.remotes[0].send(('get_spaces', None))
-        spaces = self.remotes[0].recv()
+
         observation_space, action_space = spaces
+        print('spaces found by SubprocVecEnv: obs {}, act {}'.format(observation_space, action_space))
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
+        print(self.observation_space)
 
     def get_param_bounds(self):
         worker = self.remotes[0]

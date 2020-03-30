@@ -28,19 +28,6 @@ class Policy(nn.Module):
         self.args = args
 
         num_actions = base_kwargs.get('num_actions')
-       ## TODO this info should come directly from the environment. Redundant code.
-       #if 'GameOfLife' in args.env_name:
-       #    num_actions = 1
-       #elif 'Micropolis' in args.env_name:
-       #    if args.power_puzzle:
-       #        num_actions = 1
-       #    else:
-       #        num_actions = 19
-       #self.multi_env = False
-       #if 'GoLMultiEnv' in args.env_name:
-       #    self.multi_env = True
-       #    num_actions = 1
-       #self.num_actions = num_actions
         base_kwargs = {**base_kwargs, **{'num_actions': num_actions}}
 
 
@@ -74,6 +61,7 @@ class Policy(nn.Module):
             print('unsupported environment observation shape: {}'.format(obs_shape))
             raise NotImplementedError
 
+       #print('action space on model init: {}'.format(action_space))
         if action_space.__class__.__name__ == "Discrete":
             if True:
                 num_outputs = action_space.n
@@ -128,6 +116,7 @@ class Policy(nn.Module):
         ''' assumes player actions can only occur on env rank 0'''
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
        #assert (actor_features >= 0).all()
+       #print('actor_features.shape on model act {}'.format(actor_features.shape))
         if 'paint' in self.args.env_name.lower():#or self.args.prebuild:
             smax = torch.nn.Softmax2d()
             actor_features = smax(actor_features)
@@ -344,9 +333,9 @@ class FullyConv(NNBase):
         x = F.relu(self.k3(x))
        #x = self.act_soft(self.k3(x))
         act, val = x, x
-        n_act_shrink = int(math.log(self.map_width , 2))
-        for i in range(n_act_shrink):
-            act = self.act_shrink(act)
+      # n_act_shrink = int(math.log(self.map_width - self.out_w, 2))
+      # for i in range(n_act_shrink):
+      #     act = self.act_shrink(act)
         act = self.act(act)
        #assert (act > 0).all
         for i in range(int(math.log(self.map_width, 2))):

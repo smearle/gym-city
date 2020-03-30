@@ -178,7 +178,6 @@ except ImportError:
 #except ImportError:
 #    pass
 
-
 class Render(gym.Wrapper):
     """
     Wrapper to render environments of a particular rank.
@@ -201,6 +200,7 @@ class ToPytorchOrder(gym.Wrapper):
         super().__init__(env)
         self.observation_space = gym.spaces.Box(low=0, high=self.observation_space.high[0, 0, 0],
                 shape=(self.observation_space.shape[-1], self.shape[1], self.shape[0]))
+               #shape=(self.observation_space.shape[0], self.shape[1], self.shape[2]))
 
     def reset(self):
         obs = self.env.reset()
@@ -231,6 +231,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 record_dir = log_dir
             else:
                 record_dir = None
+
 
             if 'gameoflife' in env_id.lower():
                 if rank == 0:
@@ -263,6 +264,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 env = ToPytorchOrder(env)
                 env = MaxStep(env, args.max_step)
                 env = Render(env, rank, render = render_gui, render_rank=0)
+
 
             if 'micropolis' in env_id.lower():
                 power_puzzle = False
@@ -365,7 +367,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
         return envs[0]()
 
     if len(envs) > 1:
-        print(envs)
+       #print(envs)
         envs = SubprocVecEnv(envs)
     else:
         if sys.version[0] =='2':
