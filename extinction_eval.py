@@ -21,14 +21,17 @@ from envs import VecPyTorch, make_vec_envs
 from evaluate import Evaluator
 from model import Policy
 from utils import get_vec_normalize
+from cycler import cycler
 
 #plt.switch_backend('agg')
+default_cycler = (cycler(color=[
+    '#2aa24a',
+    '#22a0f5',
+    '#e24cae',
+    '#f1b713']))
 
-#font = {'family' : 'normal',
-#       #'weight' : 'bold',
-#        'size'   : 12}
-#
-#matplotlib.rc('font', **font)
+#plt.rc('lines', linewidth=4)
+plt.rc('axes', prop_cycle=default_cycler)
 
 def parse_cl_args():
     #TODO: away with this function, in theory.
@@ -323,8 +326,11 @@ def get_xy_cmprs(exp_dir):
 def get_xy_metric(exp_dir, metric):
     info_dir = os.path.join('{}'.format(exp_dir), 'exp_infos.npy')
     exp_infos = np.load(info_dir, allow_pickle=True).item()
-    xy = enumerate(exp_infos[metric][0])
-    x_std = enumerate(exp_infos[metric][1])
+   #xy = enumerate(exp_infos[metric][0])
+    #FIXME: Hackish, to fix drastic jumps after first steps that are probably symptoms of problems with logging during
+    # experimentation
+    xy = enumerate(exp_infos[metric][0][1:])
+    x_std = enumerate(exp_infos[metric][1][1:])
     xy = sorted(xy, key = lambda x: int(x[0]))
     x_std = sorted(x_std, key = lambda x: int(x[0]))
     xs, ys = zip(*xy)
@@ -359,14 +365,14 @@ class ExtinctionExperimenter():
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
                 16,
-               #32,
-               #64,
+                32,
+                64,
                 ]
         self.xt_probs = [
                #0.005,
                 0.01,
-               #0.02,
-               #0.04,
+                0.02,
+                0.04,
                 ]
         exp_name = 'test_col:{}_xtdels:{}'.format(
                 args.active_column,
@@ -420,7 +426,7 @@ class ExtinctionExperimenter():
         for map_size in self.map_sizes:
             n_col = 0
             inner_axes1 = []
-            inner_axes2 = []
+           #inner_axes2 = []
            #print(all_p_vals)
             n_xtt = len(self.xt_types)
             table_data = np.empty((n_xtt - 1, n_xtt)).tolist()
@@ -441,10 +447,10 @@ class ExtinctionExperimenter():
                         elif xtt1 != xtt2:
                             p_vals = all_p_vals['{}_{}'.format(map_size, xt_prob)]['{}_{}_{}'.format(metric, xtt1, xtt2)]
                             if p_vals is None:
-                                table_data[xt_i][xt_j] = 'nan'
+                                table_data[xt_i][xt_j] = 1
                             else:
-                                if p_vals[1] < 0.05:
-                                    table_fill[xt_i][xt_j] = (0, 1, 0, 0.5)
+                                if p_vals[1] is not None and p_vals[1] < 0.05:
+                                    table_fill[xt_i][xt_j] = (0, 1, 0, 0.3)
                                 table_data[xt_i][xt_j] = '{0:0.0e}'.format(p_vals[1])
                         else:
                             table_data[xt_i][xt_j] = '1'
@@ -531,7 +537,7 @@ class ExtinctionExperimenter():
                     x, y, e = get_xy_metric(xt_dir, metric)
                       # y, e = y *
 
-                    markers, caps, bars = ax1.errorbar(x, y, e)
+                    markers, caps, bars = ax1.errorbar(x, y, e, alpha=1)
                     [bar.set_alpha(0.03) for bar in bars]
                     markers.set_label(xt_type)
                     xmin_i, xmax_i = ax1.get_xlim()
@@ -543,7 +549,7 @@ class ExtinctionExperimenter():
                     if xmax_i > xmax:
                         xmax = xmax_i
 
-                    if ymin_i < ymin:
+                    if ymin_i < ymin and ymin_i != 0:
                         ymin=ymin_i
 
                     if ymax_i > ymax:
@@ -576,7 +582,6 @@ class ExtinctionExperimenter():
             k = 0
 
             for ax1 in inner_axes1:
-
                 if metric in self.param_trgs:
                     trg = self.param_trgs[metric]
                     trg_height = min(trg, (ymax - ymin) * 0.97 + ymin)
@@ -652,10 +657,10 @@ class ExtinctionExperimenter():
                         pval_name = '{}_{}_{}'.format(m, t1, t2)
                         x = all_final_infos[run][t1][m]
                         y = all_final_infos[run][t2][m]
-                        try:
-                            p_vals[pval_name] = mannwhitneyu(x, y)
-                        except ValueError:
-                            p_vals[pval_name] = None
+                       #try:
+                        p_vals[pval_name] = mannwhitneyu(x, y)
+                       #except ValueError as verr:
+                       #    p_vals[pval_name] = None
                         self.metrics[m] = None
             run_pvals[run] = p_vals
         save_path = os.path.join(self.im_log_dir, 'pvals.npy')
@@ -712,16 +717,16 @@ class ExtinctionExperimenter():
 
 if __name__ == "__main__":
     VIS_ONLY = False
-   #VIS_ONLY = True
+    VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
-       #'a2c_FractalNet_drop',
-        'a2c_FractalNet',
+        'a2c_FractalNet_drop',
+       #'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
-       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
-        'GoLMultiEnv-v0_w16_200s_jinkyFix',
+        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+       #'GoLMultiEnv-v0_w16_200s_jinkyFix',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)
 

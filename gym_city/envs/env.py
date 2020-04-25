@@ -147,10 +147,10 @@ class MicropolisEnv(core.Env):
         self.simple_reward = simple_reward
         self.power_puzzle = power_puzzle
         if type(size) == int:
-            self.MAP_X = size
+            self.MAP_X = self.width = size
             self.MAP_Y = size
         else:
-            self.MAP_X = size[0]
+            self.MAP_X = self.width = size[0]
             self.MAP_Y = size[1]
         self.obs_width = self.MAP_X + PADDING * 2
         self.static_builds = True

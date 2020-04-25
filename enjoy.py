@@ -2,16 +2,17 @@ import argparse
 import os
 import time
 
+import gym
 import numpy as np
 import torch
 
-from model import Policy
-from envs import VecPyTorch, make_vec_envs
-from utils import get_render_func, get_vec_normalize
-
+import game_of_life
+import gym_city
 from arguments import get_parser
+from envs import VecPyTorch, make_vec_envs
+from model import Policy
 from train import Evaluator
-
+from utils import get_render_func, get_space_dims, get_vec_normalize
 
 parser = get_parser()
 parser.add_argument('--non-det', action='store_true', default=False,
@@ -25,11 +26,9 @@ args.render = True
 args.det = not args.non_det
 
 
-import gym
-import gym_city
-import game_of_life
 
 env_name = args.load_dir.split('/')[-1].split('_')[0]
+
 if torch.cuda.is_available() and not args.no_cuda:
     args.cuda = True
     device = torch.device('cuda')
@@ -68,34 +67,7 @@ print(args.load_dir)
 # Get a render function
 # render_func = get_render_func(env)
 
-if isinstance(env.observation_space, gym.spaces.Discrete):
-    in_width = 1
-    num_inputs = env.observation_space.n
-elif isinstance(env.observation_space, gym.spaces.Box):
-    if len(env.observation_space.shape) == 3:
-        in_w = env.observation_space.shape[1]
-        in_h = env.observation_space.shape[2]
-    else:
-        in_w = 1
-        in_h = 1
-    num_inputs = env.observation_space.shape[0]
-if isinstance(env.action_space, gym.spaces.Discrete):
-    out_w = 1
-    out_h = 1
-    if 'Micropolis' in env_name:
-        num_actions = env.venv.venv.envs[0].num_tools
-    elif 'GameOfLife' in env_name:
-        num_actions = 1
-    elif 'GoLMulti' in env_name:
-        num_actions = 1
-    elif '-wide' in env_name:
-        num_actions = env.observation_space.shape[-1]
-    else:
-        num_actions = env.action_space.n
-elif isinstance(env.action_space, gym.spaces.Box):
-    out_w = env.action_space.shape[0]
-    out_h = env.action_space.shape[1]
-    num_actions = env.action_space.shape[-1]
+in_w, in_h, num_inputs, out_w, out_h, num_actions = get_space_dims(env, args)
 
 print('num_actions: {}'.format(num_actions))
 
@@ -107,6 +79,7 @@ if saved_args.model == 'fractal':
 # We need to use the same statistics for normalization as used in training
 saved_args.n_chan = args.n_chan
 saved_args.val_kern = int(args.val_kern)
+
 actor_critic = Policy(env.observation_space.shape, env.action_space,
         base_kwargs={'map_width': args.map_width,
                      'recurrent': args.recurrent_policy,
@@ -118,15 +91,19 @@ actor_critic.to(device)
 torch.nn.Module.dump_patches = True
 actor_critic.load_state_dict(checkpoint['model_state_dict'])
 ob_rms = checkpoint['ob_rms']
+
 if 'fractal' in args.model.lower():
     new_recs = args.n_recs - saved_args.n_recs
+
     for nr in range(new_recs):
         actor_critic.base.auto_expand()
     print('expanded network:\n', actor_critic.base)
+
     if args.active_column is not None \
             and hasattr(actor_critic.base, 'set_active_column'):
         actor_critic.base.set_active_column(args.active_column)
 vec_norm = get_vec_normalize(env)
+
 if vec_norm is not None:
     vec_norm.eval()
     vec_norm.ob_rms = ob_rms
@@ -144,11 +121,13 @@ if args.env_name.find('Bullet') > -1:
     import pybullet as p
 
     torsoId = -1
+
     for i in range(p.getNumBodies()):
         if (p.getBodyInfo(i)[0].decode() == "torso"):
             torsoId = i
 
 # You may need to fiddle with this when loading old models
+
 if args.evaluate:
     env.close() # only needed it to probe obs/act space shape
    #saved_args.num_processes = args.num_processes
@@ -168,6 +147,7 @@ if args.evaluate:
     args.val_kern = saved_args.val_kern
     print('steps: ', saved_args.max_step, '\n')
     evaluator = Evaluator(args, actor_critic, device, frozen=True)
+
     while True:
         if hasattr(actor_critic.base, 'n_cols'):
             for i in range(-1, actor_critic.base.n_cols):
@@ -178,6 +158,7 @@ obs = env.reset()
 num_step = 0
 player_act = None
 env_done = False
+
 while True:
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(
@@ -193,6 +174,7 @@ while True:
    #time.sleep(0.08)
 
     player_act = None
+
     if infos[0]:
         if 'player_move' in infos[0].keys():
             player_act = infos[0]['player_move']
@@ -207,8 +189,3 @@ while True:
             yaw = 0
             humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
             p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
-
-
-
-
-

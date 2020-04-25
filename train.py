@@ -23,7 +23,7 @@ from envs import make_vec_envs
 from evaluate import Evaluator
 from model import Policy
 from storage import CuriosityRolloutStorage, RolloutStorage
-from utils import get_vec_normalize
+from utils import get_space_dims, get_vec_normalize
 from visualize import Plotter
 
 
@@ -114,7 +114,7 @@ class Trainer():
 
         if envs is None:
             envs = self.make_vec_envs(args)
-        self.get_space_dims(envs, args)
+        self.in_w, self.in_h, self.num_inputs, self.out_w, self.out_h, self.num_actions = get_space_dims(envs, args)
 
         if args.auto_expand:
             args.n_recs -= 1
@@ -272,77 +272,7 @@ class Trainer():
         self.agent = agent
         self.episode_rewards = episode_rewards
         self.n_cols = n_cols
-
-    def get_space_dims(self, envs, args):
-        if isinstance(envs.observation_space, gym.spaces.Discrete):
-            num_inputs = envs.observation_space.n
-        elif isinstance(envs.observation_space, gym.spaces.Box):
-            if 'golmulti' in args.env_name.lower():
-                multi_env = True
-               #observation_space_shape = envs.observation_space.shape[1:]
-                observation_space_shape = envs.observation_space.shape
-            else:
-                multi_env = False
-                observation_space_shape = envs.observation_space.shape
-               #if '-wide-' in args.env_name:
-               #    observation_space_shape = (observation_space_shape[1],
-               #            observation_space_shape[2], observation_space_shape[0])
-            self.multi_env = multi_env
-            if len(observation_space_shape) == 3:
-               #print(observation_space_shape)
-               #raise Exception
-                in_w = observation_space_shape[1]
-                in_h = observation_space_shape[2]
-            else:
-                in_w = 1
-                in_h = 1
-            num_inputs = observation_space_shape[0]
-
-        if isinstance(envs.action_space, gym.spaces.Discrete) or\
-            isinstance(envs.action_space, gym.spaces.Box):
-            out_w = args.map_width
-            out_h = args.map_width
-            num_actions = int(envs.action_space.n // (out_w * out_h))
-
-            #if 'Micropolis' in args.env_name: #otherwise it's set
-            #    if args.power_puzzle:
-            #        num_actions = 1
-            #    else:
-            #        num_actions = 19 # TODO: have this already from env
-            #elif 'GameOfLife' in args.env_name:
-            #    num_actions = 1
-            ## for PCGRL
-
-            #if '-wide' in args.env_name:
-            #    #TODO: should be done like this for all envs!
-            #    print('obs space shape: {}'.format(envs.observation_space.shape))
-            #    map_width = envs.observation_space.shape[1]
-            #    map_height = envs.observation_space.shape[2]
-            #    out_w = map_width
-            #    out_h = map_height
-            #    print(envs.action_space.n)
-            #    num_actions = envs.action_space.n / (map_width * map_height)
-            #    num_actions = int(num_actions)
-        elif isinstance(envs.action_space, gym.spaces.Box):
-            if len(envs.action_space.shape) == 3:
-                out_w = envs.action_space.shape[1]
-                out_h = envs.action_space.shape[2]
-            elif len(envs.action_space.shape) == 1:
-                out_w = 1
-                out_h = 1
-            num_actions = envs.action_space.shape[-1]
-        # for PCGRL
-        elif isinstance(envs.action_space, gym.spaces.MultiDiscrete):
-            raise Exception
-            out_w = envs.action_space.nvec[0]
-            out_h = envs.action_space.nvec[1]
-            num_actions = envs.action_space.nvec[2]
-        print('envs.action_space: {}'.format(envs.action_space))
-        print('observation space {}'.format(observation_space_shape))
-        print('out w, out_h, num actions {}, {}, {}'.format(out_w, out_h, num_actions))
-        self.in_w, self.in_h, self.num_inputs = in_w, in_h, num_inputs
-        self.out_w, self.out_h, self.num_actions = out_w, out_h, num_actions
-
+        self.multi_env = 'golmulti' in args.env_name.lower()
 
     def make_vec_envs(self, args):
         try:
@@ -508,6 +438,7 @@ class Trainer():
         self.player_act = None
 
         cum_rews = torch.zeros(self.args.num_processes)
+
         for self.n_step in range(args.num_steps):
             # Sample actions
             _, rewards, dones, infos = self.step()
@@ -638,8 +569,10 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
     def visualize(self, plotter=None, log_dir=None):
         n_cols = self.n_cols
         args = self.args
+
         if log_dir == None:
             log_dir = args.log_dir
+
         if plotter is None:
             plotter = Plotter(n_cols, args.log_dir, args.num_processes)
         self.plotter = plotter

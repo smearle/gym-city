@@ -34,7 +34,7 @@ class DDummyVecEnv(DummyVecEnv):
         return self.buf_obs, self.buf_rews, self.buf_dones, self.buf_infos
 
     def reset(self):
-        map_width = self.envs[0].MAP_X
+        map_width = self.envs[0].width
         for i in range(self.num_envs):
             obs_tuple = self.envs[i].reset()
             if isinstance(obs_tuple, (tuple, list)):

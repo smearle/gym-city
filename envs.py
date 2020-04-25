@@ -176,7 +176,17 @@ except ImportError:
 #try:
 #    import pybullet_envs
 #except ImportError:
-#    pass
+#
+
+class MapDims(gym.Wrapper):
+    """
+    Wrapper to render environments of a particular rank.
+    """
+    def __init__(self, env, **kwargs):
+        super().__init__(env, **kwargs)
+        # FIXME: only supports square maps
+        self.MAP_X = self.width
+
 
 class Render(gym.Wrapper):
     """
@@ -260,11 +270,12 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
             if '-wide' in env_id:
                 env = ActionMapImagePCGRLWrapper(env_id)
-                env.set_max_step(max_step)
+                env.configure(map_width=args.map_width, max_step=args.max_step)
+                env.adjust_param(width=args.map_width, heigh=args.map_width)
                 env = ToPytorchOrder(env)
                 env = MaxStep(env, args.max_step)
                 env = Render(env, rank, render = render_gui, render_rank=0)
-
+                env = MapDims(env)
 
             if 'micropolis' in env_id.lower():
                 power_puzzle = False
