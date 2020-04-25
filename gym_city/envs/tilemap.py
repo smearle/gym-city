@@ -103,8 +103,8 @@ class TileMap(object):
                 'Forest': 1,
                 'Church': 3,
                 'Hospital': 3,
-               #'Radioactive': 1,
-               #'Flood': 1,
+                'Radioactive': 1,
+                'Flood': 1,
                 'Fire': 1
                }
         # if this feature, then another

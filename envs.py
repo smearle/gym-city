@@ -196,10 +196,10 @@ class Render(gym.Wrapper):
         super().__init__(env)
         self.rank = rank
         self.render_gui = kwargs.get('render', False)
-        self.render_rank = kwargs.get('render_rank', 0)
+        self.render_rank = kwargs.get('render_rank', [0,2,4])
 
     def step(self, action):
-        if self.render_gui and self.rank in [0,1]:
+        if self.render_gui and self.rank in self.render_rank:
             self.render()
 
         return super().step(action)
@@ -283,7 +283,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 if args.power_puzzle:
                     power_puzzle = True
 
-                if rank == 0:
+                if rank in [0]:
                     print_map = args.print_map
                     render = render_gui
                 else:

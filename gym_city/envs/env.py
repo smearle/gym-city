@@ -87,6 +87,7 @@ class MicropolisEnv(core.Env):
        #        }
         self.metrics = {}
         self.max_reward = 100
+        self.curr_reward = 0
        #self.setMapSize((MAP_X, MAP_Y), PADDING)
 
     def get_spaces(self):
@@ -105,9 +106,7 @@ class MicropolisEnv(core.Env):
     def configure(self, size, **kwargs):
         '''Do most of the actual initialization.
         '''
-        print('poet in kwargs?', kwargs)
         self.pre_gui(size, **kwargs)
-        print('poet in env.py?', self.poet)
         #TODO: this better
         if hasattr(self, 'micro'):
             self.micro.reset_params(size)

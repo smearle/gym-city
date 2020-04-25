@@ -71,17 +71,17 @@ def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20, gui=False):
     engine = micropolisgtkengine.CreateGTKEngine(**kwargs)
 
     engine.cityTax = 10
+    win1 = None
+    if gui:
+        x = 0
+        y = 0
 
-    x = 0
-    y = 0
+        w = 800
+        h = 600
 
-    w = 800
-    h = 600
-
-    win1 = micropoliswindow.MicropolisPanedWindow(engine=engine)
-    win1.set_default_size(w, h)
-    win1.set_size_request(w, h)
-    win1.move(x, y)
-    win1.show_all()
-
+        win1 = micropoliswindow.MicropolisPanedWindow(engine=engine)
+        win1.set_default_size(w, h)
+        win1.set_size_request(w, h)
+        win1.move(x, y)
+        win1.show_all()
     return engine, win1
