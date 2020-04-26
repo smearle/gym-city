@@ -38,13 +38,16 @@ else:
     device = torch.device('cpu')
     map_location = torch.device('cpu')
 try:
-    checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
+   #checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
+    checkpoint = torch.load(args.load_dir,
                             map_location=map_location)
 except FileNotFoundError:
     print('load-dir does not start with valid gym environment id, using command line args')
     env_name = args.env_name
-    checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
+   #checkpoint = torch.load(os.path.join(args.load_dir, env_name + '.tar'),
+    checkpoint = torch.load(args.load_dir,
                         map_location=map_location)
+args.load_dir = '/'.join(args.load_dir.split('/')[:-1])
 saved_args = checkpoint['args']
 args.poet = saved_args.poet
 #past_steps = checkpoint['past_steps']
