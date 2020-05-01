@@ -10,8 +10,6 @@ import cv2
 import wrappers
 
 
-
-
 class ImRenderMicropolis(wrappers.ImRender):
     ''' Render micropolis as simple image.
     '''
@@ -69,7 +67,8 @@ class ImRenderMicropolis(wrappers.ImRender):
         self.tile_types = tile_types
         self.type_colors = type_colors
         self.colors = colors
-        self.win1.resize(1000, 10000)
+        if self.render_gui:
+            self.win1.resize(1000, 10000)
 
     def step(self, action):
        #jpeg_size = self.im_render()

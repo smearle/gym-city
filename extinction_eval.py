@@ -429,20 +429,21 @@ class ExtinctionExperimenter():
            #inner_axes2 = []
            #print(all_p_vals)
             n_xtt = len(self.xt_types)
-            table_data = np.empty((n_xtt - 1, n_xtt)).tolist()
-            table_fill = np.empty((n_xtt - 1, n_xtt), dtype=object)
+            table_data = np.empty((n_xtt - 1, n_xtt - 1)).tolist()
+            table_fill = np.empty((n_xtt - 1, n_xtt - 1), dtype=object)
             table_fill.fill((0,0,0,0))
             table_fill = table_fill.tolist()
-            rows = cols = self.xt_types
+            rows = self.xt_types[:-1]
+            cols = self.xt_types[1:]
             for xt_prob in self.xt_probs:
                 plt.figure(2)
                 xt_i = 0
                 for xtt1_i in range(len(self.xt_types) - 1):
-                    xtt1 = self.xt_types[xtt1_i]
+                    xtt1 = rows[xtt1_i]
                     xt_j = 0
-                    for xtt2_i in range(len(self.xt_types)):
-                        xtt2 = self.xt_types[xtt2_i]
-                        if xt_j <= xt_i:
+                    for xtt2_i in range(len(self.xt_types) - 1):
+                        xtt2 = cols[xtt2_i]
+                        if xt_j < xt_i:
                             table_data[xt_i][xt_j] = ''
                         elif xtt1 != xtt2:
                             p_vals = all_p_vals['{}_{}'.format(map_size, xt_prob)]['{}_{}_{}'.format(metric, xtt1, xtt2)]
@@ -450,6 +451,7 @@ class ExtinctionExperimenter():
                                 table_data[xt_i][xt_j] = 1
                             else:
                                 if p_vals[1] is not None and p_vals[1] < 0.05:
+                                    # green highlight
                                     table_fill[xt_i][xt_j] = (0, 1, 0, 0.3)
                                 table_data[xt_i][xt_j] = '{0:0.0e}'.format(p_vals[1])
                         else:
@@ -576,7 +578,9 @@ class ExtinctionExperimenter():
                     bottom = -0.7
                 else:
                     bottom = -0.4
-                table  = ax1.table(table_data, rowLabels=rows[:-1], colLabels=cols, loc='bottom', bbox=[0.2, bottom, 0.8, 0.4], cellColours=table_fill)
+                table  = ax1.table(table_data, rowLabels=rows, colLabels=cols, loc='bottom', 
+                        bbox=[0.2, bottom, 0.75, 0.4], cellColours=table_fill, rowLoc='right',
+                        colWidths=[.25,.25,.25])
                 n_col += 1
             n_row += 1
             k = 0
