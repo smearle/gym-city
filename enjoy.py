@@ -162,6 +162,7 @@ num_step = 0
 player_act = None
 env_done = False
 
+last_rew = 0
 while True:
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(
@@ -169,10 +170,12 @@ while True:
             player_act=player_act)
 
     if env_done:
+        last_rew = 0
         num_step = 0
     # Observe reward and next obs
     obs, reward, done, infos = env.step(action)
     env_done = done[0] # assume we have only one env.
+    last_rew = reward
    #env.venv.venv.envs[0].render()
    #time.sleep(0.08)
 

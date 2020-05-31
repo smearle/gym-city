@@ -69,18 +69,19 @@ class ImRenderMicropolis(wrappers.ImRender):
         self.colors = colors
         if self.render_gui:
             self.win1.resize(1000, 10000)
+        self.rank = rank
 
     def step(self, action):
        #jpeg_size = self.im_render()
         # save image of map
-        if True:
-            if self.num_step % 10 == 0 and self.win1.editMapView.buffer is not None:
+        if False:
+            if self.num_step % 10 == 0 and self.win1 and self.win1.editMapView.buffer is not None:
                 self.win1.editMapView.buffer.write_to_png(os.path.join(self.im_log_dir, 'rank {}, episode {}, step {}.png'.format(self.rank, self.n_episode, self.num_step)))
         obs, rew, done, info = super().step(action)
         return obs, rew, done, info
 
     def reset_episodes(self, im_log_dir):
-        if self.MAP_X == 64:
+        if self.MAP_X == 64 and self.win1:
             self.win1.editMapView.changeScale(0.77)
             self.win1.editMapView.centerOnTile(40, 23)
         return super().reset_episodes(im_log_dir)
@@ -102,7 +103,7 @@ class ImRenderMicropolis(wrappers.ImRender):
             cv2.imshow('im', self.image)
         if self.unwrapped.num_step % self.save_interval == 0:
             log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
-                self.unwrapped.rank, self.n_episode, self.num_step))
+                self.rank, self.n_episode, self.num_step))
            #print(log_dir)
             cv2.imwrite(log_dir, self.image)
             self.n_saved += 1

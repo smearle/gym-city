@@ -36,7 +36,7 @@ class DDummyVecEnv(DummyVecEnv):
     def reset(self):
         map_width = self.envs[0].width
         for i in range(self.num_envs):
-            obs_tuple = self.envs[i].reset()
+            obs_tuple = self.envs[i].reset()[0]
             if isinstance(obs_tuple, (tuple, list)):
                 for t,x in enumerate(obs_tuple):
                     self.buf_obs[t][i] = x
@@ -77,10 +77,10 @@ class DDummyVecEnv(DummyVecEnv):
     def get_param_trgs(self):
         return self.envs[0].get_param_trgs()
 
-    def configure(self, size, **kwargs):
+    def configure(self, **kwargs):
         print('configurin dummy')
         for env in self.envs:
-            env.configure(size, **kwargs)
+            env.configure(**kwargs)
 
     def set_save_dir(self, save_dir):
         for env in self.envs:

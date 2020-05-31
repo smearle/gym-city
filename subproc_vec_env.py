@@ -86,7 +86,10 @@ class SubprocVecEnv(VecEnv):
         observation_space, action_space = spaces
         print('spaces found by SubprocVecEnv: obs {}, act {}'.format(observation_space, action_space))
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
-        print(self.observation_space)
+        print('obs space in SubProcVec init: {}'.format(self.observation_space))
+
+    def init_storage(self):
+        pass
 
     def get_param_bounds(self):
         worker = self.remotes[0]
@@ -95,23 +98,29 @@ class SubprocVecEnv(VecEnv):
 
         return param_bounds
 
-    def reset_episodes(self):
+    def get_param_trgs(self):
+        worker = self.remotes[0]
+        worker.send(('get_param_trgs', None))
+        param_trgs = worker.recv()
+        return param_trgs
+
+    def reset_episodes(self, im_log_dir):
         for remote in self.remotes:
-            remote.send(('reset_episodes', {}))
+            remote.send(('reset_episodes', [im_log_dir]))
             remote.recv()
 
         return
 
-    def configure(self, map_size):
+    def configure(self, **kwargs):
         for remote in self.remotes:
-            remote.send(('configure', [map_size]))
+            remote.send(('configure', kwargs))
             remote.recv()
 
         return
 
-    def set_extinction_type(self, ext_type, ext_prob):
+    def set_extinction_type(self, *args):
         for remote in self.remotes:
-            remote.send(('set_extinction_type', [ext_type, ext_prob]))
+            remote.send(('set_extinction_type', args))
             remote.recv()
 
         return
@@ -174,11 +183,23 @@ class SubprocVecEnv(VecEnv):
 
         return np.stack([remote.recv() for remote in self.remotes])
 
+    def render(self, mode=None):
+        remote = self.remotes[0]
+        remote.send(('render', None))
+        return remote.recv()
+
+       #return np.stack([remote.recv() for remote in self.remotes])
+
     def reset_task(self):
         for remote in self.remotes:
             remote.send(('reset_task', None))
 
         return np.stack([remote.recv() for remote in self.remotes])
+
+    def get_spaces(self):
+        for remote in self.remotes:
+            remote.send(('get_spaces', None))
+            return remote.recv()
 
     def close(self):
         if self.closed:
@@ -194,3 +215,4 @@ class SubprocVecEnv(VecEnv):
         for p in self.ps:
             p.join()
         self.closed = True
+

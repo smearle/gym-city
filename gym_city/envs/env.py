@@ -103,9 +103,10 @@ class MicropolisEnv(core.Env):
         np.random.seed(seed)
         return [seed1, seed2]
 
-    def configure(self, size, **kwargs):
+    def configure(self, **kwargs):
         '''Do most of the actual initialization.
         '''
+        size = kwargs.get('map_width')
         self.pre_gui(size, **kwargs)
         #TODO: this better
         if hasattr(self, 'micro'):
@@ -116,6 +117,7 @@ class MicropolisEnv(core.Env):
         self.metrics = self.get_metrics()
         self.last_metrics = self.metrics
         self.post_gui()
+        print('obs space: {}'.format(self.observation_space))
 
     def pre_gui(self, size,
             max_step=None,
@@ -445,6 +447,7 @@ class MicropolisEnv(core.Env):
        #print('set city trgs of env {} to: {}'.format(self.rank, self.metric_trgs))
 
     def get_param_trgs(self):
+        print('param_trgs: {}'.format(self.metric_trgs))
         return self.metric_trgs
 
     def get_metrics(self):

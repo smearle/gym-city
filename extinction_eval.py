@@ -54,8 +54,8 @@ def parse_cl_args():
     args = parser.parse_args()
     args.im_render = True
    #args.render = True
-    args.random_terrain = False
-    args.random_builds = False
+    args.random_terrain = True
+    args.random_builds = True
 
     return args
 
@@ -104,7 +104,7 @@ class ExtinctionEvaluator():
                             args.load_dir, args.add_timestep, device=device,
                             allow_early_resets=False,
                             args=dummy_args)
-        print(args.load_dir)
+        print('args.load_dir: {}'.format(args.load_dir))
 
         if isinstance(envs.observation_space, gym.spaces.Discrete):
             in_width = 1
@@ -121,7 +121,6 @@ class ExtinctionEvaluator():
         if isinstance(envs.action_space, gym.spaces.Discrete):
             out_w = 1
             out_h = 1
-            print(envs.action_space.n / (in_w*in_h))
             num_actions = int(envs.action_space.n // (in_w * in_h))
            #if 'Micropolis' in env_name:
            #    num_actions = env.venv.venv.envs[0].num_tools
@@ -186,9 +185,9 @@ class ExtinctionEvaluator():
                 )
         envs.set_log_dir(im_log_dir)
         # adjust envs in general
-        envs.configure(map_width, max_step=max_step, render=args.render, num_proc=args.num_processes,
+        envs.configure(map_width=map_width, max_step=max_step, render=args.render, num_proc=args.num_processes,
                                   poet=args.poet, cuda=not args.no_cuda)
-        print(envs.observation_space)
+        print('obs space: {}'.format(envs.observation_space))
         envs.observation_space, _ = envs.get_spaces()
 
         if extinction_type is not None:
@@ -235,6 +234,7 @@ class ExtinctionEvaluator():
                 else:
                     cum_rew = reward
                 last_rew = cum_rew
+                print(cum_rew)
                #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
                 exp_infos['reward'][n_step][n_episode: n_episode + self.args.num_processes] = cum_rew.squeeze(-1)
 
@@ -248,6 +248,7 @@ class ExtinctionEvaluator():
                     n_episode += torch.sum(done)
                 elif isinstance(done, np.ndarray):
                     n_episode += np.sum(done)
+                last_rew = None
             else:
                 n_step += 1
             player_act = None
@@ -262,7 +263,7 @@ class ExtinctionEvaluator():
         for k in exp_infos:
             final_infos[k] = exp_infos[k][-1, :]
         for k, v in exp_infos.items():
-            # the saved dictionary stores the mean over episodes at each time
+            # the saved dictionary stores the mean over episodes at each timestep
             exp_infos[k] = np.mean(v, axis=1), np.std(v, axis=1)
         np_save_dir = '{}/exp_infos'.format(im_log_dir)
         np.save(np_save_dir, exp_infos)
@@ -326,11 +327,32 @@ def get_xy_cmprs(exp_dir):
 def get_xy_metric(exp_dir, metric):
     info_dir = os.path.join('{}'.format(exp_dir), 'exp_infos.npy')
     exp_infos = np.load(info_dir, allow_pickle=True).item()
+   #print(exp_infos[metric][0].shape)
+#   if metric == 'reward':
+#      #print(type(exp_infos[metric][0]))
+#       stdevs = exp_infos[metric][1]
+#       stdevs = np.zeros(exp_infos[metric][1].shape)
+#       exp_infos[metric] = (exp_infos[metric][0] - exp_infos[metric][0][0], stdevs)
+   #    j = 0
+   #    # actually mean reward over trials/episodes!!
+   #    rewards = np.copy(exp_infos['reward'][0])
+   #    total_reward = np.sum(rewards)/ len(rewards)
+   #    rewards = rewards - total_reward
+   #    i = 0
+   #    last_r = 0
+   #    for r in rewards:
+   #        exp_infos['reward'][j][i] = r
+   #       #exp_infos['reward'][j][i] = np.sum(rewards[:i + 1])
+   #        i += 1
+   #    print(exp_infos['reward'][0])
+   #    print(len(exp_infos['reward'][0]))
+   #    j += 1
+   #    print('{} episodes'.format(j))
    #xy = enumerate(exp_infos[metric][0])
     #FIXME: Hackish, to fix drastic jumps after first steps that are probably symptoms of problems with logging during
     # experimentation
-    xy = enumerate(exp_infos[metric][0][1:])
-    x_std = enumerate(exp_infos[metric][1][1:])
+    xy = enumerate(exp_infos[metric][0][:])
+    x_std = enumerate(exp_infos[metric][1][:])
     xy = sorted(xy, key = lambda x: int(x[0]))
     x_std = sorted(x_std, key = lambda x: int(x[0]))
     xs, ys = zip(*xy)
@@ -347,20 +369,21 @@ class ExtinctionExperimenter():
         env_name = log_dir.split('/')[-1].split('_')[0]
         args.env_name = env_name
         # Experiment global parameters
-        self.n_epis = 40
        #self.max_step = [1000]
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-                'random',
+               #'random',
                 'spatial',
-                'age',
-                'None',
+               #'age',
+               #'None',
                 ]
         # TODO: automate xt_probs
         if 'golmulti' in env_name.lower():
+            self.n_epis = 40
             self.xt_dels = [25]
         elif 'micropolis' in env_name.lower():
+            self.n_epis = 21
             self.xt_dels = [15]
        #self.map_sizes = [args.map_width]
         self.map_sizes = [
@@ -394,7 +417,6 @@ class ExtinctionExperimenter():
          - load-dir: stores folder of experiments, within which are compressed images named by rank and
            episode
         '''
-        log_dir = log_dir
         xtinct_dirs = os.listdir(log_dir)
         xt_dir_paths = [os.path.join(log_dir, xt_dir) for xt_dir in xtinct_dirs]
         # make sure the order of local and global paths correspond
@@ -423,19 +445,19 @@ class ExtinctionExperimenter():
         all_p_vals = np.load(os.path.join(self.im_log_dir, 'pvals.npy'), allow_pickle=True).item()
         inner_grid1 = self.inner_grid1
        #inner_grid2 = self.inner_grid2
+        n_xtt = len(self.xt_types)
+        rows = self.xt_types[:-1]
+        cols = self.xt_types[1:]
         for map_size in self.map_sizes:
             n_col = 0
             inner_axes1 = []
            #inner_axes2 = []
            #print(all_p_vals)
-            n_xtt = len(self.xt_types)
-            table_data = np.empty((n_xtt - 1, n_xtt - 1)).tolist()
-            table_fill = np.empty((n_xtt - 1, n_xtt - 1), dtype=object)
-            table_fill.fill((0,0,0,0))
-            table_fill = table_fill.tolist()
-            rows = self.xt_types[:-1]
-            cols = self.xt_types[1:]
             for xt_prob in self.xt_probs:
+                table_data = np.empty((n_xtt - 1, n_xtt - 1)).tolist()
+                table_fill = np.empty((n_xtt - 1, n_xtt - 1), dtype=object)
+                table_fill.fill((0,0,0,0))
+                table_fill = table_fill.tolist()
                 plt.figure(2)
                 xt_i = 0
                 for xtt1_i in range(len(self.xt_types) - 1):
@@ -450,6 +472,8 @@ class ExtinctionExperimenter():
                             if p_vals is None:
                                 table_data[xt_i][xt_j] = 1
                             else:
+                                if p_vals == 1:
+                                    p_vals = (0, p_vals)
                                 if p_vals[1] is not None and p_vals[1] < 0.05:
                                     # green highlight
                                     table_fill[xt_i][xt_j] = (0, 1, 0, 0.3)
@@ -649,6 +673,8 @@ class ExtinctionExperimenter():
                                     all_final_infos[run_id][xtt] = final_infos
         run_pvals = {}
         self.metrics = {}
+        save_path = os.path.join(self.im_log_dir, 'final_infos.npy')
+        np.save(save_path, all_final_infos)
         for run in all_final_infos:
             p_vals = {}
             # compare every pair of extinction types
@@ -661,10 +687,10 @@ class ExtinctionExperimenter():
                         pval_name = '{}_{}_{}'.format(m, t1, t2)
                         x = all_final_infos[run][t1][m]
                         y = all_final_infos[run][t2][m]
-                       #try:
-                        p_vals[pval_name] = mannwhitneyu(x, y)
-                       #except ValueError as verr:
-                       #    p_vals[pval_name] = None
+                        try:
+                            p_vals[pval_name] = mannwhitneyu(x, y)
+                        except ValueError as verr:
+                            p_vals[pval_name] = 1
                         self.metrics[m] = None
             run_pvals[run] = p_vals
         save_path = os.path.join(self.im_log_dir, 'pvals.npy')
@@ -675,43 +701,52 @@ class ExtinctionExperimenter():
         '''
         Visualize compressibility data stored in subfolders of the current directory.
         '''
+        META_GRAPH = False
         param_bounds = self.evaluator.envs.get_param_bounds()
         self.param_trgs = self.evaluator.envs.get_param_trgs()
+        print('param trgs {}'.format(self.param_trgs))
         params = list(self.param_trgs.keys())
         params.append('jpeg_size')
         params.append('reward')
         n_params = len(params)
-        if 'micropolis' in self.evaluator.args.env_name.lower():
-            n_cols = 2
-        if 'golmulti' in self.evaluator.args.env_name.lower():
+        if META_GRAPH:
+            if 'micropolis' in self.evaluator.args.env_name.lower():
+                n_cols = 2
+            if 'golmulti' in self.evaluator.args.env_name.lower():
+                n_cols = 1
+            n_rows = math.ceil(n_params / n_cols)
+            fig1 = plt.figure(1, figsize=(n_cols * 9, n_rows * 8), constrained_layout=False)
+        else:
             n_cols = 1
-        n_rows = math.ceil(n_params / n_cols)
-        fig1 = plt.figure(1, figsize=(n_cols * 9, n_rows * 8), constrained_layout=False)
+            n_rows = 1
+            fig1 = plt.figure(1, figsize=(n_cols * 9, n_rows * 8), constrained_layout=False)
         plt.figure(1)
         self.fig1 = fig1
-       #self.fig2 = fig2
         i = 0
         outer_grid1 = fig1.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.3)
-       #outer_grid2 = fig2.add_gridspec(n_rows, n_cols, wspace = 0.1, hspace=0.25)
         n_row = 0
         n_col = 0
-       #inner_grid1 = outer_grid1[i].subgridspec(3, 3, wspace=0.0, hspace=0.1)
-       #inner_grid2 = outer_grid2[i].subgridspec(3, 3, wspace=0.3, hspace=0.1)
-       #self.visualize_metric(inner_grid, n_row, n_col, self.im_log_dir, metric='compressibility')
+        envs2titles = {'MicropolisEnv-v0': 'SimCity',
+                       'GoLMultiEnv-v0': 'Game of Life'}
+        title = envs2titles[self.evaluator.args.env_name]
         for param in params:
             n_row = i // n_cols
             n_col = i % n_cols
             self.inner_grid1 = outer_grid1[i].subgridspec(3, 3, wspace=0.0, hspace=0.4)
-           #self.inner_grid2 = outer_grid2[i].subgridspec(3, 3, wspace=0.3, hspace=0.1)
             self.visualize_metric(n_row, n_col, self.im_log_dir, metric=param)
-            i += 1
+            if not META_GRAPH:
+                plt.suptitle(title)
+                plt.tight_layout()
+                fig1.subplots_adjust(top=0.91, bottom=0.15)
+                plt.savefig(os.path.join(self.log_dir, '{} {}.png'.format(title, param)), format='png')
+                plt.clf()
+            if META_GRAPH:
+                i += 1
 
        #graph_title = 'map_size = {}, extinct_int = {}'.format(self.map_sizes[0], self.xt_probs[0])
         graph_title1 = 'size_X_xtprob'
         graph_title2 = 'xtt_X_xtt_pvals'
-        envs2titles = {'MicropolisEnv-v0': 'SimCity',
-                       'GoLMultiEnv-v0': 'Game of Life'}
-        title = envs2titles[self.evaluator.args.env_name]
+
         fig1.suptitle(title)
         fig1.tight_layout()
         fig1.subplots_adjust(top=0.96, bottom=0.05)
@@ -721,7 +756,7 @@ class ExtinctionExperimenter():
 
 if __name__ == "__main__":
     VIS_ONLY = False
-    VIS_ONLY = True
+   #VIS_ONLY = True
     LOG_DIR = os.path.abspath(os.path.join(
         'trained_models',
         'a2c_FractalNet_drop',
@@ -729,7 +764,8 @@ if __name__ == "__main__":
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
-        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm_DUMMY_2.test',
+       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_jinkyFix',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)

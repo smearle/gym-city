@@ -190,8 +190,8 @@ class ExtinguisherMulti(Extinguisher):
     def do_dels(self):
         self.act_tensor(self.dels)
         n_new_dels = torch.sum(self.dels, dim=[1, 2, 3])
-        print('deleted: {}'.format(n_new_dels))
-        print('n_curr_dels: {}'.format(self.n_curr_dels))
+       #print('deleted: {}'.format(n_new_dels))
+       #print('n_curr_dels: {}'.format(self.n_curr_dels))
        #self.n_curr_dels += n_new_dels.int()
        #self.n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
         self.dels = self.dels.fill_(0)
@@ -340,6 +340,10 @@ class ImRender(gym.Wrapper):
        #    _ = cv2.namedWindow('im', cv2.WINDOW_NORMAL)
        #    cv2.imshow('im', self.image)
 
+
+    def set_log_dir(self, log_dir):
+        self.log_dir = log_dir
+
     def step(self, action):
         jpeg_size = self.im_render()
         # save image of map
@@ -373,7 +377,7 @@ class ImRender(gym.Wrapper):
         info = {
                 'jpeg_size': jpeg_size,
                 }
-        return obs, info
+        return obs#, info
 
     def im_render(self):
         zone_map = self.unwrapped.micro.map.zoneMap
@@ -392,7 +396,7 @@ class ImRender(gym.Wrapper):
             cv2.imshow('im', self.image)
         if self.unwrapped.num_step % self.save_interval == 0:
             log_dir = os.path.join(self.im_log_dir, 'rank:{}_epi:{}_step:{}.jpg'.format(
-                self.unwrapped.rank, self.n_episode, self.num_step))
+                self.rank, self.n_episode, self.num_step))
            #print(log_dir)
             cv2.imwrite(log_dir, self.image)
             self.n_saved += 1
@@ -415,9 +419,12 @@ class ImRenderMulti(ImRender):
                 }
         return obs, rew, done, [info]
 
+    def reset(self):
+        return super().reset()[0]
+
     def im_render(self):
         state = self.world.state.clone()
-
+        sizes = []
         for i in range(self.num_proc):
             image = state[i].cpu()
             image = np.vstack((image, image, image))
@@ -428,12 +435,13 @@ class ImRenderMulti(ImRender):
                 i, self.n_episode, self.num_step))
             cv2.imwrite(log_dir, image)
             size = os.stat(log_dir).st_size
+            sizes.append(size)
            #if i == self.rend_idx:
            #    cv2.imshow('im', image)
            #    cv2.waitKey(1)
 
             self.n_saved += 1
-        return size
+        return sizes
        #zone_map = self.unwrapped.micro.map.zoneMap
        #zones = self.unwrapped.micro.map.zones
        #tile_types = self.tile_types
@@ -454,9 +462,6 @@ class ImRenderMulti(ImRender):
        #    print(log_dir)
        #    cv2.imwrite(log_dir, self.image)
        #    self.n_saved += 1
-
-    def set_log_dir(self, log_dir):
-        self.log_dir = log_dir
 
 class ParamRew(gym.Wrapper):
     def __init__(self, env):

@@ -296,7 +296,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 else:
                     ages = False
                 print('poet envs.py?', args.poet)
-                env.configure(map_width,
+                env.configure(
+                        map_width=map_width,
                         max_step=max_step,
                         rank=rank,
                         print_map=print_map,
@@ -352,7 +353,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
 
         if args.im_render and not multi_env:
-            print('wrapping in imrender')
+            print('wrapping in imrender, rank {}'.format(rank))
             if 'micropolis' in args.env_name.lower():
                 env = ImRenderMicropolis(env, log_dir, rank)
 
@@ -449,7 +450,7 @@ class VecPyTorch(VecEnvWrapper):
     def reset(self):
         obs = self.venv.reset()
         ### micropolis ###
-        obs = np.array(obs)
+        obs = np.array(obs[0])
         ### ########## ###
         obs = torch.from_numpy(obs).int().to(self.device)
 
@@ -542,7 +543,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
             wos, _ = self.venv.get_spaces()  # wrapped ob space
             self.shape_dim0 = wos.shape[0]
             low = np.repeat(wos.low, self.nstack, axis=0)
-            self.stacked_obs = torch.zeros((self.venv.num_envs,) + low.shape).to(self.device)
+            self.stacked_obs = torch.zeros((self.venv.num_envs,) + obs.shape).to(self.device)
         self.stacked_obs[:, -self.shape_dim0:] = obs
 
         return self.stacked_obs
