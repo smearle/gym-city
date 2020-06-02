@@ -126,7 +126,7 @@ class MicropolisControl():
 
         self.init_funds = 2000000
         self.engine.setFunds(self.init_funds)
-        self.engine.setSpeed(2)
+        self.engine.setSpeed(3)
         self.engine.setPasses(100)
         #engine.simSpeed =99
         self.total_traffic = 0
@@ -150,20 +150,19 @@ class MicropolisControl():
         self.win1.agentPanel.displayRewardWeights(reward_weights)
 
     def simTick(self):
-        pass
        #self.engine.resume()
        #self.engine.setGameMode('play')
        #self.engine.simRobots()
        #self.engine.handle_simRobots()
        #self.engine.cityEvaluation()
-       #self.engine.tickEngine()
+        self.engine.tickEngine()
        #self.engine.tickTimer()
-       #self.engine.simTick()
+        self.engine.simTick()
        #self.engine.animateTiles()
        #self.engine.updateHeads()
        #self.engine.updateDate()
        #self.engine.changeCensus()
-        self.engine.simUpdate()
+       #self.engine.simUpdate()
        #self.engine.doTimeStuff()
 
     def layGrid(self, w, h):

@@ -124,7 +124,7 @@ class MicropolisEnv(core.Env):
             rank=0,
             print_map=False,
             render_gui=False,
-            empty_start=True,
+            random_terrain=True,
             static_builds=True,
             power_puzzle=False,
             record=False,
@@ -144,7 +144,7 @@ class MicropolisEnv(core.Env):
         if max_step is None:
             max_step = size * size
         self.max_step = max_step
-        self.empty_start = empty_start
+        self.random_terrain = random_terrain
         self.simple_reward = simple_reward
         self.power_puzzle = power_puzzle
         if type(size) == int:
@@ -290,12 +290,16 @@ class MicropolisEnv(core.Env):
                 self.micro.clearBotBuilds()
             else:
                 self.micro.clearMap()
-        if not self.empty_start:
+       #if self.random_terrain:
+        if True:
             self.micro.newMap()
+        else:
+            print('EMPTY START')
         self.num_step = 0
         if self.power_puzzle:
             self.powerPuzzle()
-        if self.random_builds:
+       #if self.random_builds:
+        if False:
             self.randomStaticStart()
         self.micro.simTick()
         self.metrics = self.get_metrics()

@@ -162,8 +162,8 @@ void Micropolis::simInit()
     initWillStuff();
     setFunds(5000);
     setGameLevelFunds(LEVEL_EASY);
-    setSpeed(1);
-    setPasses(10);
+    setSpeed(0);
+    setPasses(1);
 }
 
 

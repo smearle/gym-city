@@ -100,6 +100,7 @@ class ExtinctionEvaluator():
             pass
         dummy_args = args
         dummy_args.poet = True
+        print('extinction evaluator random map? {}'.format(args.random_terrain))
         envs = make_vec_envs(env_name, args.seed, args.num_processes, args.gamma,
                             args.load_dir, args.add_timestep, device=device,
                             allow_early_resets=False,
@@ -132,7 +133,7 @@ class ExtinctionEvaluator():
             out_w = envs.action_space.shape[0]
             out_h = envs.action_space.shape[1]
             num_actions = envs.action_space.shape[-1]
-        print('num_actions: {}'.format(num_actions))
+      # print('num_actions: {}'.format(num_actions))
         # We need to use the same statistics for normalization as used in training
         #actor_critic, ob_rms = \
         #            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
@@ -186,7 +187,8 @@ class ExtinctionEvaluator():
         envs.set_log_dir(im_log_dir)
         # adjust envs in general
         envs.configure(map_width=map_width, max_step=max_step, render=args.render, num_proc=args.num_processes,
-                                  poet=args.poet, cuda=not args.no_cuda)
+                                  poet=args.poet, cuda=not args.no_cuda, random_terrain=args.random_terrain,
+                                  random_builds=args.random_builds)
         print('obs space: {}'.format(envs.observation_space))
         envs.observation_space, _ = envs.get_spaces()
 
@@ -234,7 +236,7 @@ class ExtinctionEvaluator():
                 else:
                     cum_rew = reward
                 last_rew = cum_rew
-                print(cum_rew)
+               #print(cum_rew)
                #exp_infos['step'][n_step][n_episode: n_episode + n_epis] = n_step
                 exp_infos['reward'][n_step][n_episode: n_episode + self.args.num_processes] = cum_rew.squeeze(-1)
 
@@ -373,10 +375,10 @@ class ExtinctionExperimenter():
         self.max_step = [args.max_step]
         #
         self.xt_types = [
-               #'random',
+                'random',
                 'spatial',
-               #'age',
-               #'None',
+                'age',
+                'None',
                 ]
         # TODO: automate xt_probs
         if 'golmulti' in env_name.lower():
@@ -763,8 +765,9 @@ if __name__ == "__main__":
        #'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
+        'MicropolisEnv-v0_w16_300s_noExtinction',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
-        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm_DUMMY_2.test',
+       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm_DUMMY_2.test',
        #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_jinkyFix',
         ))

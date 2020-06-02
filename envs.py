@@ -367,6 +367,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None,
                   args=None):
 
+    print('make vec envs random map? {}'.format(args.random_terrain))
     if 'golmultienv' in env_name.lower():
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
@@ -543,7 +544,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
             wos, _ = self.venv.get_spaces()  # wrapped ob space
             self.shape_dim0 = wos.shape[0]
             low = np.repeat(wos.low, self.nstack, axis=0)
-            self.stacked_obs = torch.zeros((self.venv.num_envs,) + obs.shape).to(self.device)
+            self.stacked_obs = torch.zeros((self.venv.num_envs,) + low.shape).to(self.device)
         self.stacked_obs[:, -self.shape_dim0:] = obs
 
         return self.stacked_obs

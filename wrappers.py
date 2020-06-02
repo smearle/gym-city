@@ -106,7 +106,7 @@ class Extinguisher(gym.Wrapper):
         return curr_dels
 
     def age_event(self):
-        print('\n AGEIST VIOLENCE')
+#       print('\n AGEIST VIOLENCE')
        #for i in range(20):
         curr_dels = 0
        #np.set_printoptions(threshold=sys.maxsize)
@@ -259,7 +259,7 @@ class ExtinguisherMulti(Extinguisher):
 
     def age_event(self):
         self.n_curr_dels = self.n_curr_dels.fill_(0)
-        print('\n AGEIST VIOLENCE')
+       #print('\n AGEIST VIOLENCE')
        #for i in range(20):
         curr_dels = 0
        #np.set_printoptions(threshold=sys.maxsize)
