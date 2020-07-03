@@ -34,7 +34,7 @@ class MicropolisEnv(core.Env):
                 'com_pop': 100,
                 'ind_pop': 100,
                 'traffic': 1500,
-                # i believe one plant is worth 12, the other 16?
+                # I believe one plant is worth 12, the other 16?
                 'num_plants': 14,
                 'mayor_rating': 100
                 })
@@ -106,6 +106,8 @@ class MicropolisEnv(core.Env):
     def configure(self, **kwargs):
         '''Do most of the actual initialization.
         '''
+        # frameskip
+        self._skip = 0
         size = kwargs.get('map_width')
         self.pre_gui(size, **kwargs)
         #TODO: this better
@@ -133,7 +135,10 @@ class MicropolisEnv(core.Env):
             simple_reward=False,
             traffic_only=False,
             PADDING=0,
+            tensorflow=False,
             **kwargs):
+        # order spaces (x, y, chan) ?
+        self.tensorflow = tensorflow
         poet = kwargs.get('poet')
         self.PADDING = PADDING
         self.rank = rank
@@ -179,11 +184,16 @@ class MicropolisEnv(core.Env):
         #ac_low = np.zeros((3))
        #ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
        #self.action_space = spaces.Box(low=ac_low, high=ac_high, dtype=int)
-        self.action_space = spaces.Discrete(self.num_tools * self.MAP_X * self.MAP_Y)
         self.last_state = None
         self.metadata = {'runtime.vectorized': True}
-        low_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=-1)
-        high_obs = np.full((self.num_obs_channels, self.MAP_X, self.MAP_Y), fill_value=1)
+        obs_shape = [self.num_obs_channels, self.MAP_X, self.MAP_Y]
+        act_shape = [self.num_tools * self.MAP_X * self.MAP_Y]
+        if self.tensorflow:
+            print('WE TENSE')
+            obs_shape = obs_shape[1], obs_shape[2], obs_shape[0]
+        self.action_space = spaces.Discrete(*act_shape)
+        low_obs = np.full((obs_shape), fill_value=-1)
+        high_obs = np.full((obs_shape), fill_value=1)
         self.observation_space = spaces.Box(low=low_obs, high=high_obs, dtype = float)
         print('reset obs space to: {}'.format(self.observation_space))
         self.state = None
@@ -334,7 +344,10 @@ class MicropolisEnv(core.Env):
             for i in range(len(trg_metrics)):
                 trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
             scalars += trg_metrics
-        return self.observation(scalars)
+        state = self.observation(scalars)
+        if self.tensorflow:
+            state = state.transpose(1, 2, 0)
+        return state
 
 
     def observation(self, scalars):
