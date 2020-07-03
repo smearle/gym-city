@@ -5,6 +5,7 @@ import numpy as np
 import math
 
 import sys
+
 if sys.version_info[0] >= 3:
     import gi
     gi.require_version('Gtk', '3.0')
@@ -16,7 +17,7 @@ else:
     from tilemap import TileMap
     from corecontrol import MicropolisControl
 import time
-import torch
+#import torch
 
 class MicropolisEnv(core.Env):
 
@@ -61,10 +62,12 @@ class MicropolisEnv(core.Env):
         self.max_loss = 0
         i = 0
         self.param_ranges = []
+
         for param, (lb, ub) in self.param_bounds.items():
             weight = self.weights[param]
             rng = abs(ub - lb)
             self.param_ranges += [rng]
+
             if i < self.num_params:
                 self.max_loss += rng * weight
                 i += 1
@@ -92,6 +95,7 @@ class MicropolisEnv(core.Env):
 
     def get_spaces(self):
         print('getting spaces')
+
         return self.observation_space, self.action_space
 
     def seed(self, seed=None):
@@ -101,6 +105,7 @@ class MicropolisEnv(core.Env):
         # 2**31.
         seed2 = seeding.hash_seed(seed1 + 1) % 2**31
         np.random.seed(seed)
+
         return [seed1, seed2]
 
     def configure(self, **kwargs):
@@ -109,6 +114,7 @@ class MicropolisEnv(core.Env):
         size = kwargs.get('map_width')
         self.pre_gui(size, **kwargs)
         #TODO: this better
+
         if hasattr(self, 'micro'):
             self.micro.reset_params(size)
         else:
@@ -140,13 +146,16 @@ class MicropolisEnv(core.Env):
         self.render_gui = render_gui
         self.random_builds = random_builds
         self.traffic_only = traffic_only
+
         if record: raise NotImplementedError
+
         if max_step is None:
             max_step = size * size
         self.max_step = max_step
         self.random_terrain = random_terrain
         self.simple_reward = simple_reward
         self.power_puzzle = power_puzzle
+
         if type(size) == int:
             self.MAP_X = self.width = size
             self.MAP_Y = size
@@ -174,6 +183,7 @@ class MicropolisEnv(core.Env):
         print('num map features: {}'.format(self.micro.map.num_features))
         self.num_obs_channels = self.micro.map.num_features + self.num_scalars \
                 + self.num_density_maps + num_user_features
+
         if self.poet:
             self.num_obs_channels += len(self.metric_trgs)
         #ac_low = np.zeros((3))
@@ -198,6 +208,7 @@ class MicropolisEnv(core.Env):
         self.last_mayor_rating = self.mayor_rating
         self.last_priority_road_net_size = 0
         self.display_metric_trgs()
+
         if self.render_gui and self.rank == 0:
             self.render()
 
@@ -207,6 +218,7 @@ class MicropolisEnv(core.Env):
     def display_metric_trgs(self):
         if self.win1 is not None:
             self.win1.agentPanel.displayTrgs(self.metric_trgs)
+
         return self.metric_trgs
 
 
@@ -215,6 +227,7 @@ class MicropolisEnv(core.Env):
         w0 = 20
         w1 = 10
         i = 0
+
         for j0 in range(self.MAP_X // w0):
             for k0 in range(self.MAP_Y // w0):
                 for j1 in range(w0 // w1):
@@ -222,6 +235,7 @@ class MicropolisEnv(core.Env):
                         for z in range(self.num_tools):
                             for x in range(j0 * w0 + j1*w1,
                                     j0 * w0 + (j1+1)*w1):
+
                                 for y in range(k0 * w0 + k1*w1,
                                         k0 * w0 + (k1+1)*w1):
                                     self.intsToActions[i] = [z, x, y]
@@ -232,6 +246,7 @@ class MicropolisEnv(core.Env):
         on its forward pass.'''
         chunk_width = 1
         i = 0
+
         for z in range(self.num_tools):
             for x in range(self.MAP_X):
                 for y in range(self.MAP_Y):
@@ -252,8 +267,10 @@ class MicropolisEnv(core.Env):
 #       num_static = math.ceil(((lst_epi - self.num_episode) / lst_epi) * num_static)
 #       num_static = max(0, max_static)
         self.micro.setFunds(self.micro.init_funds)
+
         if num_static > 0:
             num_static = self.np_random.randint(0, num_static + 1)
+
         for i in range(num_static):
             if i % 2 == 0:
                 static_build = True
@@ -264,6 +281,7 @@ class MicropolisEnv(core.Env):
     def randomStart(self):
         r = self.np_random.randint(0, 100)
         self.micro.setFunds(self.micro.init_funds)
+
         for i in range(r):
             self.step(self.action_space.sample())
 #       i = np.random.randint(0, (self.obs_width * self.obs_width / 3))
@@ -274,9 +292,11 @@ class MicropolisEnv(core.Env):
     def powerPuzzle(self):
         ''' Set up one plant, one res. If we restrict the agent to building power lines, we can test its ability
         to make long-range associations. '''
+
         for i in range(5):
             self.micro.doBotTool(np.random.randint(0, self.micro.MAP_X),
                                  np.random.randint(0, self.micro.MAP_Y), 'Residential', static_build=True)
+
         while self.micro.map.num_plants == 0:
             self.micro.doBotTool(np.random.randint(0, self.micro.MAP_X),
                                   np.random.randint(0, self.micro.MAP_Y),
@@ -284,6 +304,7 @@ class MicropolisEnv(core.Env):
 
     def reset(self):
         self.display_metric_trgs()
+
         if True:
            #if self.render_gui:
             if False:
@@ -296,6 +317,7 @@ class MicropolisEnv(core.Env):
         else:
             print('EMPTY START')
         self.num_step = 0
+
         if self.power_puzzle:
             self.powerPuzzle()
        #if self.random_builds:
@@ -314,6 +336,7 @@ class MicropolisEnv(core.Env):
         self.last_num_roads = 0
        #self.past_actions.fill(False)
         self.num_episode += 1
+
         return self.state
 
   # def getRoadPenalty(self):
@@ -327,13 +350,16 @@ class MicropolisEnv(core.Env):
         res_pop, com_pop, ind_pop = self.micro.getResPop(), self.micro.getComPop(), self.micro.getIndPop()
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
         scalars = [res_pop, com_pop, ind_pop, resDemand, comDemand, indDemand]
+
         if self.poet:
             for j in range(3):
                 scalars[j] = scalars[j] / self.param_ranges[j]
             trg_metrics = [v for k, v in self.metric_trgs.items()]
+
             for i in range(len(trg_metrics)):
                 trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
             scalars += trg_metrics
+
         return self.observation(scalars)
 
 
@@ -343,17 +369,22 @@ class MicropolisEnv(core.Env):
        #if self.render_gui:
        #    print(density_maps[2])
         road_networks = self.micro.map.road_networks
+
         if self.render_gui:
            #print(road_networks, self.micro.map.road_net_sizes)
             pass
         scalar_layers = np.zeros((len(scalars), self.MAP_X, self.MAP_Y))
+
         for si in range(len(scalars)):
             fill_val = scalars[si]
+
             if not type(fill_val) == str:
                 scalar_layers[si].fill(scalars[si])
         state = np.concatenate((state, density_maps, scalar_layers), 0)
+
         if self.static_builds:
             state = np.concatenate((state, self.micro.map.static_builds), 0)
+
         return state
 
     def getPop(self):
@@ -370,13 +401,16 @@ class MicropolisEnv(core.Env):
     def getReward(self):
         '''Calculate reward.
         '''
+
         if True:
             reward = 0
+
             for metric, trg in self.metric_trgs.items():
                 last_val = self.last_metrics[metric]
                 trg_change = trg - last_val
                 val = self.metrics[metric]
                 change = val - last_val
+
                 if np.sign(change) != np.sign(trg_change):
                     metric_rew = -abs(change)
                 elif abs(change) < abs(trg_change):
@@ -422,24 +456,32 @@ class MicropolisEnv(core.Env):
             # population density per 16x16 section of map
             pop_reward = pop_reward / (self.MAP_X*self.MAP_Y / 16**2)
             zone_variety = 0
+
             if resPop > 0:
                 zone_variety += 1
+
             if comPop > 0:
                 zone_variety += 1
+
             if indPop > 0:
                 zone_variety += 1
             zone_bonus = (zone_variety - 1) * 50
             pop_reward += max(0, zone_bonus)
+
         if False:
             pop_reward = (resPop + 1) * (comPop + 1) * (indPop + 1) - 1
+
         return 0
+
         return pop_reward
 
     def set_param_bounds(self, bounds):
         print('setting visual param bounds (TODO: forreal')
+
         if self.win1:
             self.win1.agentPanel.setMetricRanges(bounds)
         print(len(bounds))
+
         return len(bounds)
 
 
@@ -452,6 +494,7 @@ class MicropolisEnv(core.Env):
 
     def get_param_trgs(self):
         print('param_trgs: {}'.format(self.metric_trgs))
+
         return self.metric_trgs
 
     def get_metrics(self):
@@ -468,6 +511,7 @@ class MicropolisEnv(core.Env):
                 'traffic': traffic, 'num_plants': num_plants,
                 'mayor_rating': mayor_rating
                 }
+
         return metrics
 
     def display_metrics(self):
@@ -490,6 +534,7 @@ class MicropolisEnv(core.Env):
        #    a = 0
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
+
         return self.postact()
 
     def postact(self):
@@ -503,6 +548,7 @@ class MicropolisEnv(core.Env):
         self.curr_pop = self.getPop()
         self.last_metrics = self.metrics
         self.metrics = self.get_metrics()
+
         if self.render_gui:
             self.display_metrics()
 
@@ -549,15 +595,18 @@ class MicropolisEnv(core.Env):
         bankrupt = curr_funds < self.minFunds
         terminal = (bankrupt or self.num_step >= self.max_step) and\
             self.auto_reset
+
         if self.print_map:
            #if static_build:
            #    print('STATIC BUILD')
             self.printMap()
+
         if self.render_gui:
            #pass
             self.micro.render()
         infos = {}
         # Get the next player-build ready, if there is one in the queue
+
         if self.micro.player_builds:
             b = self.micro.player_builds[0]
             a = self.actionsToInts[b]
@@ -592,6 +641,7 @@ class MicropolisEnv(core.Env):
 
     def test(self):
         env = MicropolisEnv()
+
         for i in range(5000):
             env.step(env.action_space.sample())
 
@@ -610,5 +660,6 @@ class MicropolisEnv(core.Env):
     def set_plants_weight(self, val):
         self.metric_trgs['num_plants'] = val
 
-    def set_rating_weight(self,val):
+    def set_rating_weight(self, val):
         self.metric_trgs['mayor_rating'] = val
+
