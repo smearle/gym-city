@@ -6,6 +6,7 @@ if sys.version[0] == 2:
     from walkcontrol import MicroWalkControl
 else:
     from .env import MicropolisEnv
+    from .env import MicropolisEnv as MicropolisEnvNoFrameskip
     from .paintenv import MicropolisPaintEnv
     from .arcadeenv import MicroArcadeEnv
     from .walkcontrol import MicroWalkControl
