@@ -7,13 +7,13 @@ train:
 ######### Micropolis #########
 
 MP_res_FC:
-	python3 enjoy.py --load-dir '/home/sme/gym-city/trained_models/a2c_FullyConv/MicropolisEnv-v0_w16_200s_resOnlyThic'   --poet --map-w 16  --random-b  --random-t
+	python3 enjoy.py --load-dir '/home/sme/gym-city/trained_models/a2c_FullyConv/MicropolisEnv-v0_w16_200s_resOnlyThic/MicropolisEnv-v0.tar'   --poet True --map-w 16  --random-b  True --random-t True
 
 MP_res_FC_w32:
-	python3 enjoy.py --load-dir '/home/sme/gym-city/trained_models/a2c_FullyConv/MicropolisEnv-v0_w16_200s_resOnlyThic'   --poet --map-w 32 --random-t
+	python3 enjoy.py --load-dir '/home/sme/gym-city/trained_models/a2c_FullyConv/MicropolisEnv-v0_w16_200s_resOnlyThic'   --poet True --map-w 32 --random-t
 
 condos:
-	python3 enjoy.py --load-dir '/home/sme/gym-city/trained_models/a2c_FullyConv/MicropolisEnv-v0_w16_200s_resOnlyThic'  --map-width 64 --render --model FullyConv --poet --random-t
+	python3 enjoy.py --load-dir '/home/sme/gym-city/trained_models/a2c_FullyConv/MicropolisEnv-v0_w16_200s_resOnlyThic'  --map-width 64 --render --model FullyConv --poet True --random-t
 
 ###
 

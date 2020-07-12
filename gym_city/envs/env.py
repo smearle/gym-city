@@ -44,7 +44,7 @@ class MicropolisEnv(core.Env):
             'res_pop': (0, 750),
             'com_pop': (0, 100),
             'ind_pop': (0, 100),
-            'traffic': (0, 5000),
+            'traffic': (0, 2000),
             'num_plants': (0, 100),
             'mayor_rating': (0, 100)
         })
@@ -337,7 +337,7 @@ class MicropolisEnv(core.Env):
             else:
                 self.micro.clearMap()
     # if self.random_terrain:
-        if True:
+        if False:
             self.micro.newMap()
         else:
             print('EMPTY START')
