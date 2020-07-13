@@ -78,7 +78,7 @@ pip3 install -e .
 
 We might need some additional python packages:
 ```
-pip install cffi python3-mpi4py gym baselines graphviz torchsummary imutils visdom sklearn matplotlib torchsummary
+pip install cffi mpi4py gym baselines graphviz torchsummary imutils visdom sklearn matplotlib torchsummary
 ```
 
 
