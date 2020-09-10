@@ -5,3 +5,5 @@ baselines
 imutils
 visdom
 graphviz
+torchsummary
+matplotlib

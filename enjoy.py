@@ -13,6 +13,8 @@ from envs import VecPyTorch, make_vec_envs
 from model import Policy
 from train import Evaluator
 from utils import get_render_func, get_space_dims, get_vec_normalize
+from opensimplex import OpenSimplex
+simplex = OpenSimplex(seed=1)
 
 parser = get_parser()
 parser.add_argument('--non-det', action='store_true', default=False,
@@ -49,7 +51,10 @@ except FileNotFoundError:
                         map_location=map_location)
 args.load_dir = '/'.join(args.load_dir.split('/')[:-1])
 saved_args = checkpoint['args']
-args.poet = saved_args.poet
+if not hasattr(saved_args, 'poet'):
+    pass
+else:
+    args.poet = saved_args.poet
 #past_steps = checkpoint['past_steps']
 #args.past_steps = past_steps
 env_name = saved_args.env_name
@@ -163,6 +168,7 @@ player_act = None
 env_done = False
 
 last_rew = 0
+MODULATE_TRGS = True
 while True:
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(

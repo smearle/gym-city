@@ -20,12 +20,13 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender
+from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets
 
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         self.env = env
+        self.width = self.unwrapped.width
         self.dist_entropy = 0
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
@@ -310,6 +311,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         ages=ages)
                 if True:
                     env = ParamRew(env)
+                if True:
+                    env = NoiseyTargets(env)
                 if extinction:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 

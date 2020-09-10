@@ -5,7 +5,33 @@ import cv2
 import gym
 import numpy as np
 import torch
+from opensimplex import OpenSimplex
 
+class NoiseyTargets(gym.Wrapper):
+    '''A bunch of simplex noise instances modulate target metrics.'''
+    def __init__(self, env):
+        super(NoiseyTargets, self).__init__(env)
+        self.param_bounds = self.env.param_bounds
+        self.num_params = self.env.num_params
+        self.noise = OpenSimplex()
+    
+    def step(self, a):
+        param_bounds = self.param_bounds
+        trgs = {} 
+        for i in range(self.num_params):
+            trgs[i] = self.noise.noise2d(x=self.unwrapped.num_step/10, y=i*10)
+        i = 0
+        for param, (ub, lb) in param_bounds.items():
+            trgs[param] = ((trgs[i] + 1) / 2 * (ub - lb)) + lb
+            i += 1
+        self.env.set_params(trgs)
+        out = self.env.step(a)
+        return out
+
+    def reset(self):
+        self.noise = OpenSimplex()
+        return self.env.reset()
+        
 
 class Extinguisher(gym.Wrapper):
     '''Trigger intermittent extinction events.'''
@@ -34,7 +60,7 @@ class Extinguisher(gym.Wrapper):
         self.ages = self.unwrapped.micro.map.init_age_array()
 
     def step(self, a):
-        if self.num_step % self.extinction_interval == 0:
+        if self.unwrapped.num_step % self.extinction_interval == 0:
        #if np.random.rand() <= self.extinction_prob:
             self.extinguish(self.extinction_type)
        #if self.num_step % 1000 == 0:
@@ -88,7 +114,7 @@ class Extinguisher(gym.Wrapper):
 
     def ranDemolish(self):
         # hack this to make it w/o replacement
-        print('RANDEMOLISH, step {}'.format(self.num_step))
+       #print('RANDEMOLISH, step {}'.format(self.unwrapped.num_step))
         ages = self.ages
         curr_dels = 0
         for i in range(self.n_dels):
@@ -98,7 +124,7 @@ class Extinguisher(gym.Wrapper):
                 break
            #age_i = np.random.choice(np.where(ages_flat > -1))
             age_i = np.random.choice(age_is)
-            x, y = np.unravel_index(age_i, self.micro.map.age_order.shape)
+            x, y = np.unravel_index(age_i, self.unwrapped.micro.map.age_order.shape)
             x, y = int(x), int(y)
            #result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
             self.delete(x, y)
@@ -136,7 +162,7 @@ class Extinguisher(gym.Wrapper):
         return curr_dels
 
     def delete(self, x, y):
-        result = self.micro.doBotTool(x, y, 'Clear', static_build=True)
+        result = self.unwrapped.micro.doBotTool(x, y, 'Clear', static_build=True)
         return result
 
 class ExtinguisherMulti(Extinguisher):
@@ -466,6 +492,11 @@ class ImRenderMulti(ImRender):
 class ParamRew(gym.Wrapper):
     def __init__(self, env):
         super(ParamRew, self).__init__(env)
+        #FIXME but why?
+        self.width = self.env.width
+        self.metrics = self.env.metrics
+        self.param_bounds = self.env.param_bounds
+        self.metric_trgs = self.env.metric_trgs
         self.num_params = 2 * len(self.metrics)
         self.weights = {}
 
@@ -490,6 +521,7 @@ class ParamRew(gym.Wrapper):
         for k in self.weights:
             self.weights[k] = params['{}_weight'.format(k)]
             i += 1
+        self.unwrapped.display_metric_trgs()
 
     def step(self, action):
         self.last_metrics = copy.deepcopy(self.metrics)
