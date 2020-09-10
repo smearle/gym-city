@@ -579,8 +579,8 @@ class MicropolisEnv(core.Env):
             self.player_step = a
         self.num_step += 1
        ## Override Reward
-       #reward = self.metrics['res_pop'] + self.metrics['com_pop']\
-       #         + self.metrics['ind_pop'] + self.metrics['traffic']
+        reward = self.metrics['res_pop'] + self.metrics['com_pop']\
+                 + self.metrics['ind_pop'] + self.metrics['traffic']
         return (self.state, reward, terminal, infos)
 
     def getRating(self):
