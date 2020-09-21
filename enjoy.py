@@ -69,6 +69,7 @@ dummy_args = args
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, args.load_dir, args.add_timestep, device=device,
                     allow_early_resets=False,
+                    param_rew=True,
                     args=dummy_args)
 print(args.load_dir)
 

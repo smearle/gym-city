@@ -14,9 +14,9 @@ from torch import ByteTensor, Tensor
 from torch.nn import Conv2d, Parameter
 from torch.nn.init import zeros_
 
-from .gol import utils
-from .im2gif import GifWriter
-from .world_pytorch import World
+from gol import utils
+from im2gif import GifWriter
+from world_pytorch import World
 
 
 class GoLMultiEnv(core.Env):
@@ -199,20 +199,24 @@ class GoLMultiEnv(core.Env):
         a: 1D tensor of integers, corresponding to action indexes (in
             flattened output space)
         '''
-        a = a.long()
-       #a.fill_(0)
-        actions = self.action_idx_to_tensor(a)
+        if a is not None:
+            a = a.long()
+           #a.fill_(0)
+            actions = self.action_idx_to_tensor(a)
 
-        self.act_tensor(actions)
+            self.act_tensor(actions)
 
         if self.num_step % self.agent_steps == 0: # the agent build-turn is over
-            if self.render_gui:
+            if self.render_gui and a:
                 self.agent_builds.fill_(0)
 
             for j in range(self.sim_steps):
                 self.world._tick()
                 if self.render_gui:
-                    self.render(agent=True)
+                    if a:
+                        self.render(agent=True)
+                    else:
+                        self.render(agent=False)
         self.get_curr_param_vals()
        #loss = abs(self.trg_param_vals - self.curr_param_vals)
        #loss = loss.squeeze(-1)
@@ -230,7 +234,10 @@ class GoLMultiEnv(core.Env):
 
         if self.render_gui:
            #pass # leave this one to main loop
-            self.render() # deal with rendering now
+            if a:
+                self.render(agent=True) # deal with rendering now
+            else:
+                self.render(agent=False)
         info = [{}]
         self.num_step += 1
         obs = self.get_obs()
@@ -377,9 +384,14 @@ class GoLMultiEnv(core.Env):
 
 cv2.destroyAllWindows()
 
+
 def main():
     env = GoLMultiEnv()
-    env.configure(render=True)
+    env.configure(200, render=True)
 
     while True:
-        env.step(0)
+        env.step(None)
+
+
+if __name__ == "__main__":
+    main()

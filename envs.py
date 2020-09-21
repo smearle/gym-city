@@ -205,6 +205,8 @@ class Render(gym.Wrapper):
         self.rank = rank
         self.render_gui = kwargs.get('render', False)
         self.render_rank = kwargs.get('render_rank', [0,2,4])
+        if isinstance(self.render_rank, int):
+            self.render_rank = [self.render_rank]
 
     def step(self, action):
         if self.render_gui and self.rank in self.render_rank:
@@ -232,12 +234,13 @@ class ToPytorchOrder(gym.Wrapper):
 
         return obs, reward, done, info
 
-def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None,
+def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False,
+        print_map=False, parallel_py2gui=False, noreward=False, max_step=None, param_rew=False,
         args=None):
     ''' return a function which starts the environment'''
     def _thunk():
         record = args.record
-        extinction = args.extinction_type != 'None'
+        extinction = args.extinction_type is not None
 
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -280,12 +283,15 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
             if '-wide' in env_id:
                 env = ActionMapImagePCGRLWrapper(env_id)
-                env.unwrapped.configure(map_width=args.map_width, max_step=args.max_step)
                 env.adjust_param(width=args.map_width, heigh=args.map_width)
                 env = ToPytorchOrder(env)
                 env = MaxStep(env, args.max_step)
                 env = Render(env, rank, render = render_gui, render_rank=[0])
                 env = MapDims(env)
+                if param_rew:
+                    print('pcgrl reward teacher')
+                    env = ParamRew(env)
+                env.configure(map_width=args.map_width, max_step=args.max_step)
 
             if 'micropolis' in env_id.lower():
                 power_puzzle = False
@@ -321,10 +327,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
                 if True:
                     env = ParamRew(env)
-
-                if True:
+                if False:
                     env = NoiseyTargets(env)
-
                 if extinction:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 
@@ -380,7 +384,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
     return _thunk
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
-                  device, allow_early_resets, num_frame_stack=None,
+                  device, allow_early_resets, num_frame_stack=None, param_rew=False,
                   args=None):
 
     print('make vec envs random map? {}'.format(args.random_terrain))
@@ -389,7 +393,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
         allow_early_resets, map_width=args.map_width, render_gui=args.render,
-        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step,
+        print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, param_rew=param_rew,
         args=args)
             for i in range(num_processes)]
 

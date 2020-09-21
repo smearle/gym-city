@@ -137,7 +137,10 @@ class World(nn.Module):
     def seed(self, seed=None):
         np.random.seed(seed)
 
-
+#class PathWorld(World):
+#    '''  
+#    def __i
+#
 
 def main():
     world = World()

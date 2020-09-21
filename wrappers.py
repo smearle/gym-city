@@ -494,39 +494,78 @@ class ParamRew(gym.Wrapper):
         super(ParamRew, self).__init__(env)
         #FIXME but why?
         self.width = self.env.width
-        self.metrics = self.env.metrics
-        self.param_bounds = self.env.param_bounds
-        self.metric_trgs = self.env.metric_trgs
+        self.metrics = self.unwrapped.metrics
+        print('unwrapped: {}'.format(self.unwrapped.metrics))
+        self.last_metrics = copy.deepcopy(self.metrics)
+        self.param_bounds = self.unwrapped.param_bounds
+        self.param_ranges = {}
+        for k, v in self.param_bounds.items():
+            self.param_ranges[k] = abs(v[1] - v[0])
+        self.metric_trgs = self.unwrapped.metric_trgs
         self.num_params = 2 * len(self.metrics)
         self.weights = {}
 
         for k, v in self.metrics.items():
-            self.weights[k] = 1
+            self.weights[k] = self.unwrapped.weights[k]
         for k, v in self.weights.items():
             self.param_bounds['{}_weight'.format(k)] = (0, 1)
 
+    def configure(self, **kwargs):
+        self.unwrapped.configure(**kwargs)
+        orig_obs_shape = self.observation_space.shape
+        obs_shape = orig_obs_shape[0] + len(self.metric_trgs), orig_obs_shape[1], orig_obs_shape[2]
+        low = self.observation_space.low
+        high = self.observation_space.high
+        metric_trgs_shape = (len(self.metric_trgs), obs_shape[1], obs_shape[2])
+        metric_trgs_low = np.full(metric_trgs_shape, fill_value=0)
+        metric_trgs_high = np.full(metric_trgs_shape, fill_value=1)
+        low = np.vstack((metric_trgs_low, low))
+        high = np.vstack((metric_trgs_high, high))
+        self.observation_space = gym.spaces.Box(low=low, high=high)
+        self.metric_trgs_shape = metric_trgs_shape
+        print('param rew obs space:\n{}'.format(self.observation_space))
+
     def getState(self):
         scalars = super().getState()
-        trg_weights = [v for k, v in self.weights.items()]
-        scalars += trg_weights
+       #trg_weights = [v for k, v in self.weights.items()]
+       #scalars += trg_weights
+        print(scalars)
+        raise Exception
         return scalars
 
     def set_params(self, params):
         i = 0
 
         for k, _ in self.metric_trgs.items():
-            self.metric_trgs[k] = params[k]
+            if k in params:
+                self.metric_trgs[k] = params[k]
             i += 1
 
         for k in self.weights:
-            self.weights[k] = params['{}_weight'.format(k)]
+            weight_name = '{}_weight'.format(k)
+            if weight_name in params:
+                self.weights[k] = params[weight_name]
             i += 1
         self.unwrapped.display_metric_trgs()
 
-    def step(self, action):
+    def reset(self):
+        ret = super().reset()
+        self.metrics = self.unwrapped.metrics
         self.last_metrics = copy.deepcopy(self.metrics)
+        return ret
+
+    def step(self, action):
+       #print('unwrapped metrics', self.unwrapped.metrics)
         ob, rew, done, info = super().step(action)
+        self.metrics = self.unwrapped.metrics
         rew = self.get_reward()
+        self.last_metrics = copy.deepcopy(self.metrics)
+        metric_trgs_ob = np.zeros((self.metric_trgs_shape))
+        i = 0
+        for k, v in self.metric_trgs.items():
+            metric_trgs_ob[i, :, :] = v / self.param_ranges[k]
+            i += 1
+        ob = np.vstack((metric_trgs_ob, ob))
 
         return ob, rew, done, info
 

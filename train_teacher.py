@@ -23,6 +23,7 @@ from train import Trainer, init_agent
 from utils import get_vec_normalize
 from visualize import Plotter
 
+NUM_ENV_PARAMS = 2
 
 class Teacher(Trainer):
     def get_fieldnames(self):
@@ -33,17 +34,24 @@ class Teacher(Trainer):
         d['alp_gmm'] = self.alp_gmm
         d['param_hist'] = self.param_hist
 
-        return d
+        return d 
 
-    def __init__(self):
-        # have to do above before call to parent to inirialize Evaluator correctly
-        super(Teacher, self).__init__()
+    def __init__(self, args=None):
+        if args is None:
+            args = get_args()
+        device = torch.device("cuda:0" if args.cuda else "cpu")
+        self.device = device
+        # have to do above before call to parent to initialize Evaluator correctly
+        # ^^ huh?
+        args.param_rew = True
+        envs = self.make_vec_envs(args)
+        super(Teacher, self).__init__(args=args, envs=envs)
         # dictionary of param names to target histories as set by alp_gmm
         self.param_hist = {}
         envs = self.envs
         args = self.args
         env_param_bounds = envs.get_param_bounds()
-        num_env_params = len(env_param_bounds)
+        num_env_params = NUM_ENV_PARAMS
         # in case we want to change this dynamically in the future (e.g., we may
         # not know how much traffic the agent can possibly produce in Micropolis)
         envs.set_param_bounds(env_param_bounds) # start with default bounds
@@ -73,7 +81,6 @@ class Teacher(Trainer):
 
         params = OrderedDict()
         print('\n env_param_bounds', env_param_bounds)
-        trial_remaining = args.max_step
         trial_reward = 0
 
         self.env_param_bounds = env_param_bounds
@@ -81,7 +88,7 @@ class Teacher(Trainer):
         self.env_param_ranges = env_param_ranges
         self.params_vec = params_vec
         self.params = params
-        self.trial_remaining = args.max_step
+        self.trial_remaining = args.max_step * 2
         self.trial_reward = trial_reward
 
     def check_params(self):

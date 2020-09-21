@@ -65,9 +65,7 @@ class Trainer():
         self.fieldnames = self.get_fieldnames()
         self.n_frames = 0
 
-        if args is None:
-            args = get_args()
-        args.log_dir = args.save_dir + '/logs'
+
         assert args.algo in ['a2c', 'ppo', 'acktr']
 
         if args.recurrent_policy:
@@ -281,10 +279,13 @@ class Trainer():
         self.multi_env = 'golmulti' in args.env_name.lower()
 
     def make_vec_envs(self, args):
+        if args is None:
+            args = get_args()
+        args.log_dir = args.save_dir + '/logs'
         try:
             envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                     args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
-                    args=args)
+                    param_rew=args.param_rew, args=args)
         except gym.error.UnregisteredEnv as err:
             print(err, '\n available envs: \n{}'.format(gym.envs.registry.all()))
             raise err
@@ -506,6 +507,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             col_idx = [-1, *[i for i in range(0, n_cols, self.col_step)]]
 
             for i in col_idx:
+                print('evaluating column {}'.format(i))
                 evaluator.evaluate(column=i)
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
            # making sure the evaluator plots the '-1'st column (the overall net)
