@@ -205,7 +205,7 @@ def get_parser():
     parser.add_argument(
         '--poet',
         type=str2bool,
-        default=False,
+        default=True,
         help='set targets for environment, replaces fixed reward function')
 
     return parser

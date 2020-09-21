@@ -127,7 +127,9 @@ class MicropolisAgentPanel(gtk.Frame):
         self.vbox1.pack_start(self.checkButtonStaticBuilds, False, False, 0)
 
         #TODO: not this
-        pop_threshold = (0, 1000)
+        res_pop_threshold = (0, 750)
+        com_pop_threshold = (0, 100)
+        ind_pop_threshold = (0, 100)
         traffic_range = (0, 2000)
         num_plants_range = (0, 200)
         mayor_rating_range = (0, 100)
@@ -138,8 +140,8 @@ class MicropolisAgentPanel(gtk.Frame):
         self.scaleResMetric = scaleResMetric
         scaleRes.set_digits(10)
         scaleResMetric.set_digits(10)
-        scaleRes.set_range(*pop_threshold)
-        scaleResMetric.set_range(*pop_threshold)
+        scaleRes.set_range(*res_pop_threshold)
+        scaleResMetric.set_range(*res_pop_threshold)
         scaleRes.connect('value_changed', self.scaleResChanged)
         labelRes = gtk.Label('Residential:')
         vbox2.pack_start(labelRes, False, False, 0)
@@ -151,10 +153,10 @@ class MicropolisAgentPanel(gtk.Frame):
         self.scaleCom = scaleCom
         self.scaleComMetric = scaleComMetric
         scaleCom.set_digits(10)
-        scaleCom.set_range(*pop_threshold)
+        scaleCom.set_range(*ind_pop_threshold)
         scaleCom.connect('value_changed', self.scaleComChanged)
         scaleComMetric.set_digits(10)
-        scaleComMetric.set_range(*pop_threshold)
+        scaleComMetric.set_range(*com_pop_threshold)
         labelCom = gtk.Label('Commercial:')
         vbox2.pack_start(labelCom, False, False, 0)
         vbox2.pack_start(scaleCom, False, False, 0)
@@ -163,11 +165,11 @@ class MicropolisAgentPanel(gtk.Frame):
         scaleInd = gtk.HScale()
         self.scaleInd = scaleInd
         scaleInd.set_digits(10)
-        scaleInd.set_range(*pop_threshold)
+        scaleInd.set_range(*ind_pop_threshold)
         scaleIndMetric = gtk.HScale()
         self.scaleIndMetric = scaleIndMetric
         scaleIndMetric.set_digits(10)
-        scaleIndMetric.set_range(*pop_threshold)
+        scaleIndMetric.set_range(*ind_pop_threshold)
         scaleInd.connect('value_changed', self.scaleIndChanged)
         labelInd = gtk.Label('Industrial:')
         vbox2.pack_start(labelInd, False, False, 0)

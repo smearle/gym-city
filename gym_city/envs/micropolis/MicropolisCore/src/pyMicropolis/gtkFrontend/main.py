@@ -65,7 +65,7 @@ def run(builderBot=None):
 
 
 # for bots. Return the engine for training simulation
-def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20, gui=False):
+def train(env=None, rank=None, root_gtk=None, map_x=20, map_y=20, gui=True):
 
     kwargs = {'env': env, 'rank': rank, 'root_gtk': root_gtk}
     engine = micropolisgtkengine.CreateGTKEngine(**kwargs)

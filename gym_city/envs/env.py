@@ -49,15 +49,19 @@ class MicropolisEnv(core.Env):
             'mayor_rating': (0, 100)
         })
         self.weights = OrderedDict({
-            'res_pop': 1 / 4,
+            'res_pop': 1 / 8,
             'com_pop': 1,
             'ind_pop': 1,
-            'traffic': 1 / 10,
-            'num_plants': 1,
-            'mayor_rating': 1 / 2,
+            'traffic': 0,
+            'num_plants': 0,
+            'mayor_rating': 0,
+           #'ind_pop': 1,
+           #'traffic': 1 / 10,
+           #'num_plants': 1,
+           #'mayor_rating': 1 / 2,
         })
 
-        self.num_params = 6
+        self.num_params = 2
         # not necessarily true but should take care of most cases
         self.max_loss = 0
         i = 0
@@ -127,7 +131,8 @@ class MicropolisEnv(core.Env):
                                            self.PADDING,
                                            rank=self.rank,
                                            power_puzzle=self.power_puzzle,
-                                           gui=self.render_gui)
+                                           #FIXME: simulation doesn't tick without this
+                                           gui=True)
         self.metrics = self.get_metrics()
         self.last_metrics = self.metrics
         self.post_gui()
@@ -209,7 +214,7 @@ class MicropolisEnv(core.Env):
         act_shape = [self.num_tools * self.MAP_X * self.MAP_Y]
 
         if self.tensorflow:
-            print('WE TENSE')
+            print('Tensorflow-ordered observation space')
             obs_shape = obs_shape[1], obs_shape[2], obs_shape[0]
         self.action_space = spaces.Discrete(*act_shape)
         low_obs = np.full((obs_shape), fill_value=-1)
@@ -332,12 +337,12 @@ class MicropolisEnv(core.Env):
 
         if True:
             # if self.render_gui:
-            if False:
+            if True:
                 self.micro.clearBotBuilds()
             else:
                 self.micro.clearMap()
     # if self.random_terrain:
-        if False:
+        if True:
             self.micro.newMap()
         else:
             pass
@@ -351,11 +356,11 @@ class MicropolisEnv(core.Env):
             self.randomStaticStart()
         self.micro.simTick()
         self.metrics = self.get_metrics()
-        self.last_metrics = self.metrics
+       #self.last_metrics = self.metrics
         self.micro.setFunds(self.micro.init_funds)
         #curr_funds = self.micro.getFunds()
         self.curr_pop = 0
-        self.curr_reward = self.getReward()
+       #self.curr_reward = self.getReward()
         self.state = self.getState()
         self.last_pop = 0
         self.micro.num_roads = 0
@@ -620,7 +625,7 @@ class MicropolisEnv(core.Env):
     #           #    max_net_2 = n
         reward = 0
 
-        reward = self.getReward()
+       #reward = self.getReward()
         #reward = reward / (self.max_step)
         self.curr_funds = curr_funds = self.micro.getFunds()
         bankrupt = curr_funds < self.minFunds
@@ -648,6 +653,10 @@ class MicropolisEnv(core.Env):
        ## Override Reward
        #reward = self.metrics['res_pop'] + self.metrics['com_pop']\
        #         + self.metrics['ind_pop'] + self.metrics['traffic']
+       #if reward > 1:
+       #    reward = reward * reward
+       #if reward > 0:
+       #    print(reward)
         return (self.state, reward, terminal, infos)
 
     def getRating(self):
