@@ -77,8 +77,10 @@ class MicropolisMonitor(bench.Monitor):
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards)
             dist_entropy = self.dist_entropy
+
             if dist_entropy is None:
                 dist_entropy = 0
+
             if eprew is None:
                 eprew = 0
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
@@ -117,6 +119,9 @@ class MicropolisMonitor(bench.Monitor):
         obs = self.env.reset()
 
         return obs
+    
+    def set_active_agent(self, n_agent):
+        return self.unwrapped.set_active_agent(n_agent)
 
 
 class MultiMonitor(MicropolisMonitor):
@@ -135,8 +140,10 @@ class MultiMonitor(MicropolisMonitor):
             eprew = float(sum(self.rewards))
             eplen = len(self.rewards) * self.env.num_proc
             dist_entropy = self.dist_entropy
+
             if dist_entropy is None:
                 dist_entropy = 0
+
             if eprew is None:
                 eprew = 0
             epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6),
@@ -186,7 +193,7 @@ class MapDims(gym.Wrapper):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
         # FIXME: only supports square maps
-        self.MAP_X = self.width
+        self.MAP_X = self.unwrapped.width
 
 
 class Render(gym.Wrapper):
@@ -210,7 +217,7 @@ class ToPytorchOrder(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.observation_space = gym.spaces.Box(low=0, high=self.observation_space.high[0, 0, 0],
-                shape=(self.observation_space.shape[-1], self.shape[1], self.shape[0]))
+                shape=(self.observation_space.shape[-1], self.observation_space.shape[1], self.observation_space.shape[0]))
                #shape=(self.observation_space.shape[0], self.shape[1], self.shape[2]))
 
     def reset(self):
@@ -248,19 +255,21 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 if rank == 0:
                     render = render_gui
                 else: render = False
-                env.configure(map_width=map_width, render=render,
+                env.unwrapped.configure(map_width=map_width, render=render,
                         prob_life = args.prob_life, record=record_dir,
                         max_step=max_step)
 
             if 'golmulti' in env_id.lower():
                 multi_env = True
-                env.configure(map_width=map_width, render=render_gui,
+                env.unwrapped.configure(map_width=map_width, render=render_gui,
                         prob_life=args.prob_life, record=record_dir,
                         max_step=max_step, cuda=args.cuda,
                         num_proc=args.num_processes)
                 env = ParamRewMulti(env)
+
                 if extinction:
                     env = ExtinguisherMulti(env, args.extinction_type, args.extinction_prob)
+
                 if args.im_render:
                     env = ImRenderMulti(env, log_dir, rank)
             else:
@@ -271,11 +280,11 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
             if '-wide' in env_id:
                 env = ActionMapImagePCGRLWrapper(env_id)
-                env.configure(map_width=args.map_width, max_step=args.max_step)
+                env.unwrapped.configure(map_width=args.map_width, max_step=args.max_step)
                 env.adjust_param(width=args.map_width, heigh=args.map_width)
                 env = ToPytorchOrder(env)
                 env = MaxStep(env, args.max_step)
-                env = Render(env, rank, render = render_gui, render_rank=0)
+                env = Render(env, rank, render = render_gui, render_rank=[0])
                 env = MapDims(env)
 
             if 'micropolis' in env_id.lower():
@@ -297,7 +306,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 else:
                     ages = False
                 print('poet envs.py?', args.poet)
-                env.configure(
+                env.unwrapped.configure(
                         map_width=map_width,
                         max_step=max_step,
                         rank=rank,
@@ -309,10 +318,13 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         random_builds=args.random_builds,
                         poet=args.poet,
                         ages=ages)
+
                 if True:
                     env = ParamRew(env)
+
                 if True:
                     env = NoiseyTargets(env)
+
                 if extinction:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
 
@@ -357,6 +369,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
         if args.im_render and not multi_env:
             print('wrapping in imrender, rank {}'.format(rank))
+
             if 'micropolis' in args.env_name.lower():
                 env = ImRenderMicropolis(env, log_dir, rank)
 
@@ -371,6 +384,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   args=None):
 
     print('make vec envs random map? {}'.format(args.random_terrain))
+
     if 'golmultienv' in env_name.lower():
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,

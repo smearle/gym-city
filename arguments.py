@@ -207,5 +207,9 @@ def get_parser():
         type=str2bool,
         default=False,
         help='set targets for environment, replaces fixed reward function')
+    parser.add_argument(
+        '--player_trainer',
+        action='store_true',
+        help='for train_dual.py use only, tells trainer it is training the player not the generator')
 
     return parser

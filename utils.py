@@ -28,7 +28,11 @@ def get_space_dims(envs, args):
             in_h = 1
         num_inputs = observation_space_shape[0]
 
-    if isinstance(envs.action_space, gym.spaces.Discrete) or\
+    if args.player_trainer:
+        num_actions = envs.action_space.n
+        out_w = 1
+        out_h = 1
+    elif isinstance(envs.action_space, gym.spaces.Discrete) or\
         isinstance(envs.action_space, gym.spaces.Box):
         out_w = args.map_width
         out_h = args.map_width

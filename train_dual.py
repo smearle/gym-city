@@ -26,6 +26,7 @@ class Player(Trainer):
         args.save_dir = os.path.join(args.save_dir, 'player')
        #os.makedirs(args.save_dir)
         args.model = 'MLPBase'
+        args.player_trainer = True
         super().__init__(envs, args)
         self.actor_critic.to(self.device)
 
@@ -77,7 +78,8 @@ class DesignerPlayer(Trainer):
         self.playable_map = None
         # suppose all lose or all win
         self.last_gen_loss = design_args.num_processes
-        self.las_gen_rew.fill_()
+        self.las_gen_rew = np.zeros((design_args.num_processes))
+#       self.las_gen_rew.fill_()
 
     def set_active_agent(self, n_agent):
         self.active_agent = self.actor_critic.base.active_agent = n_agent
@@ -96,6 +98,7 @@ class DesignerPlayer(Trainer):
         # arbitrary env choice
 
         if 'playable_map' in infos[0] and done[0]:
+            print('GOT PLAYABLE MAP')
             playable_map = infos[0]['playable_map']
             play_rew = self.train_player_epi(playable_map)
            #if play_rew > 0:
@@ -124,7 +127,7 @@ class DesignerPlayer(Trainer):
        #self.envs.set_active_agent(1)
         epi_done = False
         self.set_active_agent(1)
-        self.player.envs.set_map(playable_map)
+        self.player.envs.unwrapped.set_map(playable_map)
        #self.player.envs.set_save_dir(self.args.save_dir)
         epi_rews = torch.zeros(self.args.num_processes)
 
@@ -138,9 +141,13 @@ class DesignerPlayer(Trainer):
        #print('epi reward', epi_rews.shape, epi_rews)
         # assume we won
         #FIXME: specific to 1 key 1 door in zelda
-        won = info['won']
+        if 'won' in info[0].keys():
+            won = torch.Tensor([inf['won'] for inf in info])
+        else:
+            won = torch.zeros(len(epi_rews))
         # reward for longer win times (harder levels)
         epi_rews += won * (self.args.max_step - (epi_rews - 2)) ** 2
+#       self.player.envs.unwrapped.set_map(None)
         return epi_rews
 
 

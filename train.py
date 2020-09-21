@@ -116,6 +116,12 @@ class Trainer():
             envs = self.make_vec_envs(args)
         self.in_w, self.in_h, self.num_inputs, self.out_w, self.out_h, self.num_actions = get_space_dims(envs, args)
 
+        if args.player_trainer:
+            observation_space, generator_action_space, action_space = envs.get_spaces()
+            self.num_actions = action_space.n
+        else:
+            observation_space, action_space, player_action_space = envs.get_spaces()
+
         if args.auto_expand:
             args.n_recs -= 1
         actor_critic = self.init_policy(envs, args)
@@ -233,7 +239,7 @@ class Trainer():
 
         if args.curiosity:
             rollouts = CuriosityRolloutStorage(args.num_steps, args.num_processes,
-                                envs.observation_space.shape, envs.action_space,
+                                observation_space.shape, action_space,
                                 recurrent_hidden_state_size, actor_critic.base.feature_state_size(), args=args)
         else:
             rollouts = RolloutStorage(args.num_steps, args.num_processes,

@@ -88,7 +88,7 @@ class DDummyVecEnv(DummyVecEnv):
 
     def set_map(self, map):
         for env in self.envs:
-            env.set_map(map)
+            env.unwrapped.set_map(map)
 
     def set_extinction_type(self, *args):
         for env in self.envs:

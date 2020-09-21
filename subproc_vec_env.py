@@ -31,7 +31,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             break
         elif cmd == 'get_spaces':
             print('getting spaces envs.py')
-            spaces = env.observation_space, env.action_space
+            spaces = env.observation_space, env.action_space, env.unwrapped.player_action_space
             remote.send(spaces)
         elif cmd == 'get_param_bounds':
             param_bounds = env.get_param_bounds()
@@ -45,8 +45,11 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd == 'render':
             env.render()
             remote.send(None)
+        elif cmd == 'set_map':
+            remote.send(env.unwrapped.set_map(data))
         elif hasattr(env, cmd):
             cmd_fn = getattr(env, cmd)
+
             if isinstance(data, dict):
                 ret_val = cmd_fn(**data)
             elif isinstance(data, list) or isinstance(data, tuple):
@@ -58,6 +61,10 @@ def worker(remote, parent_remote, env_fn_wrapper):
             print('invalid command, data: {}, {}'.format(cmd, data))
             raise NotImplementedError
 
+class VecEnvPlayer(VecEnv):
+    def __init__(self, num_envs, observation_space, action_space, player_action_space):
+        VecEnv.__init__(self, num_envs, observation_space, action_space)
+        self.player_action_space = player_action_space
 
 
 class SubprocVecEnv(VecEnv):
@@ -73,6 +80,7 @@ class SubprocVecEnv(VecEnv):
             for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, env_fns)]
         # TODO: subclass and expand this
         self.playable_map = None
+
         for p in self.ps:
             p.daemon = True # if the main process crashes, we should not cause things to hang
             p.start()
@@ -82,10 +90,14 @@ class SubprocVecEnv(VecEnv):
         for remote in self.work_remotes:
             remote.close()
 
+        if len(spaces) == 2:
+            observation_space, action_space = spaces
+            VecEnv.__init__(self, len(env_fns), observation_space, action_space)
 
-        observation_space, action_space = spaces
+        if len(spaces) == 3:
+            observation_space, action_space, player_action_space = spaces
+            VecEnvPlayer.__init__(self, len(env_fns), observation_space, action_space, player_action_space)
         print('spaces found by SubprocVecEnv: obs {}, act {}'.format(observation_space, action_space))
-        VecEnv.__init__(self, len(env_fns), observation_space, action_space)
         print('obs space in SubProcVec init: {}'.format(self.observation_space))
 
     def init_storage(self):
@@ -102,6 +114,7 @@ class SubprocVecEnv(VecEnv):
         worker = self.remotes[0]
         worker.send(('get_param_trgs', None))
         param_trgs = worker.recv()
+
         return param_trgs
 
     def reset_episodes(self, im_log_dir):
@@ -163,6 +176,7 @@ class SubprocVecEnv(VecEnv):
         worker.send(('set_param_bounds', param_bounds))
         num_params = worker.recv()
         print('{} env params'.format(num_params))
+
         return num_params
 
     def step_async(self, actions):
@@ -186,6 +200,7 @@ class SubprocVecEnv(VecEnv):
     def render(self, mode=None):
         remote = self.remotes[0]
         remote.send(('render', None))
+
         return remote.recv()
 
        #return np.stack([remote.recv() for remote in self.remotes])
@@ -199,7 +214,10 @@ class SubprocVecEnv(VecEnv):
     def get_spaces(self):
         for remote in self.remotes:
             remote.send(('get_spaces', None))
-            return remote.recv()
+            space_list = remote.recv()
+            print('space list', space_list)
+
+            return space_list
 
     def close(self):
         if self.closed:
