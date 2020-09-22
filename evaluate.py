@@ -69,7 +69,7 @@ class Evaluator(object):
         self.args = args
         self.actor_critic = actor_critic
         self.num_eval_processes = 1
-        if envs and False:
+        if envs and True:
             self.eval_envs = envs
             self.vec_norm = vec_norm
             self.num_eval_processes = args.num_processes

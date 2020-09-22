@@ -48,6 +48,15 @@ class MicropolisEnv(core.Env):
             'num_plants': (0, 100),
             'mayor_rating': (0, 100)
         })
+        # Roughly speaking (don't use this, record actual when targets changed)
+        self.init_metrics = {
+                'res_pop': 0,
+                'com_pop': 0,
+                'ind_pop': 0,
+                'traffic': 0,
+                'num_plants': 0,
+                'mayor_rating': 50,
+                }
         self.weights = OrderedDict({
             'res_pop': 1 / 8,
             'com_pop': 1,
@@ -202,8 +211,8 @@ class MicropolisEnv(core.Env):
         self.num_obs_channels = self.micro.map.num_features + self.num_scalars \
             + self.num_density_maps + num_user_features
 
-        if self.poet:
-            self.num_obs_channels += len(self.metric_trgs)
+       #if self.poet:
+       #    self.num_obs_channels += len(self.metric_trgs)
         #ac_low = np.zeros((3))
 
     #ac_high = np.array([self.num_tools - 1, self.MAP_X - 1, self.MAP_Y - 1])
@@ -212,11 +221,13 @@ class MicropolisEnv(core.Env):
         self.metadata = {'runtime.vectorized': True}
         obs_shape = [self.num_obs_channels, self.MAP_X, self.MAP_Y]
         act_shape = [self.num_tools * self.MAP_X * self.MAP_Y]
+        print('act_shape: {}'.format(act_shape))
 
         if self.tensorflow:
             print('Tensorflow-ordered observation space')
             obs_shape = obs_shape[1], obs_shape[2], obs_shape[0]
-        self.action_space = spaces.Discrete(*act_shape)
+        self.action_space = spaces.Discrete((*act_shape))
+        print('set action space to:\n{}'.format(self.action_space))
         low_obs = np.full((obs_shape), fill_value=-1)
         high_obs = np.full((obs_shape), fill_value=1)
         self.observation_space = spaces.Box(low=low_obs,
@@ -384,14 +395,14 @@ class MicropolisEnv(core.Env):
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
         scalars = [res_pop, com_pop, ind_pop, resDemand, comDemand, indDemand]
 
-        if self.poet:
-            for j in range(3):
-                scalars[j] = scalars[j] / self.param_ranges[j]
-            trg_metrics = [v for k, v in self.metric_trgs.items()]
+       #if self.poet:
+       #    for j in range(3):
+       #        scalars[j] = scalars[j] / self.param_ranges[j]
+       #    trg_metrics = [v for k, v in self.metric_trgs.items()]
 
-            for i in range(len(trg_metrics)):
-                trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
-            scalars += trg_metrics
+       #    for i in range(len(trg_metrics)):
+       #        trg_metrics[i] = trg_metrics[i] / self.param_ranges[i]
+       #    scalars += trg_metrics
         state = self.observation(scalars)
 
         if self.tensorflow:
@@ -521,13 +532,13 @@ class MicropolisEnv(core.Env):
 
         return len(bounds)
 
-    def set_params(self, trgs):
-        for k, v in trgs.items():
-            self.metric_trgs[k] = v
-        self.trg_param_vals = np.array([v for v in self.metric_trgs.values()])
-        self.display_metric_trgs()
+   #def set_params(self, trgs):
+   #    for k, v in trgs.items():
+   #        self.metric_trgs[k] = v
+   #    self.trg_param_vals = np.array([v for v in self.metric_trgs.values()])
+   #    self.display_metric_trgs()
 
-    #print('set city trgs of env {} to: {}'.format(self.rank, self.metric_trgs))
+   ##print('set city trgs of env {} to: {}'.format(self.rank, self.metric_trgs))
 
     def get_param_trgs(self):
         print('param_trgs: {}'.format(self.metric_trgs))

@@ -6,6 +6,7 @@ import time
 import gym
 import numpy as np
 import torch
+from pathlib import Path
 from gym.spaces.box import Box
 
 from baselines import bench
@@ -32,6 +33,18 @@ class MicropolisMonitor(bench.Monitor):
         logfile = filename + '.monitor.csv'
         curr_dir = os.curdir
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        try:
+            try:
+                path = Path(filename).parent.parent.parent
+                os.mkdir(path)
+            except:
+                pass
+            path = Path(filename).parent.parent
+            os.mkdir(path)
+            path = Path(filename).parent
+            os.mkdir(path)
+        except:
+            pass
 
         if os.path.exists(logfile):
             append_log = True
@@ -302,7 +315,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     ages = True
                 else:
                     ages = False
-                print('poet envs.py?', args.poet)
+
+                if param_rew:
+                    env = ParamRew(env)
                 env.configure(
                         map_width=map_width,
                         max_step=max_step,
@@ -314,9 +329,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         record=record,
                         random_builds=args.random_builds,
                         poet=args.poet,
-                        ages=ages)
-                if True:
-                    env = ParamRew(env)
+                        ages=ages,
+                        )
                 if False:
                     env = NoiseyTargets(env)
                 if extinction:
@@ -554,6 +568,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
             self.shape_dim0 = wos.shape[0]
             low = np.repeat(wos.low, self.nstack, axis=0)
             self.stacked_obs = torch.zeros((self.venv.num_envs,) + low.shape).to(self.device)
+        print('shape_dim0', self.shape_dim0)
         self.stacked_obs[:, -self.shape_dim0:] = obs
 
         return self.stacked_obs

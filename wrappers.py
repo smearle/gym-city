@@ -491,27 +491,37 @@ class ImRenderMulti(ImRender):
 
 class ParamRew(gym.Wrapper):
     def __init__(self, env):
-        super(ParamRew, self).__init__(env)
+        self.env = env
+        super().__init__(self.env)
         #FIXME but why?
-        self.width = self.env.width
+        self.env = env
+
+
+    def configure(self, **kwargs):
+        self.unwrapped.configure(**kwargs)
         self.metrics = self.unwrapped.metrics
         print('unwrapped: {}'.format(self.unwrapped.metrics))
         self.last_metrics = copy.deepcopy(self.metrics)
         self.param_bounds = self.unwrapped.param_bounds
         self.param_ranges = {}
+        self.max_improvement = 0
         for k, v in self.param_bounds.items():
-            self.param_ranges[k] = abs(v[1] - v[0])
+            improvement = abs(v[1] - v[0])
+            self.param_ranges[k] = improvement
+            self.max_improvement += improvement * self.weights[k]
+        self.max_improvement = sum(self.param_ranges.values())
         self.metric_trgs = self.unwrapped.metric_trgs
         self.num_params = 2 * len(self.metrics)
-        self.weights = {}
 
         for k, v in self.metrics.items():
             self.weights[k] = self.unwrapped.weights[k]
         for k, v in self.weights.items():
             self.param_bounds['{}_weight'.format(k)] = (0, 1)
-
-    def configure(self, **kwargs):
-        self.unwrapped.configure(**kwargs)
+        self.width = self.unwrapped.width
+        self.observation_space = self.env.observation_space
+        # FIXME: hack for gym-pcgrl
+        print('param rew obs space', self.observation_space)
+        self.action_space = self.env.action_space
         orig_obs_shape = self.observation_space.shape
         obs_shape = orig_obs_shape[0] + len(self.metric_trgs), orig_obs_shape[1], orig_obs_shape[2]
         low = self.observation_space.low
@@ -523,7 +533,6 @@ class ParamRew(gym.Wrapper):
         high = np.vstack((metric_trgs_high, high))
         self.observation_space = gym.spaces.Box(low=low, high=high)
         self.metric_trgs_shape = metric_trgs_shape
-        print('param rew obs space:\n{}'.format(self.observation_space))
 
     def getState(self):
         scalars = super().getState()
@@ -535,38 +544,51 @@ class ParamRew(gym.Wrapper):
 
     def set_params(self, params):
         i = 0
+        self.init_metrics = copy.deepcopy(self.metrics)
 
-        for k, _ in self.metric_trgs.items():
-            if k in params:
-                self.metric_trgs[k] = params[k]
-            i += 1
-
+        self.max_improvement = 0
         for k in self.weights:
             weight_name = '{}_weight'.format(k)
             if weight_name in params:
                 self.weights[k] = params[weight_name]
             i += 1
+
+        for k, _ in self.metric_trgs.items():
+            if k in params:
+                metric_trg = params[k]
+                self.metric_trgs[k] = metric_trg
+                self.max_improvement += abs(metric_trg - self.init_metrics[k]) * self.weights[k]
+            i += 1
+
+
         self.unwrapped.display_metric_trgs()
 
     def reset(self):
-        ret = super().reset()
+        ob = super().reset()
+        ob = self.observe_metric_trgs(ob)
         self.metrics = self.unwrapped.metrics
         self.last_metrics = copy.deepcopy(self.metrics)
-        return ret
+        return ob
 
-    def step(self, action):
-       #print('unwrapped metrics', self.unwrapped.metrics)
-        ob, rew, done, info = super().step(action)
-        self.metrics = self.unwrapped.metrics
-        rew = self.get_reward()
-        self.last_metrics = copy.deepcopy(self.metrics)
+    def observe_metric_trgs(self, obs):
         metric_trgs_ob = np.zeros((self.metric_trgs_shape))
         i = 0
         for k, v in self.metric_trgs.items():
             metric_trgs_ob[i, :, :] = v / self.param_ranges[k]
             i += 1
-        ob = np.vstack((metric_trgs_ob, ob))
+       #print('param rew obs shape ', obs.shape)
+       #print('metric trgs shape ', metric_trgs_ob.shape)
+        obs = np.vstack((metric_trgs_ob, obs))
+        return obs
 
+
+    def step(self, action):
+       #print('unwrapped metrics', self.unwrapped.metrics)
+        ob, rew, done, info = super().step(action)
+        ob = self.observe_metric_trgs(ob)
+        self.metrics = self.unwrapped.metrics
+        rew = self.get_reward()
+        self.last_metrics = copy.deepcopy(self.metrics)
         return ob, rew, done, info
 
     def get_param_trgs(self):
@@ -595,7 +617,9 @@ class ParamRew(gym.Wrapper):
                 else:
                     metric_rew += abs(trg_change) - abs(trg_change - change)
             reward += metric_rew * self.weights[metric]
-        reward = reward / (sum([w for _, w in self.weights.items()]) + 0.001)
+        assert(reward <= self.max_improvement, 'actual reward {} is less than supposed maximum possible \
+                improvement toward target vectors of {}'.format(reward, self.max_improvement))
+        reward = 100 * (reward / self.max_improvement)
 
         return reward
 

@@ -63,7 +63,6 @@ def get_space_dims(envs, args):
         num_actions = envs.action_space.shape[-1]
     # for PCGRL
     elif isinstance(envs.action_space, gym.spaces.MultiDiscrete):
-        raise Exception
         out_w = envs.action_space.nvec[0]
         out_h = envs.action_space.nvec[1]
         num_actions = envs.action_space.nvec[2]

@@ -113,6 +113,7 @@ class Trainer():
         if envs is None:
             envs = self.make_vec_envs(args)
         self.in_w, self.in_h, self.num_inputs, self.out_w, self.out_h, self.num_actions = get_space_dims(envs, args)
+        self.envs = envs
 
         if args.auto_expand:
             args.n_recs -= 1
@@ -213,7 +214,7 @@ class Trainer():
            #saved_args.n_chan = args.n_chan
            #saved_args.prebuild = args.prebuild
            #args = saved_args
-            args.eval_interval = saved_args.eval_interval
+           #args.eval_interval = saved_args.eval_interval
             args.save_dir = saved_args.save_dir
             args.model = saved_args.model
             args.env_name = saved_args.env_name
@@ -490,7 +491,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                 format(
                        fwd_loss, inv_loss))
 
-        if (args.eval_interval is not None and len(episode_rewards) > 1
+        if (args.eval_interval != -1 and len(episode_rewards) > 1
                 and n_train % args.eval_interval == 0):
 
             if evaluator is None:

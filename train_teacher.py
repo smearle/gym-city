@@ -23,7 +23,7 @@ from train import Trainer, init_agent
 from utils import get_vec_normalize
 from visualize import Plotter
 
-NUM_ENV_PARAMS = 2
+NUM_ENV_PARAMS = 1
 
 class Teacher(Trainer):
     def get_fieldnames(self):
