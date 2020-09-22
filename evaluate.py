@@ -69,7 +69,7 @@ class Evaluator(object):
         self.args = args
         self.actor_critic = actor_critic
         self.num_eval_processes = 1
-        if envs and True:
+        if envs and False:
             self.eval_envs = envs
             self.vec_norm = vec_norm
             self.num_eval_processes = args.num_processes
@@ -81,7 +81,8 @@ class Evaluator(object):
             eval_args.render = args.render
             self.eval_envs = make_vec_envs(
                         self.args.env_name, self.args.seed + self.num_eval_processes, self.num_eval_processes,
-                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False, args=eval_args)
+                        self.args.gamma, self.eval_log_dir, self.args.add_timestep, self.device, False,
+                        param_rew=args.param_rew, args=eval_args)
             self.vec_norm = get_vec_normalize(self.eval_envs)
         if self.vec_norm is not None:
             self.vec_norm.eval()
