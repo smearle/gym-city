@@ -203,7 +203,7 @@ class MicropolisEnv(core.Env):
         self.num_tools = self.micro.num_tools
         self.num_zones = self.micro.num_zones
         # res, com, ind pop, demand
-        self.num_scalars = 6
+        self.num_scalars = 3
         self.num_density_maps = 3
         num_user_features = 1  # static builds
         # traffic, power, density
@@ -393,7 +393,8 @@ class MicropolisEnv(core.Env):
         res_pop, com_pop, ind_pop = self.micro.getResPop(
         ), self.micro.getComPop(), self.micro.getIndPop()
         resDemand, comDemand, indDemand = self.micro.engine.getDemands()
-        scalars = [res_pop, com_pop, ind_pop, resDemand, comDemand, indDemand]
+        scalars = [#res_pop, com_pop, ind_pop, # Let ParamRew take care of these
+                resDemand, comDemand, indDemand]
 
        #if self.poet:
        #    for j in range(3):
@@ -427,6 +428,8 @@ class MicropolisEnv(core.Env):
 
             if not type(fill_val) == str:
                 scalar_layers[si].fill(scalars[si])
+            else:
+                raise Exception('fill falue is string: {}'.format(fill_val))
         state = np.concatenate((state, density_maps, scalar_layers), 0)
 
         if self.static_builds:

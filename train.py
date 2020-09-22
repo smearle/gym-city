@@ -491,7 +491,7 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
                 format(
                        fwd_loss, inv_loss))
 
-        if (args.eval_interval != -1 and len(episode_rewards) > 1
+        if (args.eval_interval and args.eval_interval != -1 and len(episode_rewards) > 1
                 and n_train % args.eval_interval == 0):
 
             if evaluator is None:

@@ -523,16 +523,16 @@ class ParamRew(gym.Wrapper):
         print('param rew obs space', self.observation_space)
         self.action_space = self.env.action_space
         orig_obs_shape = self.observation_space.shape
-        obs_shape = orig_obs_shape[0] + len(self.metric_trgs), orig_obs_shape[1], orig_obs_shape[2]
+        obs_shape = orig_obs_shape[0] + 2 * len(self.metric_trgs), orig_obs_shape[1], orig_obs_shape[2]
         low = self.observation_space.low
         high = self.observation_space.high
-        metric_trgs_shape = (len(self.metric_trgs), obs_shape[1], obs_shape[2])
-        metric_trgs_low = np.full(metric_trgs_shape, fill_value=0)
-        metric_trgs_high = np.full(metric_trgs_shape, fill_value=1)
-        low = np.vstack((metric_trgs_low, low))
-        high = np.vstack((metric_trgs_high, high))
+        metrics_shape = (2 * len(self.metric_trgs), obs_shape[1], obs_shape[2])
+        metrics_low = np.full(metrics_shape, fill_value=0)
+        metrics_high = np.full(metrics_shape, fill_value=1)
+        low = np.vstack((metrics_low, low))
+        high = np.vstack((metrics_high, high))
         self.observation_space = gym.spaces.Box(low=low, high=high)
-        self.metric_trgs_shape = metric_trgs_shape
+        self.metrics_shape = metrics_shape
 
     def getState(self):
         scalars = super().getState()
@@ -571,14 +571,18 @@ class ParamRew(gym.Wrapper):
         return ob
 
     def observe_metric_trgs(self, obs):
-        metric_trgs_ob = np.zeros((self.metric_trgs_shape))
+        metrics_ob = np.zeros((self.metrics_shape))
         i = 0
         for k, v in self.metric_trgs.items():
-            metric_trgs_ob[i, :, :] = v / self.param_ranges[k]
+            metrics_ob[i*2, :, :] = v / self.param_ranges[k]
+            metric = self.metrics[k]
+            if not metric:
+                metric = 0
+            metrics_ob[i*2+1, :, :] = metric / self.param_ranges[k]
             i += 1
        #print('param rew obs shape ', obs.shape)
        #print('metric trgs shape ', metric_trgs_ob.shape)
-        obs = np.vstack((metric_trgs_ob, obs))
+        obs = np.vstack((metrics_ob, obs))
         return obs
 
 
@@ -617,9 +621,12 @@ class ParamRew(gym.Wrapper):
                 else:
                     metric_rew += abs(trg_change) - abs(trg_change - change)
             reward += metric_rew * self.weights[metric]
-        assert(reward <= self.max_improvement, 'actual reward {} is less than supposed maximum possible \
-                improvement toward target vectors of {}'.format(reward, self.max_improvement))
-        reward = 100 * (reward / self.max_improvement)
+       #assert(reward <= self.max_improvement, 'actual reward {} is less than supposed maximum possible \
+       #        improvement toward target vectors of {}'.format(reward, self.max_improvement))
+        if self.max_improvement == 0:
+            reward = 100 * (reward / self.max_improvement + 0.000001)
+        else:
+            reward = 100 * (reward / self.max_improvement)
 
         return reward
 
