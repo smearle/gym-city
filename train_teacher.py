@@ -23,8 +23,6 @@ from train import Trainer, init_agent
 from utils import get_vec_normalize
 from visualize import Plotter
 
-NUM_ENV_PARAMS = 1
-
 class Teacher(Trainer):
     def get_fieldnames(self):
         return ['r','l','t','e','p']
@@ -39,6 +37,7 @@ class Teacher(Trainer):
     def __init__(self, args=None):
         if args is None:
             args = get_args()
+        NUM_ENV_PARAMS = args.num_env_params
         device = torch.device("cuda:0" if args.cuda else "cpu")
         self.device = device
         # have to do above before call to parent to initialize Evaluator correctly
@@ -110,6 +109,7 @@ class Teacher(Trainer):
             params_vec = alp_gmm.sample_task()
             prm_i = 0
 
+            print(params_vec)
             for k, v in env_param_bounds.items():
                 if prm_i < num_env_params:
                     params[k] = params_vec[prm_i]

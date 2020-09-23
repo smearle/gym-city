@@ -23,6 +23,8 @@ from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 from subproc_vec_env import SubprocVecEnv
 from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets
 
+from gym_micro_rct.envs.rct_env import RCTEnv
+
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
@@ -252,7 +254,10 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         else:
-            env = gym.make(env_id)
+
+
+            env = gym.make(env_id, 
+                    render_gui=render_gui, rank=rank, max_step=max_step)
 
             if record:
                 record_dir = log_dir
@@ -296,6 +301,12 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     print('pcgrl reward teacher')
                     env = ParamRew(env)
                 env.configure(map_width=args.map_width, max_step=args.max_step)
+
+            if 'rct' in env_id.lower():
+                if param_rew:
+                    env = ParamRew(env)
+
+                env.configure()
 
             if 'micropolis' in env_id.lower():
                 power_puzzle = False

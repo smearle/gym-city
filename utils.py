@@ -28,6 +28,11 @@ def get_space_dims(envs, args):
             in_h = 1
         num_inputs = observation_space_shape[0]
 
+    if isinstance(envs.action_space, gym.spaces.Dict):
+        out_w = int(envs.action_space.spaces['position'].high[0])
+        out_h = int(envs.action_space.spaces['position'].high[1])
+        num_actions = envs.action_space.spaces['build'].n
+
     if isinstance(envs.action_space, gym.spaces.Discrete) or\
         isinstance(envs.action_space, gym.spaces.Box):
         out_w = args.map_width

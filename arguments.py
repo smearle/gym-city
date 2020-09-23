@@ -207,5 +207,11 @@ def get_parser():
         type=str2bool,
         default=True,
         help='set targets for environment, replaces fixed reward function')
+    parser.add_argument(
+        '--num-env-params',
+        type=int,
+        default=1,
+        help='how many of the environment metrics to include as targets',
+        )
 
     return parser

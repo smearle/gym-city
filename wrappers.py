@@ -6,6 +6,7 @@ import gym
 import numpy as np
 import torch
 from opensimplex import OpenSimplex
+import pygame
 
 class NoiseyTargets(gym.Wrapper):
     '''A bunch of simplex noise instances modulate target metrics.'''
@@ -488,16 +489,21 @@ class ImRenderMulti(ImRender):
        #    print(log_dir)
        #    cv2.imwrite(log_dir, self.image)
        #    self.n_saved += 1
-
+import gi 
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, GLib
 class ParamRew(gym.Wrapper):
     def __init__(self, env):
+
+ 
+
         self.env = env
         super().__init__(self.env)
         #FIXME but why?
-        self.env = env
 
 
     def configure(self, **kwargs):
+        print(kwargs)
         self.unwrapped.configure(**kwargs)
         self.metrics = self.unwrapped.metrics
         print('unwrapped: {}'.format(self.unwrapped.metrics))
@@ -511,7 +517,7 @@ class ParamRew(gym.Wrapper):
             self.max_improvement += improvement * self.weights[k]
         self.max_improvement = sum(self.param_ranges.values())
         self.metric_trgs = self.unwrapped.metric_trgs
-        self.num_params = 2 * len(self.metrics)
+        self.num_params = len(self.metrics)
 
         for k, v in self.metrics.items():
             self.weights[k] = self.unwrapped.weights[k]
@@ -527,12 +533,21 @@ class ParamRew(gym.Wrapper):
         low = self.observation_space.low
         high = self.observation_space.high
         metrics_shape = (2 * len(self.metric_trgs), obs_shape[1], obs_shape[2])
+        self.metrics_shape = metrics_shape
         metrics_low = np.full(metrics_shape, fill_value=0)
         metrics_high = np.full(metrics_shape, fill_value=1)
         low = np.vstack((metrics_low, low))
         high = np.vstack((metrics_high, high))
         self.observation_space = gym.spaces.Box(low=low, high=high)
-        self.metrics_shape = metrics_shape
+        screen_width = 200
+        screen_height = 100 * (self.num_params)
+        if self.render_gui and False:
+            win = ProgressBarWindow(self.metrics, self.metric_trgs, self.param_bounds)
+            win.connect("destroy", Gtk.main_quit)
+            win.show_all()
+
+
+
 
     def getState(self):
         scalars = super().getState()
@@ -561,7 +576,7 @@ class ParamRew(gym.Wrapper):
             i += 1
 
 
-        self.unwrapped.display_metric_trgs()
+        self.display_metric_trgs()
 
     def reset(self):
         ob = super().reset()
@@ -580,13 +595,17 @@ class ParamRew(gym.Wrapper):
                 metric = 0
             metrics_ob[i*2+1, :, :] = metric / self.param_ranges[k]
             i += 1
-       #print('param rew obs shape ', obs.shape)
-       #print('metric trgs shape ', metric_trgs_ob.shape)
+#       print('param rew obs shape ', obs.shape)
+#       print('metric trgs shape ', metrics_ob.shape)
         obs = np.vstack((metrics_ob, obs))
         return obs
 
 
     def step(self, action):
+        if self.render_gui:
+            while Gtk.events_pending():
+                Gtk.main_iteration()
+
        #print('unwrapped metrics', self.unwrapped.metrics)
         ob, rew, done, info = super().step(action)
         ob = self.observe_metric_trgs(ob)
@@ -597,6 +616,16 @@ class ParamRew(gym.Wrapper):
 
     def get_param_trgs(self):
         return self.metric_trgs
+
+    def get_param_bounds(self):
+        return self.param_bounds
+
+    def set_param_bounds(self, bounds):
+        for k, (l, h) in bounds.items():
+            self.param_bounds[k] = (l, h)
+
+    def display_metric_trgs(self):
+        pass
 
     def get_reward(self):
         reward = 0
@@ -624,11 +653,80 @@ class ParamRew(gym.Wrapper):
        #assert(reward <= self.max_improvement, 'actual reward {} is less than supposed maximum possible \
        #        improvement toward target vectors of {}'.format(reward, self.max_improvement))
         if self.max_improvement == 0:
-            reward = 100 * (reward / self.max_improvement + 0.000001)
+            pass
         else:
             reward = 100 * (reward / self.max_improvement)
 
         return reward
+
+class ProgressBarWindow(Gtk.Window):
+    def __init__(self, metrics, metric_trgs, metric_bounds):
+        Gtk.Window.__init__(self, title="Metrics")
+        self.set_border_width(10)
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.add(vbox)
+
+        prog_bars = {}
+        scales = {}
+        for k in metrics:
+            scale = Gtk.HScale()
+            vbox.pack_start(scale, False, False, 0)
+
+
+            metric_prog = Gtk.ProgressBar()
+            prog_bars[k] = metric_prog
+            vbox.pack_start(metric_prog, True, True, 0)
+           #bounds = metric_bounds[k]
+           #frac = metrics[k]
+           #metric_prog.set_fraction(frac)
+
+      
+       #self.timeout_id = GLib.timeout_add(50, self.on_timeout, None)
+       #self.activity_mode = False
+
+    def set_metrics(self, metrics):
+        for k, prog_bar in self.prog_bars.items():
+            prog_bar.set_fraction
+
+    def on_show_text_toggled(self, button):
+        show_text = button.get_active()
+        if show_text:
+            text = "some text"
+        else:
+            text = None
+        self.progressbar.set_text(text)
+        self.progressbar.set_show_text(show_text)
+
+    def on_activity_mode_toggled(self, button):
+        self.activity_mode = button.get_active()
+        if self.activity_mode:
+            self.progressbar.pulse()
+        else:
+            self.progressbar.set_fraction(0.0)
+
+    def on_right_to_left_toggled(self, button):
+        value = button.get_active()
+        self.progressbar.set_inverted(value)
+
+    def on_timeout(self, user_data):
+        """
+        Update value on the progress bar
+        """
+        if self.activity_mode:
+            self.progressbar.pulse()
+        else:
+            new_value = self.progressbar.get_fraction() + 0.01
+
+            if new_value > 1:
+                new_value = 0
+
+            self.progressbar.set_fraction(new_value)
+
+        # As this is a timeout function, return True so that it
+        # continues to get called
+        return True
+
 
 class ParamRewMulti(ParamRew):
     ''' Calculate reward in terms of movement toward vector of target metrics, for environments in

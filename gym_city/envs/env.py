@@ -21,7 +21,7 @@ else:
 
 
 class MicropolisEnv(core.Env):
-    def __init__(self, MAP_X=20, MAP_Y=20, PADDING=0):
+    def __init__(self, MAP_X=20, MAP_Y=20, PADDING=0, **kwargs):
         self.SHOW_GUI = False
         self.start_time = time.time()
         self.print_map = False
@@ -61,16 +61,16 @@ class MicropolisEnv(core.Env):
             'res_pop': 1 / 8,
             'com_pop': 1,
             'ind_pop': 1,
-            'traffic': 0,
-            'num_plants': 0,
-            'mayor_rating': 0,
+            'traffic': 1/20,
+            'num_plants': 1,
+            'mayor_rating': 1,
            #'ind_pop': 1,
            #'traffic': 1 / 10,
            #'num_plants': 1,
            #'mayor_rating': 1 / 2,
         })
 
-        self.num_params = 2
+        self.num_params = 6
         # not necessarily true but should take care of most cases
         self.max_loss = 0
         i = 0

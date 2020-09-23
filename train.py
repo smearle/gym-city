@@ -61,6 +61,8 @@ class Trainer():
         return ['r','l','t','e']
 
     def __init__(self, envs=None, args=None):
+        if args is None:
+            args = get_args()
         self.n_train = 0
         self.fieldnames = self.get_fieldnames()
         self.n_frames = 0
@@ -86,7 +88,8 @@ class Trainer():
         agent = False
         past_frames = 0
         try:
-            os.makedirs(args.log_dir)
+            if hasattr(args, 'log_dir'):
+                os.makedirs(args.log_dir)
         except OSError:
             files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
 
@@ -277,6 +280,8 @@ class Trainer():
         if args is None:
             args = get_args()
         args.log_dir = args.save_dir + '/logs'
+        if not hasattr(args, 'param_rew'):
+            args.param_rew = False
         try:
             envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                     args.gamma, args.log_dir, args.add_timestep, self.device, False, None,

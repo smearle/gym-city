@@ -78,6 +78,9 @@ class Policy(nn.Module):
             else:
                 self.dist = DiagGaussian(self.base.output_size, self.num_actions)
     #           self.dist = Categorical2D(self.base.output_size, num_outputs)
+       #elif action_space.__class__.__name__ == "Dict":
+       #    num_outputs = 
+       #    self.dist = Categorical2D(self.base.output_size, num_outputs)
 
         else:
             raise NotImplementedError

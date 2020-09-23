@@ -376,8 +376,8 @@ class Plotter(object):
             figfile = '{}_{}_fig.png'.format(figfolder, header)
         print('should be saving graph now as {}'.format(figfile))
         plt.savefig(figfile, format='png')
-        plt.show()
-        plt.draw()
+       #plt.show()
+       #plt.draw()
 
         image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
         image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
