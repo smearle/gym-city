@@ -22,8 +22,8 @@ from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
 from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets
+from gym_micro_rct.envs.rct_env import RCT
 
-from gym_micro_rct.envs.rct_env import RCTEnv
 
 
 class MicropolisMonitor(bench.Monitor):
@@ -244,6 +244,7 @@ class ToPytorchOrder(gym.Wrapper):
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False,
         print_map=False, parallel_py2gui=False, noreward=False, max_step=None, param_rew=False,
+        num_env_params=0,
         args=None):
     ''' return a function which starts the environment'''
     def _thunk():
@@ -297,14 +298,17 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 env = MaxStep(env, args.max_step)
                 env = Render(env, rank, render = render_gui, render_rank=0)
                 env = MapDims(env)
-                if param_rew:
+                if True or param_rew: 
                     print('pcgrl reward teacher')
-                    env = ParamRew(env)
-                env.configure(map_width=args.map_width, max_step=args.max_step)
+                    assert num_env_params != 0
+                    env = ParamRew(env, num_env_params)
+                    env.configure(map_width=args.map_width, max_step=args.max_step)
+                    env = NoiseyTargets(env)
 
             if 'rct' in env_id.lower():
                 if param_rew:
-                    env = ParamRew(env)
+                    assert num_env_params != 0
+                    env = ParamRew(env, num_env_params)
 
                 env.configure()
 
@@ -328,7 +332,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     ages = False
 
                 if param_rew:
-                    env = ParamRew(env)
+                    assert num_env_params != 0
+                    env = ParamRew(env, num_env_params)
                 env.configure(
                         map_width=map_width,
                         max_step=max_step,
@@ -342,7 +347,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         poet=args.poet,
                         ages=ages,
                         )
-                if False:
+                if True:
                     env = NoiseyTargets(env)
                 if extinction:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
@@ -399,15 +404,16 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None, param_rew=False,
-                  args=None):
+                  num_env_params=0, args=None):
 
     print('make vec envs random map? {}'.format(args.random_terrain))
     if 'golmultienv' in env_name.lower():
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
+    assert num_env_params != 0
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
         allow_early_resets, map_width=args.map_width, render_gui=args.render,
         print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, param_rew=param_rew,
-        args=args)
+        num_env_params=num_env_params, args=args)
             for i in range(num_processes)]
 
     if 'golmultienv' in env_name.lower():
@@ -579,7 +585,6 @@ class VecPyTorchFrameStack(VecEnvWrapper):
             self.shape_dim0 = wos.shape[0]
             low = np.repeat(wos.low, self.nstack, axis=0)
             self.stacked_obs = torch.zeros((self.venv.num_envs,) + low.shape).to(self.device)
-        print('shape_dim0', self.shape_dim0)
         self.stacked_obs[:, -self.shape_dim0:] = obs
 
         return self.stacked_obs

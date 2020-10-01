@@ -70,7 +70,7 @@ param_rew = args.num_env_params > 0
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, args.load_dir, args.add_timestep, device=device,
                     allow_early_resets=False,
-                    param_rew=param_rew,
+                    param_rew=param_rew, num_env_params=args.num_env_params,
                     args=dummy_args)
 print(args.load_dir)
 

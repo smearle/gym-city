@@ -285,7 +285,7 @@ class Trainer():
         try:
             envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                     args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
-                    param_rew=args.param_rew, args=args)
+                    param_rew=args.param_rew, num_env_params=args.num_env_params, args=args)
         except gym.error.UnregisteredEnv as err:
             print(err, '\n available envs: \n{}'.format(gym.envs.registry.all()))
             raise err
@@ -364,6 +364,7 @@ class Trainer():
        #print('action in train.py: {}'.format(action))
         # Observe reward and next obs
         obs, reward, done, infos = envs.step(action)
+#       print(obs[0])
 
         player_act = None
 

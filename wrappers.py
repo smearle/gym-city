@@ -15,18 +15,25 @@ class NoiseyTargets(gym.Wrapper):
         self.param_bounds = self.env.param_bounds
         self.num_params = self.env.num_params
         self.noise = OpenSimplex()
+        # Do not reset n_step
+        self.n_step = 0
     
     def step(self, a):
         param_bounds = self.param_bounds
         trgs = {} 
-        for i in range(self.num_params):
-            trgs[i] = self.noise.noise2d(x=self.unwrapped.num_step/10, y=i*10)
         i = 0
-        for param, (ub, lb) in param_bounds.items():
-            trgs[param] = ((trgs[i] + 1) / 2 * (ub - lb)) + lb
+        for k in self.env.usable_metrics:
+            trgs[k] = self.noise.noise2d(x=self.n_step/400, y=i*100)
+            i += 1
+
+        i = 0
+        for k in self.env.usable_metrics:
+            (ub, lb) = param_bounds[k]
+            trgs[k] = ((trgs[k] + 1) / 2 * (ub - lb)) + lb
             i += 1
         self.env.set_params(trgs)
         out = self.env.step(a)
+        self.n_step += 1
         return out
 
     def reset(self):
@@ -222,7 +229,7 @@ class ExtinguisherMulti(Extinguisher):
        #self.n_curr_dels += n_new_dels.int()
        #self.n_curr_dels += torch.sum(self.dels, dim=[1, 2, 3])
         self.dels = self.dels.fill_(0)
-        cv2.waitKey(10)
+        cv2.waitKey(1)
 
     def clear_border(self, x, y, r):
         '''Clears the border r away (Manhattan distance) from a central point, one tile at a time.
@@ -489,64 +496,71 @@ class ImRenderMulti(ImRender):
        #    print(log_dir)
        #    cv2.imwrite(log_dir, self.image)
        #    self.n_saved += 1
-import gi 
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GLib
+
+
+
 class ParamRew(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, num_env_params):
 
  
 
         self.env = env
         super().__init__(self.env)
-        #FIXME but why?
+        self.num_params = num_env_params
+        self.auto_reset = True
 
 
     def configure(self, **kwargs):
         print(kwargs)
         self.unwrapped.configure(**kwargs)
         self.metrics = self.unwrapped.metrics
+        # NB: self.metrics needs to be an OrderedDict
+        self.usable_metrics = list(self.metrics.keys())[:self.num_params]
+        print(self.usable_metrics)
         print('unwrapped: {}'.format(self.unwrapped.metrics))
         self.last_metrics = copy.deepcopy(self.metrics)
         self.param_bounds = self.unwrapped.param_bounds
         self.param_ranges = {}
         self.max_improvement = 0
-        for k, v in self.param_bounds.items():
+        for k in self.usable_metrics:
+            v = self.param_bounds[k]
             improvement = abs(v[1] - v[0])
             self.param_ranges[k] = improvement
             self.max_improvement += improvement * self.weights[k]
-        self.max_improvement = sum(self.param_ranges.values())
         self.metric_trgs = self.unwrapped.metric_trgs
-        self.num_params = len(self.metrics)
 
-        for k, v in self.metrics.items():
+        for k in self.usable_metrics:
+            v = self.metrics[k]
             self.weights[k] = self.unwrapped.weights[k]
-        for k, v in self.weights.items():
+        for k in self.usable_metrics:
             self.param_bounds['{}_weight'.format(k)] = (0, 1)
         self.width = self.unwrapped.width
         self.observation_space = self.env.observation_space
         # FIXME: hack for gym-pcgrl
-        print('param rew obs space', self.observation_space)
+        print('param orig rew obs space', self.observation_space)
         self.action_space = self.env.action_space
         orig_obs_shape = self.observation_space.shape
-        obs_shape = orig_obs_shape[0] + 2 * len(self.metric_trgs), orig_obs_shape[1], orig_obs_shape[2]
+        obs_shape = orig_obs_shape[0] + 2 * len(self.usable_metrics), orig_obs_shape[1], orig_obs_shape[2]
         low = self.observation_space.low
         high = self.observation_space.high
-        metrics_shape = (2 * len(self.metric_trgs), obs_shape[1], obs_shape[2])
+        metrics_shape = (2 * len(self.usable_metrics), obs_shape[1], obs_shape[2])
         self.metrics_shape = metrics_shape
         metrics_low = np.full(metrics_shape, fill_value=0)
         metrics_high = np.full(metrics_shape, fill_value=1)
         low = np.vstack((metrics_low, low))
         high = np.vstack((metrics_high, high))
         self.observation_space = gym.spaces.Box(low=low, high=high)
-        screen_width = 200
-        screen_height = 100 * (self.num_params)
-        if self.render_gui and False:
-            win = ProgressBarWindow(self.metrics, self.metric_trgs, self.param_bounds)
-            win.connect("destroy", Gtk.main_quit)
+        if self.render_gui and True:
+            screen_width = 200
+            screen_height = 100 * self.num_params
+            from wrapper_windows import ParamRewWindow
+            win = ParamRewWindow(self, self.metrics, self.metric_trgs, self.param_bounds)
+           #win.connect("destroy", Gtk.main_quit)
             win.show_all()
+            self.win = win
 
-
+    def enable_auto_reset(self, button):
+        self.auto_reset = button.get_active()
 
 
     def getState(self):
@@ -562,18 +576,23 @@ class ParamRew(gym.Wrapper):
         self.init_metrics = copy.deepcopy(self.metrics)
 
         self.max_improvement = 0
-        for k in self.weights:
-            weight_name = '{}_weight'.format(k)
-            if weight_name in params:
-                self.weights[k] = params[weight_name]
-            i += 1
+        for k, trg in params.items():
+            if k in self.usable_metrics:
+                self.metric_trgs[k] = trg
+                self.max_improvement += abs(trg - self.init_metrics[k]) * self.weights[k]
 
-        for k, _ in self.metric_trgs.items():
-            if k in params:
-                metric_trg = params[k]
-                self.metric_trgs[k] = metric_trg
-                self.max_improvement += abs(metric_trg - self.init_metrics[k]) * self.weights[k]
-            i += 1
+       #for k in self.usable_metrics:
+       #    weight_name = '{}_weight'.format(k)
+       #    if weight_name in params:
+       #        self.weights[k] = params[weight_name]
+       #    i += 1
+
+       #for k, _ in self.usable_metrics():
+       #    if k in params:
+       #        metric_trg = params[k]
+       #        self.metric_trgs[k] = metric_trg
+       #        self.max_improvement += abs(metric_trg - self.init_metrics[k]) * self.weights[k]
+       #    i += 1
 
 
         self.display_metric_trgs()
@@ -583,16 +602,21 @@ class ParamRew(gym.Wrapper):
         ob = self.observe_metric_trgs(ob)
         self.metrics = self.unwrapped.metrics
         self.last_metrics = copy.deepcopy(self.metrics)
+        self.n_step = 0
         return ob
 
     def observe_metric_trgs(self, obs):
         metrics_ob = np.zeros((self.metrics_shape))
         i = 0
-        for k, v in self.metric_trgs.items():
-            metrics_ob[i*2, :, :] = v / self.param_ranges[k]
+        for k in self.usable_metrics:
+            trg = self.metric_trgs[k]
             metric = self.metrics[k]
             if not metric:
+                #FIXME: a problem after reset in pcgrl envs
+#               print(k, metric, self.metrics)
+#               assert self.n_step < 20
                 metric = 0
+            metrics_ob[i*2, :, :] = trg / self.param_ranges[k]
             metrics_ob[i*2+1, :, :] = metric / self.param_ranges[k]
             i += 1
 #       print('param rew obs shape ', obs.shape)
@@ -602,9 +626,8 @@ class ParamRew(gym.Wrapper):
 
 
     def step(self, action):
-        if self.render_gui:
-            while Gtk.events_pending():
-                Gtk.main_iteration()
+        if self.render_gui and True:
+            self.win.step()
 
        #print('unwrapped metrics', self.unwrapped.metrics)
         ob, rew, done, info = super().step(action)
@@ -612,6 +635,9 @@ class ParamRew(gym.Wrapper):
         self.metrics = self.unwrapped.metrics
         rew = self.get_reward()
         self.last_metrics = copy.deepcopy(self.metrics)
+        self.n_step += 1
+        if not self.auto_reset:
+            done = False
         return ob, rew, done, info
 
     def get_param_trgs(self):
@@ -625,12 +651,14 @@ class ParamRew(gym.Wrapper):
             self.param_bounds[k] = (l, h)
 
     def display_metric_trgs(self):
-        pass
+        if self.render_gui:
+            self.win.display_metric_trgs()
 
     def get_reward(self):
         reward = 0
 
-        for metric, trg in self.metric_trgs.items():
+        for metric in self.usable_metrics:
+            trg = self.metric_trgs[metric]
             val = self.metrics[metric]
             last_val = self.last_metrics[metric]
             trg_change = trg - last_val
@@ -652,80 +680,12 @@ class ParamRew(gym.Wrapper):
             reward += metric_rew * self.weights[metric]
        #assert(reward <= self.max_improvement, 'actual reward {} is less than supposed maximum possible \
        #        improvement toward target vectors of {}'.format(reward, self.max_improvement))
-        if self.max_improvement == 0:
-            pass
-        else:
-            reward = 100 * (reward / self.max_improvement)
+       #if self.max_improvement == 0:
+       #    pass
+       #else:
+       #    reward = 100 * (reward / self.max_improvement)
 
         return reward
-
-class ProgressBarWindow(Gtk.Window):
-    def __init__(self, metrics, metric_trgs, metric_bounds):
-        Gtk.Window.__init__(self, title="Metrics")
-        self.set_border_width(10)
-
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.add(vbox)
-
-        prog_bars = {}
-        scales = {}
-        for k in metrics:
-            scale = Gtk.HScale()
-            vbox.pack_start(scale, False, False, 0)
-
-
-            metric_prog = Gtk.ProgressBar()
-            prog_bars[k] = metric_prog
-            vbox.pack_start(metric_prog, True, True, 0)
-           #bounds = metric_bounds[k]
-           #frac = metrics[k]
-           #metric_prog.set_fraction(frac)
-
-      
-       #self.timeout_id = GLib.timeout_add(50, self.on_timeout, None)
-       #self.activity_mode = False
-
-    def set_metrics(self, metrics):
-        for k, prog_bar in self.prog_bars.items():
-            prog_bar.set_fraction
-
-    def on_show_text_toggled(self, button):
-        show_text = button.get_active()
-        if show_text:
-            text = "some text"
-        else:
-            text = None
-        self.progressbar.set_text(text)
-        self.progressbar.set_show_text(show_text)
-
-    def on_activity_mode_toggled(self, button):
-        self.activity_mode = button.get_active()
-        if self.activity_mode:
-            self.progressbar.pulse()
-        else:
-            self.progressbar.set_fraction(0.0)
-
-    def on_right_to_left_toggled(self, button):
-        value = button.get_active()
-        self.progressbar.set_inverted(value)
-
-    def on_timeout(self, user_data):
-        """
-        Update value on the progress bar
-        """
-        if self.activity_mode:
-            self.progressbar.pulse()
-        else:
-            new_value = self.progressbar.get_fraction() + 0.01
-
-            if new_value > 1:
-                new_value = 0
-
-            self.progressbar.set_fraction(new_value)
-
-        # As this is a timeout function, return True so that it
-        # continues to get called
-        return True
 
 
 class ParamRewMulti(ParamRew):
