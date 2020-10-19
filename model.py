@@ -78,9 +78,14 @@ class Policy(nn.Module):
             else:
                 self.dist = DiagGaussian(self.base.output_size, self.num_actions)
     #           self.dist = Categorical2D(self.base.output_size, num_outputs)
-       #elif action_space.__class__.__name__ == "Dict":
-       #    num_outputs = 
-       #    self.dist = Categorical2D(self.base.output_size, num_outputs)
+        elif action_space.__class__.__name__ == "Dict":
+            num_outputs = []
+            self.dist = {}
+            for space_name in action_space.spaces:
+                space = action_space.spaces[space_name]
+                num_outputs.append(space.n)
+                self.dist[space_name] = Categorical2D(self.base.output_size, space.n)
+
 
         else:
             raise NotImplementedError
@@ -130,8 +135,15 @@ class Policy(nn.Module):
             action = self.dist.sample()
             action_log_probs = self.dist.log_probs(action).squeeze(0)
 
+
+
         else:
-            dist = self.dist(actor_features)
+            if isinstance(self.dist, dict):
+                for act_name, dist in self.dist.items():
+                    self.dist[act_name] = dist(actor_features)
+                dist = self.dist
+            else:
+                dist = self.dist(actor_features)
 
             if player_act:
                 # force the model to sample the player-selected action
@@ -148,10 +160,23 @@ class Policy(nn.Module):
             else:
 
                 if deterministic:
+                    action = {}
+                    if isinstance(self.dist, dict):
+                        for d, act_name in self.dist:
+                            action[act_name] = d.mode()
+                            action_log_probs[act_name] = d.log_probs(action[act_name])
                     action = dist.mode()
+                    action_log_probs = dist.log_probs(action)
                 else:
-                    action = dist.sample()
-                action_log_probs = dist.log_probs(action)
+                    if isinstance(self.dist, dict):
+                        action  = {}
+                        action_log_probs = {}
+                        for act_name, d in self.dist.items():
+                            action[act_name] = d.sample()
+                            action_log_probs[act_name] = d.log_probs(action[act_name])
+                    else:
+                        action = dist.sample()
+                        action_log_probs = dist.log_probs(action)
 
         if icm_enabled:
             if self.action_bin is None:

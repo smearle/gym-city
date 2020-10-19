@@ -55,6 +55,10 @@ class RolloutStorage(object):
             self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
             if action_space.__class__.__name__ == 'Discrete':
                 action_shape = 1
+            elif action_space.__class__.__name__ == 'Dict':
+                action_shape = 0
+                for space in action_space.spaces:
+                    action_shape += 1
             else:
                 action_shape = action_space.shape[0]
             self.actions = torch.zeros(num_steps, num_processes, action_shape)

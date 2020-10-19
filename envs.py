@@ -258,7 +258,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
 
             env = gym.make(env_id, 
-                    render_gui=render_gui, rank=rank, max_step=max_step)
+                    render_gui=render_gui, rank=rank, max_step=max_step, settings_path='./configs/settings.yml')
 
             if record:
                 record_dir = log_dir
@@ -303,6 +303,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     assert num_env_params != 0
                     env = ParamRew(env, num_env_params)
                     env.configure(map_width=args.map_width, max_step=args.max_step)
+                if False:
                     env = NoiseyTargets(env)
 
             if 'rct' in env_id.lower():
@@ -347,7 +348,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                         poet=args.poet,
                         ages=ages,
                         )
-                if True:
+                if False:
                     env = NoiseyTargets(env)
                 if extinction:
                     env = Extinguisher(env, args.extinction_type, args.extinction_prob)
@@ -498,7 +499,12 @@ class VecPyTorch(VecEnvWrapper):
         return obs
 
     def step_async(self, actions):
-        actions_async = actions.squeeze(1).cpu().numpy()
+        actions_async = {}
+        if isinstance(actions, dict):
+            for act_name, action in actions.items():
+                actions_async[act_name] = action.squeeze(1).cpu().numpy()
+        else:
+            actions_async = actions.squeeze(1).cpu().numpy()
         self.venv.step_async(actions_async)
 
     def step_wait(self):

@@ -123,6 +123,9 @@ class Evaluator(object):
                             for row in reader:
                                 if h > 1:
                                     row['t'] = 0.0001 * h # HACK: false times for past logs to maintain order
+                                    #FIXME: why is this happening?
+                                    if None in row:
+                                        row.pop(None)
                                     writer_col.writerow(row)
                                 h += 1
                         except csv.Error: # I guess this error happens at most once then?

@@ -11,6 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from cycler import cycler
 from PIL import Image
 from scipy.stats import mannwhitneyu
 
@@ -21,7 +22,6 @@ from envs import VecPyTorch, make_vec_envs
 from evaluate import Evaluator
 from model import Policy
 from utils import get_vec_normalize
-from cycler import cycler
 
 #plt.switch_backend('agg')
 default_cycler = (cycler(color=[
@@ -262,14 +262,17 @@ class ExtinctionEvaluator():
 
         final_infos = {}
         # take average over episodes at each timestep
+
         for k in exp_infos:
             final_infos[k] = exp_infos[k][-1, :]
+
         for k, v in exp_infos.items():
             # the saved dictionary stores the mean over episodes at each timestep
             exp_infos[k] = np.mean(v, axis=1), np.std(v, axis=1)
         np_save_dir = '{}/exp_infos'.format(im_log_dir)
         np.save(np_save_dir, exp_infos)
         envs.reset()
+
         return final_infos
 
 #def run_experiment():
@@ -381,6 +384,7 @@ class ExtinctionExperimenter():
                 'None',
                 ]
         # TODO: automate xt_probs
+
         if 'golmulti' in env_name.lower():
             self.n_epis = 40
             self.xt_dels = [25]
@@ -450,6 +454,7 @@ class ExtinctionExperimenter():
         n_xtt = len(self.xt_types)
         rows = self.xt_types[:-1]
         cols = self.xt_types[1:]
+
         for map_size in self.map_sizes:
             n_col = 0
             inner_axes1 = []
@@ -462,20 +467,25 @@ class ExtinctionExperimenter():
                 table_fill = table_fill.tolist()
                 plt.figure(2)
                 xt_i = 0
+
                 for xtt1_i in range(len(self.xt_types) - 1):
                     xtt1 = rows[xtt1_i]
                     xt_j = 0
+
                     for xtt2_i in range(len(self.xt_types) - 1):
                         xtt2 = cols[xtt2_i]
+
                         if xt_j < xt_i:
                             table_data[xt_i][xt_j] = ''
                         elif xtt1 != xtt2:
                             p_vals = all_p_vals['{}_{}'.format(map_size, xt_prob)]['{}_{}_{}'.format(metric, xtt1, xtt2)]
+
                             if p_vals is None:
                                 table_data[xt_i][xt_j] = 1
                             else:
                                 if p_vals == 1:
                                     p_vals = (0, p_vals)
+
                                 if p_vals[1] is not None and p_vals[1] < 0.05:
                                     # green highlight
                                     table_fill[xt_i][xt_j] = (0, 1, 0, 0.3)
@@ -538,6 +548,7 @@ class ExtinctionExperimenter():
                         continue
                     xt_type = srch_xttyp.group(1)
                     xt_dir = xt_dir_paths[i]
+
                     if xt_type != 'None':
                         srch_xtprob = re.search(r'xtprob\:({})'.format(xt_prob), trial_name)
 
@@ -600,11 +611,12 @@ class ExtinctionExperimenter():
                 if n_col == 1 and n_row == 1:
                     ax1.legend(fancybox=True, framealpha=0.5)
                 j += 1
+
                 if n_row == 2:
                     bottom = -0.7
                 else:
                     bottom = -0.4
-                table  = ax1.table(table_data, rowLabels=rows, colLabels=cols, loc='bottom', 
+                table  = ax1.table(table_data, rowLabels=rows, colLabels=cols, loc='bottom',
                         bbox=[0.2, bottom, 0.75, 0.4], cellColours=table_fill, rowLoc='right',
                         colWidths=[.25,.25,.25])
                 n_col += 1
@@ -621,6 +633,7 @@ class ExtinctionExperimenter():
 
                     if k == len(inner_axes1) - 2 and n_row == 2:
                         ax1.annotate('target = {}'.format(int(trg)), (e_xmin, txt_height))
+
                 if metric == 'jpeg_size':# and map_size == 64:
                     ymin = 600
 
@@ -649,25 +662,30 @@ class ExtinctionExperimenter():
         evaluator = self.evaluator
 
         all_final_infos = {}
+
         for mst in self.max_step:
             for msz in self.map_sizes:
                 for xtd in self.xt_dels:
                     xtt_infos = {}
+
                     for xtt in self.xt_types:
                         if xtt == 'None':
                             xtps = [0]
                         else:
                             xtps = self.xt_probs
+
                         for xtp in xtps:
                             final_infos = evaluator.run_experiment(self.n_epis, mst, msz, xtt, xtp, xtd)
                            #run_id = 's{}_w{}_xtd{}_xtp{}'.format(mst, msz, xtd, xtp)
                             # FIXME: only works for this particular paper!
                             # copy paste the results for None-type extinction to entries for all probabilities
                             # FIXME: avoid this copy-pasting
+
                             if xtt == 'None':
                                 run_ids = ['{}_{}'.format(msz, xtp_dum) for xtp_dum in self.xt_probs]
                             else:
                                 run_ids = ['{}_{}'.format(msz, xtp)]
+
                             for run_id in run_ids:
                                 if run_id not in all_final_infos:
                                     all_final_infos[run_id] = {xtt: final_infos}
@@ -677,14 +695,17 @@ class ExtinctionExperimenter():
         self.metrics = {}
         save_path = os.path.join(self.im_log_dir, 'final_infos.npy')
         np.save(save_path, all_final_infos)
+
         for run in all_final_infos:
             p_vals = {}
             # compare every pair of extinction types
+
             for t1 in all_final_infos[run]:
                 for t2 in all_final_infos[run]:
                     if t1 == t2:
                         continue
                     # w.r.t. each metric
+
                     for m in all_final_infos[run][t1]:
                         pval_name = '{}_{}_{}'.format(m, t1, t2)
                         x = all_final_infos[run][t1][m]
@@ -711,9 +732,11 @@ class ExtinctionExperimenter():
         params.append('jpeg_size')
         params.append('reward')
         n_params = len(params)
+
         if META_GRAPH:
             if 'micropolis' in self.evaluator.args.env_name.lower():
                 n_cols = 2
+
             if 'golmulti' in self.evaluator.args.env_name.lower():
                 n_cols = 1
             n_rows = math.ceil(n_params / n_cols)
@@ -731,17 +754,20 @@ class ExtinctionExperimenter():
         envs2titles = {'MicropolisEnv-v0': 'SimCity',
                        'GoLMultiEnv-v0': 'Game of Life'}
         title = envs2titles[self.evaluator.args.env_name]
+
         for param in params:
             n_row = i // n_cols
             n_col = i % n_cols
             self.inner_grid1 = outer_grid1[i].subgridspec(3, 3, wspace=0.0, hspace=0.4)
             self.visualize_metric(n_row, n_col, self.im_log_dir, metric=param)
+
             if not META_GRAPH:
                 plt.suptitle(title)
                 plt.tight_layout()
                 fig1.subplots_adjust(top=0.91, bottom=0.15)
                 plt.savefig(os.path.join(self.log_dir, '{} {}.png'.format(title, param)), format='png')
                 plt.clf()
+
             if META_GRAPH:
                 i += 1
 

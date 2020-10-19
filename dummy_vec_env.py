@@ -25,7 +25,13 @@ class DDummyVecEnv(DummyVecEnv):
         if self.buf_dones[0]:
             self.reset()
         for i in range(self.num_envs):
-            obs_tuple, self.buf_rews[i], self.buf_dones[i], self.buf_infos[i] = self.envs[i].step(self.actions[i])
+            if isinstance(self.actions, dict):
+                actions = {}
+                for act_name, action in self.actions.items():
+                    actions[act_name] = action[i]
+            else:
+                actions = self.actions[i]
+            obs_tuple, self.buf_rews[i], self.buf_dones[i], self.buf_infos[i] = self.envs[i].step(actions)
             if isinstance(obs_tuple, (tuple, list)):
                 for t,x in enumerate(obs_tuple):
                     self.buf_obs[t][i] = x
