@@ -22,7 +22,6 @@ from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
 from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets
-from gym_micro_rct.envs.rct_env import RCT
 
 
 
@@ -256,6 +255,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         else:
 
+            if 'rct' in env_id.lower():
+                from gym_micro_rct.envs.rct_env import RCT
 
             env = gym.make(env_id, 
                     render_gui=render_gui, rank=rank, max_step=max_step, settings_path='./configs/settings.yml')
@@ -307,6 +308,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     env = NoiseyTargets(env)
 
             if 'rct' in env_id.lower():
+                from gym_micro_rct.envs.rct_env import RCT
                 if param_rew:
                     assert num_env_params != 0
                     env = ParamRew(env, num_env_params)
@@ -410,7 +412,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
     print('make vec envs random map? {}'.format(args.random_terrain))
     if 'golmultienv' in env_name.lower():
         num_processes=1 # smuggle in real num_proc in args so we can run them as one NN
-    assert num_env_params != 0
+   #assert num_env_params != 0
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
         allow_early_resets, map_width=args.map_width, render_gui=args.render,
         print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, param_rew=param_rew,

@@ -45,8 +45,15 @@ class A2C():
             action_shape = rollouts.actions.size()[-3:]
             actions = rollouts.actions.view(-1, *action_shape)
         else:
-            action_shape = rollouts.actions.size()[-1]
-            actions = rollouts.actions.view(-1, action_shape)
+            if isinstance(rollouts.actions, dict):
+                action_shape = {}
+                actions = {}
+                for k in rollouts.actions:
+                    action_shape[k] = rollouts.actions[k].size()[-1]
+                    actions[k] = rollouts.actions[k].view(-1, action_shape[k])
+            else:
+                action_shape = rollouts.actions.size()[-1]
+                actions = rollouts.actions.view(-1, action_shape)
 
         if 'LSTM' in self.args.model:
             rec_size = self.actor_critic.base.get_recurrent_state_size()
@@ -84,7 +91,15 @@ class A2C():
         if self.paint:
             action_log_probs = action_log_probs.view(num_steps, num_processes, -1)
         else:
-            action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+            if isinstance(action_log_probs, dict):
+                alps = []
+                for k in action_log_probs:
+                    alps.append(action_log_probs[k].view(num_steps, num_processes, 1))
+                alps = tuple(alps)
+                action_log_probs = torch.cat(alps, -1)
+                action_log_probs = action_log_probs.mean(-1).unsqueeze(-1)
+            else:
+                action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         returns =rollouts.returns
         returns = returns - returns.mean()

@@ -11,6 +11,7 @@ from ConvLSTMCell import ConvLSTMCell
 from distributions import (Categorical, Categorical2D, CategoricalPaint,
                            DiagGaussian)
 from utils import init, init_normc_
+import gym
 
 # from coord_conv_pytorch.coord_conv import nn.Conv2d, nn.Conv2dTranspose
 # from torchviz import make_dot
@@ -83,8 +84,18 @@ class Policy(nn.Module):
             self.dist = {}
             for space_name in action_space.spaces:
                 space = action_space.spaces[space_name]
-                num_outputs.append(space.n)
-                self.dist[space_name] = Categorical2D(self.base.output_size, space.n)
+                n_box_out = 0
+                if isinstance(space, gym.spaces.Box):
+                    for dim in space.shape:
+                        if n_box_out == 0:
+                            n_box_out += dim
+                        else:
+                            n_box_out = n_box_out * dim
+                    self.dist[space_name] = DiagGaussian(self.base.output_size, n_box_out)
+                    self.dist[space_name].cuda()
+                if isinstance(space, gym.spaces.Discrete):
+                    self.dist[space_name] = Categorical(self.base.output_size, space.n)
+                    self.dist[space_name].cuda()
 
 
         else:
@@ -139,9 +150,9 @@ class Policy(nn.Module):
 
         else:
             if isinstance(self.dist, dict):
-                for act_name, dist in self.dist.items():
-                    self.dist[act_name] = dist(actor_features)
-                dist = self.dist
+                dist = {}
+                for act_name, d in self.dist.items():
+                    dist[act_name] = d(actor_features)
             else:
                 dist = self.dist(actor_features)
 
@@ -162,16 +173,16 @@ class Policy(nn.Module):
                 if deterministic:
                     action = {}
                     if isinstance(self.dist, dict):
-                        for d, act_name in self.dist:
+                        for act_name, d in self.dist:
                             action[act_name] = d.mode()
                             action_log_probs[act_name] = d.log_probs(action[act_name])
                     action = dist.mode()
                     action_log_probs = dist.log_probs(action)
                 else:
-                    if isinstance(self.dist, dict):
-                        action  = {}
+                    if isinstance(dist, dict):
+                        action = {}
                         action_log_probs = {}
-                        for act_name, d in self.dist.items():
+                        for act_name, d in dist.items():
                             action[act_name] = d.sample()
                             action_log_probs[act_name] = d.log_probs(action[act_name])
                     else:
@@ -224,10 +235,19 @@ class Policy(nn.Module):
             action_log_probs = self.dist.log_probs(action).squeeze(0)
             dist_entropy = self.dist.entropy().mean()
         else:
-            dist = self.dist(actor_features)
+            if isinstance(self.dist, dict):
+                dist = {}
+                action_log_probs = {}
+                dist_entropy = {}
+                for k, d in self.dist.items():
+                    dist[k] = d(actor_features)
+                    action_log_probs[k] = dist[k].log_probs(action[k].cuda())
+                    dist_entropy = dist[k].entropy().mean()
+            else:
+                dist = self.dist(actor_features)
 
-            action_log_probs = dist.log_probs(action)
-            dist_entropy = dist.entropy().mean()
+                action_log_probs = dist.log_probs(action)
+                dist_entropy = dist.entropy().mean()
 
         return value, action_log_probs, dist_entropy, rnn_hxs
 
@@ -1673,7 +1693,7 @@ class MicropolisBase_0(NNBase):
         return values, actions, rnn_hxs
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, **kwargs):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m,
@@ -1689,7 +1709,7 @@ class CNNBase(NNBase):
             init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.ReLU(),
             Flatten(),
-            init_(nn.Linear(32 * 7 * 7, hidden_size)),
+            init_(nn.Linear(128, hidden_size)),
             nn.ReLU()
         )
 
@@ -1702,7 +1722,8 @@ class CNNBase(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs / 255.0)
+       #x = self.main(inputs / 255.0)
+        x = self.main(inputs)
 
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)

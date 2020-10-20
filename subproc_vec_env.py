@@ -166,8 +166,17 @@ class SubprocVecEnv(VecEnv):
         return num_params
 
     def step_async(self, actions):
-        for remote, action in zip(self.remotes, actions):
-            remote.send(('step', action))
+        if isinstance(actions, dict):
+            i = 0
+            for remote in self.remotes:
+                action = {}
+                for k in actions:
+                    action[k] = actions[k][i]
+                remote.send(('step', action))
+                i += 1
+        else:
+            for remote, action in zip(self.remotes, actions):
+                remote.send(('step', action))
         self.waiting = True
 
     def step_wait(self):

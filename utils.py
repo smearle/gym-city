@@ -36,7 +36,7 @@ def get_space_dims(envs, args):
         elif 'map' in envs.action_space.spaces:
             out_w = args.map_width
             out_h = args.map_width
-            num_actions = envs.action_space.spaces['act'].n + envs.action_space.spaces['entrance_pos'].n
+            num_actions = envs.action_space.spaces['act'].n + envs.action_space.spaces['rotation'].n
 
     if isinstance(envs.action_space, gym.spaces.Discrete) or\
         isinstance(envs.action_space, gym.spaces.Box):

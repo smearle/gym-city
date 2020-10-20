@@ -361,7 +361,6 @@ class Trainer():
                     icm_enabled=args.curiosity,
                     deterministic=False)
 
-       #print('action in train.py: {}'.format(action))
         # Observe reward and next obs
         obs, reward, done, infos = envs.step(action)
 #       print(obs[0])
