@@ -171,13 +171,15 @@ class Policy(nn.Module):
             else:
 
                 if deterministic:
-                    action = {}
-                    if isinstance(self.dist, dict):
-                        for act_name, d in self.dist:
+                    if isinstance(dist, dict):
+                        action = {}
+                        action_log_probs = {}
+                        for act_name, d in dist.items():
                             action[act_name] = d.mode()
                             action_log_probs[act_name] = d.log_probs(action[act_name])
-                    action = dist.mode()
-                    action_log_probs = dist.log_probs(action)
+                    else:
+                        action = dist.mode()
+                        action_log_probs = dist.log_probs(action)
                 else:
                     if isinstance(dist, dict):
                         action = {}
