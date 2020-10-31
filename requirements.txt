@@ -1,0 +1,12 @@
+pygame
+pygame
+baselines
+torchsummary
+imutils
+PyGObject 
+matplotlib 
+imutils 
+graphviz 
+visdom 
+tensorflow 
+torchsummary

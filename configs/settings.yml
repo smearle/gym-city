@@ -1,10 +1,10 @@
 general:
-    render: True
+    render: False
     verbose: False
 environment:
     n_guests: 10
-    map_width: 50
-    map_height: 50
+    map_width: 16
+    map_height: 16
     n_actions: 10
 experiments:
     ticks: [500, 1000]

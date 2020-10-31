@@ -554,6 +554,9 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             self.optim_save = optim_save
             self.args = args
             self.ob_rms = ob_rms
+            if self.n_frames % 200000 == 0:
+                save_path = os.path.join(save_path, 'checkpoint_{}'.format(n_train))
+                os.mkdir(save_path)
             torch.save(self.get_save_dict(), os.path.join(save_path, args.env_name + ".tar"))
 
            #save_model = [save_model,

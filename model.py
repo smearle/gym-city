@@ -1694,6 +1694,55 @@ class MicropolisBase_0(NNBase):
 
         return values, actions, rnn_hxs
 
+class RCTBase(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, **kwargs):
+        super(RCTBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        self.c0 = init_(nn.Conv2d(num_inputs, 64, 1, stride=1))
+        self.c1 = init_(nn.Conv2d(64, 64, 7, stride=1))
+        self.c2 = init_(nn.Conv2d(64, 64, 5, stride=1))
+        self.c3 = init_(nn.Conv2d(64, 32, 3, stride=1))
+        self.l1 = init_(nn.Linear(512, hidden_size))
+
+        self.r1 = init_(nn.Conv2d(64, 64, 3, stride=1, padding=0))
+       #self.r2 = init_(nn.Conv2d(64, 64, 3, stride=2, padding=1))
+        
+      # self.trim_5 = init_(nn.Conv2d(32, 32, 5, stride=1))
+
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = F.relu(self.c0(inputs))
+        r = x
+        t5 = x
+        x = F.relu(self.c1(x)) #  
+       #print(x.shape)
+       #raise Exception
+        for _ in range(3):
+            r = F.relu(self.r1(r))
+       #r = F.relu(self.r2(r))
+        x = (x + r) / 2
+        x = F.relu(self.c2(x))
+        x = F.relu(self.c3(x))
+        x = x.view(x.shape[0], -1)
+        x = F.relu(self.l1(x))
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(x), x, rnn_hxs
+
 class CNNBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512, **kwargs):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
@@ -1704,14 +1753,14 @@ class CNNBase(NNBase):
             nn.init.calculate_gain('relu'))
 
         self.main = nn.Sequential(
-            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            init_(nn.Conv2d(num_inputs, 32, 7, stride=2)),
             nn.ReLU(),
-            init_(nn.Conv2d(32, 64, 4, stride=2)),
+            init_(nn.Conv2d(32, 64, 5, stride=2)),
             nn.ReLU(),
             init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.ReLU(),
             Flatten(),
-            init_(nn.Linear(128, hidden_size)),
+            init_(nn.Linear(1568, hidden_size)),
             nn.ReLU()
         )
 
