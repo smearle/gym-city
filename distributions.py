@@ -5,10 +5,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils import AddBias, init, init_normc_
-
+from stable_baselines3.common import distributions as sb3_dists
+from stable_baselines3.common.distributions import MultiCategoricalDistribution
 """
 Modify standard PyTorch distributions so they are compatible with this code.
 """
+
+#FixedMultiCategorical = MultiCategoricalDistribution
+#
+#old_sample = FixedMultiCategorical.sample
+#FixedMultiCategorical.sample = lambda self: old_sample(self)
+#
+#log_prob_cat = FixedMultiCategorical.log_prob
+#FixedMultiCategorical.mode = lambda self: self.probs.argmax(dim=1, deepdim=True)
+#
+#FixedMultiCategorical.mode = lambda self: self.probs.argmax(dim=1, keepdim=True)
 
 FixedCategorical = torch.distributions.Categorical
 
@@ -122,3 +133,27 @@ class DiagGaussian(nn.Module):
 
         action_logstd = self.logstd(zeros)
         return FixedNormal(action_mean, action_logstd.exp())
+
+class MultiCategorical(nn.Module):
+    def __init__(self, num_inputs, action_dims):
+        super(MultiCategorical, self).__init__()
+#       init_ = lambda m: init(m,
+#               nn.init.orthogonal_,
+#               lambda x: nn.init.constant(x, 0),
+#               gain=0.01)
+#       self.linear
+        self.num_inputs = num_inputs
+        self.action_dims = action_dims
+        self.linear = nn.Linear(self.num_inputs, sum(self.action_dims))
+
+    def forward(self, x):
+        dist = MultiCategoricalDistribution(self.action_dims)
+        x = self.linear(x)
+        action_logits = dist.proba_distribution(x)
+        action_logits.log_probs = lambda actions: action_logits.log_prob(actions).unsqueeze(-1)
+        old_sample = action_logits.sample
+        action_logits.sample = lambda: old_sample().squeeze(-1)
+        return action_logits
+
+   #def log_probs(self):
+   #    return self.dist.log_prob(actions)

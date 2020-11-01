@@ -226,4 +226,6 @@ class Evaluator(object):
                 self.win_eval = self.plotter.bar_plot(viz, self.win_eval, self.eval_log_dir, self.eval_log_dir.split('/')[-1],
                                   args.algo, args.num_frames, n_cols=model.n_cols)
 
+        return eprew
+
 

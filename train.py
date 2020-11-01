@@ -66,6 +66,7 @@ class Trainer():
         self.n_train = 0
         self.fieldnames = self.get_fieldnames()
         self.n_frames = 0
+        self.best_eval_score = float('-inf')
 
 
         assert args.algo in ['a2c', 'ppo', 'acktr']
@@ -508,7 +509,9 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
 
             for i in col_idx:
                 print('evaluating column {}'.format(i))
-                evaluator.evaluate(column=i)
+                eval_score = evaluator.evaluate(column=i)
+                if eval_score > self.best_eval_score:
+                    self.best_eval_score = eval_score
            #num_eval_frames = (args.num_frames // (args.num_steps * args.eval_interval * args.num_processes)) * args.num_processes *  args.max_step
            # making sure the evaluator plots the '-1'st column (the overall net)
             viz = self.viz
@@ -534,48 +537,52 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             self.reset_eval = True
 
         if args.save and n_train % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
-
-            # A really ugly way to save a model to CPU
-            save_model = actor_critic
-            ob_rms = getattr(get_vec_normalize(envs), 'ob_rms', None)
-            save_model = copy.deepcopy(actor_critic)
-            save_agent = copy.deepcopy(agent)
-
-            if args.cuda:
-                save_model.cpu()
-            optim_save = save_agent.optimizer.state_dict()
-            self.agent = agent
-            self.save_model = save_model
-            self.optim_save = optim_save
-            self.args = args
-            self.ob_rms = ob_rms
-            if self.n_frames % 200000 == 0:
-                save_path = os.path.join(save_path, 'checkpoint_{}'.format(n_train))
-                os.mkdir(save_path)
-            torch.save(self.get_save_dict(), os.path.join(save_path, args.env_name + ".tar"))
-
-           #save_model = [save_model,
-           #              getattr(get_vec_normalize(envs), 'ob_rms', None)]
-
-           #torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
-           #save_agent = copy.deepcopy(agent)
-
-           #torch.save(save_agent, os.path.join(save_path, args.env_name + '_agent.pt'))
-           #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
-
-            print('model saved at {}'.format(save_path))
-
+            self.save(args, actor_critic, envs, agent)
         if args.vis and self.n_train % args.vis_interval == 0:
             self.visualize(plotter)
             print('visualize train')
 
 
         return cum_rews, dones, infos
+
+    def save(self, args, actor_critic, envs, agent):
+        save_path = os.path.join(args.save_dir)
+        try:
+            os.makedirs(save_path)
+        except OSError:
+            pass
+
+        # A really ugly way to save a model to CPU
+        save_model = actor_critic
+        ob_rms = getattr(get_vec_normalize(envs), 'ob_rms', None)
+        save_model = copy.deepcopy(actor_critic)
+        save_agent = copy.deepcopy(agent)
+
+        if args.cuda:
+            save_model.cpu()
+        optim_save = save_agent.optimizer.state_dict()
+        self.agent = agent
+        self.save_model = save_model
+        self.optim_save = optim_save
+        self.args = args
+        self.ob_rms = ob_rms
+        if self.n_frames % 2000 == 0:
+            save_path = os.path.join(save_path, 'checkpoint_{}'.format(n_train))
+            os.mkdir(save_path)
+        torch.save(self.get_save_dict(), os.path.join(save_path, args.env_name + ".tar"))
+
+       #save_model = [save_model,
+       #              getattr(get_vec_normalize(envs), 'ob_rms', None)]
+
+       #torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+       #save_agent = copy.deepcopy(agent)
+
+       #torch.save(save_agent, os.path.join(save_path, args.env_name + '_agent.pt'))
+       #torch.save(actor_critic.state_dict(), os.path.join(save_path, args.env_name + "_weights.pt"))
+
+        print('model saved at {}'.format(save_path))
+
+
 
     def visualize(self, plotter=None, log_dir=None):
         n_cols = self.n_cols

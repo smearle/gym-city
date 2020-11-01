@@ -514,4 +514,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='viz')
     parser.add_argument('--load-dir', default=None,
             help='directory from which to load agent logs (default: ./trained_models/)')
+    plotter = Plotter()
     visdom_plot(viz, None, '/tmp/gym/', 'BreakOut', 'a2c', bin_size=100, smooth=1)
