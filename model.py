@@ -574,13 +574,16 @@ class FractalNet(NNBase):
            nn.init.orthogonal_,
            lambda x: nn.init.constant_(x, 0))
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
-        self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
-        n_shrinks = int(math.log(self.map_width // out_w, 2))
+       #self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
+        self.actor_out = init_(nn.Conv2d(n_out_chan, 512, 3, 1, 1))
         actor_head = []
-       #self.act_0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
-       #for i in range(n_shrinks):
-       #    actor_head.append(self.act_0)
-       #    actor_head.append(nn.ReLU())
+        self.act_0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
+        # FIXME: hack for rct
+        n_shrinks = int(math.log(self.map_width // out_w, 2))
+        print('n shrinks: {}'.format(n_shrinks))
+        for i in range(n_shrinks):
+            actor_head.append(self.act_0)
+            actor_head.append(nn.ReLU())
         self.actor_head = nn.Sequential(*actor_head)
         self.active_column = None
     # TODO: should be part of a subclass
@@ -596,7 +599,8 @@ class FractalNet(NNBase):
             x = F.relu(block(x, rnn_hxs, masks))
 
         actions = self.actor_head(x)
-        actions = self.actor_out(actions)
+        actions = F.relu(self.actor_out(actions))
+        actions = torch.flatten(actions, start_dim=1)
         values = x
 
         for i in range(int(math.log(self.map_width, 2))):
@@ -1710,7 +1714,7 @@ class RCTBase(NNBase):
         self.c3 = init_(nn.Conv2d(64, 32, 3, stride=1))
         self.l1 = init_(nn.Linear(512, hidden_size))
 
-        self.r1 = init_(nn.Conv2d(64, 64, 3, stride=1, padding=0))
+#       self.r1 = init_(nn.Conv2d(64, 64, 3, stride=1, padding=0))
        #self.r2 = init_(nn.Conv2d(64, 64, 3, stride=2, padding=1))
         
       # self.trim_5 = init_(nn.Conv2d(32, 32, 5, stride=1))
@@ -1729,11 +1733,11 @@ class RCTBase(NNBase):
         t5 = x
         x = F.relu(self.c1(x)) #  
        #print(x.shape)
-       #raise Exception
-        for _ in range(3):
-            r = F.relu(self.r1(r))
-       #r = F.relu(self.r2(r))
-        x = (x + r) / 2
+#      #raise Exception
+#       for _ in range(3):
+#           r = F.relu(self.r1(r))
+#      #r = F.relu(self.r2(r))
+#       x = (x + r) / 2
         x = F.relu(self.c2(x))
         x = F.relu(self.c3(x))
         x = x.view(x.shape[0], -1)
@@ -1926,7 +1930,7 @@ class MicropolisBase_mlp(NNBase):
 
 
 class MLPBase(NNBase):
-    def __init__(self, recurrent=False, hidden_size=64,
+    def __init__(self, recurrent=False, hidden_size=256,
                  map_width=16, num_inputs=1, num_actions=1,
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64,
                  prebuild=False, val_kern=None):
@@ -1947,7 +1951,8 @@ class MLPBase(NNBase):
             nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)),
             nn.Tanh(),
-            init_(nn.Linear(hidden_size, out_w * out_h * num_actions)),
+           #init_(nn.Linear(hidden_size, out_w * out_h * num_actions)),
+            init_(nn.Linear(hidden_size, hidden_size)),
             nn.Tanh()
         )
 

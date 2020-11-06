@@ -77,9 +77,12 @@ def get_space_dims(envs, args):
         num_actions = envs.action_space.shape[-1]
     # for PCGRL
     elif isinstance(envs.action_space, gym.spaces.MultiDiscrete):
-        out_w = envs.action_space.nvec[0]
-        out_h = envs.action_space.nvec[1]
-        num_actions = envs.action_space.nvec[2]
+       #out_w = envs.action_space.nvec[0]
+       #out_h = envs.action_space.nvec[1]
+       #num_actions = envs.action_space.nvec[2]
+        num_actions = sum([n for n in envs.action_space.nvec])
+        out_w = 1
+        out_h = 1
     print('envs.action_space: {}'.format(envs.action_space))
     print('observation space {}'.format(observation_space_shape))
     print('out w, out_h, num actions {}, {}, {}'.format(out_w, out_h, num_actions))

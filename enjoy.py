@@ -155,15 +155,20 @@ if args.evaluate:
     args.inter_shr = saved_args.inter_shr
     args.n_chan = saved_args.n_chan
     args.val_kern = saved_args.val_kern
+   #args.past_frames = 0
+   #args.param_rew = False
     print('steps: ', saved_args.max_step, '\n')
     evaluator = Evaluator(args, actor_critic, device, frozen=True)
 
     while True:
         if hasattr(actor_critic.base, 'n_cols'):
             for i in range(-1, actor_critic.base.n_cols):
-                evaluator.evaluate(column=i)
+                eval_score = evaluator.evaluate(column=i)
+        else:
+            eval_score = evaluator.evaluate()
+        print('score: {}'.format(eval_score))
 
-obs = env.reset()
+obs = None
 #obs = torch.Tensor(obs)
 num_step = 0
 player_act = None
@@ -172,9 +177,18 @@ env_done = False
 last_rew = 0
 MODULATE_TRGS = True
 while True:
+    if env_done or obs is None:
+        obs = env.reset()
+    if args.det:
+        if np.random.random() < 0.1:
+            deterministic = False
+        else: deterministic = True
+    else:
+        deterministic = args.det
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(
-            obs, recurrent_hidden_states, masks, deterministic=args.det,
+            obs, recurrent_hidden_states, masks, 
+            deterministic=deterministic,
             player_act=player_act)
 
     if env_done:
@@ -182,6 +196,7 @@ while True:
         num_step = 0
     # Observe reward and next obs
     obs, reward, done, infos = env.step(action)
+    print('reward: ', reward)
     env_done = done[0] # assume we have only one env.
     last_rew = reward
    #env.venv.venv.envs[0].render()
@@ -197,9 +212,9 @@ while True:
 
    #masks.fill_(0.0 if done else 1.0)
 
-    if args.env_name.find('Bullet') > -1:
-        if torsoId > -1:
-            distance = 5
-            yaw = 0
-            humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
-            p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
+#   if args.env_name.find('Bullet') > -1:
+#       if torsoId > -1:
+#           distance = 5
+#           yaw = 0
+#           humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
+#           p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
