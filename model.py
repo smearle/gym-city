@@ -579,12 +579,12 @@ class FractalNet(NNBase):
         actor_head = []
         self.act_0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
         # FIXME: hack for rct
-        n_shrinks = int(math.log(self.map_width // out_w, 2))
-        print('n shrinks: {}'.format(n_shrinks))
-        for i in range(n_shrinks):
-            actor_head.append(self.act_0)
-            actor_head.append(nn.ReLU())
-        self.actor_head = nn.Sequential(*actor_head)
+        self.n_shrinks = int(math.log(self.map_width // out_w, 2)) + 1
+        print('n shrinks: {}'.format(self.n_shrinks))
+#       for i in range(n_shrinks):
+#           actor_head.append(self.act_0)
+#           actor_head.append(nn.ReLU())
+#       self.actor_head = nn.Sequential(*actor_head)
         self.active_column = None
     # TODO: should be part of a subclass
 
@@ -598,12 +598,16 @@ class FractalNet(NNBase):
             block = getattr(self, 'block_{}'.format(i))
             x = F.relu(block(x, rnn_hxs, masks))
 
-        actions = self.actor_head(x)
+        actions = x
+        for i in range(self.n_shrinks):
+            actions = self.act_0(actions)
+            actions = F.relu(actions)
         actions = F.relu(self.actor_out(actions))
         actions = torch.flatten(actions, start_dim=1)
         values = x
 
-        for i in range(int(math.log(self.map_width, 2))):
+        for i in range(self.n_shrinks):
+#       for i in range(int(math.log(self.map_width, 2))):
             values = F.relu(self.critic_dwn(values))
         values = self.critic_out(values)
         values = values.view(values.size(0), -1)

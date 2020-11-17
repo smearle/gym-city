@@ -87,7 +87,8 @@ class Teacher(Trainer):
         self.env_param_ranges = env_param_ranges
         self.params_vec = params_vec
         self.params = params
-        self.trial_remaining = args.max_step * 2
+        self.len_trial = args.max_step * 1
+        self.trial_remaining = self.len_trial
         self.trial_reward = trial_reward
 
     def check_params(self):
@@ -100,16 +101,16 @@ class Teacher(Trainer):
         num_env_params = self.num_env_params
         env_param_bounds = self.env_param_bounds
 
-        if trial_remaining == 0:
+        if trial_remaining <= 0:
             trial_reward = trial_reward / args.num_processes
             alp_gmm.update(params_vec, trial_reward)
             trial_reward = 0
-            trial_remaining = args.max_step
+            trial_remaining = self.len_trial
             # sample random environment parameters
             params_vec = alp_gmm.sample_task()
             prm_i = 0
 
-            print(params_vec)
+#           print(params_vec)
             for k, v in env_param_bounds.items():
                 if prm_i < num_env_params:
                     params[k] = params_vec[prm_i]

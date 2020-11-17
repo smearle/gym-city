@@ -128,7 +128,7 @@ class MicropolisMonitor(bench.Monitor):
     def reset(self):
         obs = super().reset()
         self.needs_reset = False
-        obs = self.env.reset()
+#       obs = self.env.reset()
 
         return obs
 
@@ -256,10 +256,11 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
         else:
 
             if 'rct' in env_id.lower():
-                from gym_micro_rct.envs.rct_env import RCT
+                from micro_rct.gym_envs.rct_env import RCT
 
+            print('render gui', render_gui)
             env = gym.make(env_id, 
-                    render_gui=render_gui, rank=rank, max_step=max_step, settings_path='./configs/settings.yml')
+                    render_gui=render_gui, rank=rank, max_step=max_step, map_width=map_width)
 
             if record:
                 record_dir = log_dir
@@ -308,7 +309,6 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     env = NoiseyTargets(env)
 
             if 'rct' in env_id.lower():
-                from gym_micro_rct.envs.rct_env import RCT
                 if param_rew:
                     assert num_env_params != 0
                     env = ParamRew(env, num_env_params)

@@ -550,6 +550,7 @@ class ParamRew(gym.Wrapper):
         low = np.vstack((metrics_low, low))
         high = np.vstack((metrics_high, high))
         self.observation_space = gym.spaces.Box(low=low, high=high)
+        self.next_params = None
         if self.render_gui and True:
             screen_width = 200
             screen_height = 100 * self.num_params
@@ -572,6 +573,10 @@ class ParamRew(gym.Wrapper):
         return scalars
 
     def set_params(self, params):
+        self.next_params = params
+
+    def do_set_params(self):
+        params = self.next_params
         i = 0
         self.init_metrics = copy.deepcopy(self.metrics)
 
@@ -598,6 +603,8 @@ class ParamRew(gym.Wrapper):
         self.display_metric_trgs()
 
     def reset(self):
+        if self.next_params:
+            self.do_set_params()
         ob = super().reset()
         ob = self.observe_metric_trgs(ob)
         self.metrics = self.unwrapped.metrics

@@ -155,6 +155,7 @@ if args.evaluate:
     args.inter_shr = saved_args.inter_shr
     args.n_chan = saved_args.n_chan
     args.val_kern = saved_args.val_kern
+    args.num_env_params = saved_args.num_env_params
    #args.past_frames = 0
    #args.param_rew = False
     print('steps: ', saved_args.max_step, '\n')
@@ -177,10 +178,10 @@ env_done = False
 last_rew = 0
 MODULATE_TRGS = True
 while True:
-    if env_done or obs is None:
+    if obs is None:
         obs = env.reset()
     if args.det:
-        if np.random.random() < 0.1:
+        if np.random.random() < -0.1:
             deterministic = False
         else: deterministic = True
     else:
@@ -194,12 +195,13 @@ while True:
     if env_done:
         last_rew = 0
         num_step = 0
+        print('metrics, end of episode:\n', env.venv.venv.envs[0].metrics)
     # Observe reward and next obs
     obs, reward, done, infos = env.step(action)
-    print('reward: ', reward)
+   #print('reward: ', reward)
     env_done = done[0] # assume we have only one env.
     last_rew = reward
-   #env.venv.venv.envs[0].render()
+    env.venv.venv.envs[0].render()
    #time.sleep(0.08)
 
     player_act = None
