@@ -3,10 +3,12 @@ pygame
 baselines
 torchsummary
 imutils
-PyGObject 
+#PyGObject 
 matplotlib 
 imutils 
 graphviz 
 visdom 
 tensorflow 
 torchsummary
+sklearn
+pyyaml
