@@ -40,7 +40,6 @@ class DDummyVecEnv(DummyVecEnv):
         return self.buf_obs, self.buf_rews, self.buf_dones, self.buf_infos
 
     def reset(self):
-        map_width = self.envs[0].width
         for i in range(self.num_envs):
             obs_tuple = self.envs[i].reset()[0]
             if isinstance(obs_tuple, (tuple, list)):
@@ -51,6 +50,7 @@ class DDummyVecEnv(DummyVecEnv):
                     self.buf_obs[0][i] = obs_tuple
                 # Hack to dunamically change map size
                 except:
+                    map_width = self.envs[0].width
                     self.buf_obs = [np.zeros((self.num_envs,) + (self.envs[0].num_obs_channels, map_width,
                         map_width))]
                 self.buf_obs[0][i] = obs_tuple

@@ -574,13 +574,21 @@ class FractalNet(NNBase):
            nn.init.orthogonal_,
            lambda x: nn.init.constant_(x, 0))
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
-       #self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
-        self.actor_out = init_(nn.Conv2d(n_out_chan, 512, 3, 1, 1))
+        if out_w == 1:
+            self.actor_out = init_(nn.Conv2d(n_out_chan, 512, 3, 1, 1))
+        else:
+            self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
         actor_head = []
-        self.act_0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
         # FIXME: hack for rct
-        self.n_shrinks = int(math.log(self.map_width // out_w, 2)) + 1
-        print('n shrinks: {}'.format(self.n_shrinks))
+        self.n_act_shrinks = int(math.log(self.map_width // out_w, 2))#+ 1
+        if self.n_act_shrinks > 0:
+            self.act_0 = init_(nn.Conv2d(self.n_out_chan, self.n_out_chan, 3, 2, 1))
+        self.n_val_shrinks = int(math.log(self.map_width, 2))#+ 1
+        print('Fractal Net dimensions debug:')
+        print('out_w', out_w)
+        print('num_actions', num_actions)
+        print('n act shrinks: {}'.format(self.n_act_shrinks))
+        print('n val shrinks: {}'.format(self.n_val_shrinks))
 #       for i in range(n_shrinks):
 #           actor_head.append(self.act_0)
 #           actor_head.append(nn.ReLU())
@@ -599,14 +607,14 @@ class FractalNet(NNBase):
             x = F.relu(block(x, rnn_hxs, masks))
 
         actions = x
-        for i in range(self.n_shrinks):
+        for i in range(self.n_act_shrinks):
             actions = self.act_0(actions)
             actions = F.relu(actions)
         actions = F.relu(self.actor_out(actions))
         actions = torch.flatten(actions, start_dim=1)
         values = x
 
-        for i in range(self.n_shrinks):
+        for i in range(self.n_val_shrinks):
 #       for i in range(int(math.log(self.map_width, 2))):
             values = F.relu(self.critic_dwn(values))
         values = self.critic_out(values)
@@ -1934,7 +1942,7 @@ class MicropolisBase_mlp(NNBase):
 
 
 class MLPBase(NNBase):
-    def __init__(self, recurrent=False, hidden_size=256,
+    def __init__(self, recurrent=False, hidden_size=512,
                  map_width=16, num_inputs=1, num_actions=1,
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64,
                  prebuild=False, val_kern=None):

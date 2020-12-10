@@ -100,7 +100,7 @@ class Trainer():
                 else:
                     if not args.load:
                         raise Exception('experiment exists, not overwriting')
-        torch.set_num_threads(1)
+        torch.set_num_threads(torch.get_num_threads())
         device = torch.device("cuda:0" if args.cuda else "cpu")
         self.device = device
 
@@ -222,7 +222,7 @@ class Trainer():
             args.save_dir = saved_args.save_dir
             args.model = saved_args.model
             args.env_name = saved_args.env_name
-            args.poet = saved_args.poet
+           #args.poet = saved_args.poet
         actor_critic.to(device)
 
         updates_remaining = int(args.num_frames - past_frames) // (args.num_steps * args.num_processes)
@@ -472,18 +472,19 @@ class Trainer():
 
 
 
-        total_num_steps = (n_train + 1) * args.num_processes * args.num_steps
+       #total_num_steps = (n_train + 1) * args.num_processes * args.num_steps
 
         if not dist_entropy:
             dist_entropy = 0
        #print(episode_rewards)
        #if torch.max(rollouts.rewards) > 0:
        #    print(rollouts.rewards)
-        if args.log and n_train % args.log_interval == 0 and len(episode_rewards) > 1:
+        if args.log and n_train % args.log_interval == 0  and len(episode_rewards) > 1:
             end = time.time()
             print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.6f}/{:.6f}, min/max reward {:.6f}/{:.6f}\n \
 dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
-                format(n_train, total_num_steps,
+                      format(n_train, # TODO: deal with reloading
+                       self.n_frames,
                        int((self.n_frames - self.past_frames) / (end - start)),
                        len(episode_rewards),
                        round(np.mean(episode_rewards), 6),
@@ -566,8 +567,8 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
         self.optim_save = optim_save
         self.args = args
         self.ob_rms = ob_rms
-        if self.n_frames % 2000 == 0:
-            save_path = os.path.join(save_path, 'checkpoint_{}'.format(n_train))
+        if self.n_train % args.checkpoint_interval == 0:
+            save_path = os.path.join(save_path, 'checkpoint_{}'.format(self.n_frames))
             os.mkdir(save_path)
         torch.save(self.get_save_dict(), os.path.join(save_path, args.env_name + ".tar"))
 

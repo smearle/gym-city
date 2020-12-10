@@ -1,3 +1,4 @@
+import random
 import copy
 import os
 
@@ -7,6 +8,15 @@ import numpy as np
 import torch
 from opensimplex import OpenSimplex
 import pygame
+
+class Griddly(gym.Wrapper):
+    def __init__(self, env):
+        super(Griddly, self).__init__(env)
+        
+    def step(self, a):
+        self.render()
+        ret = super().step(a)
+        return ret
 
 class NoiseyTargets(gym.Wrapper):
     '''A bunch of simplex noise instances modulate target metrics.'''
@@ -500,10 +510,11 @@ class ImRenderMulti(ImRender):
 
 
 class ParamRew(gym.Wrapper):
-    def __init__(self, env, num_env_params):
+    def __init__(self, env, num_env_params, rand_params=False):
 
- 
-
+        # Whether to always select random parameters, to stabilize learning multiple objectives 
+        # (i.e. prevent overfitting to some subset of objectives)
+        self.rand_params = rand_params
         self.env = env
         super().__init__(self.env)
         self.num_params = num_env_params
@@ -521,12 +532,12 @@ class ParamRew(gym.Wrapper):
         self.last_metrics = copy.deepcopy(self.metrics)
         self.param_bounds = self.unwrapped.param_bounds
         self.param_ranges = {}
-        self.max_improvement = 0
+#       self.max_improvement = 0
         for k in self.usable_metrics:
             v = self.param_bounds[k]
             improvement = abs(v[1] - v[0])
             self.param_ranges[k] = improvement
-            self.max_improvement += improvement * self.weights[k]
+#           self.max_improvement += improvement * self.weights[k]
         self.metric_trgs = self.unwrapped.metric_trgs
 
         for k in self.usable_metrics:
@@ -573,18 +584,23 @@ class ParamRew(gym.Wrapper):
         return scalars
 
     def set_params(self, params):
-        self.next_params = params
+        if self.rand_params:
+            for k in self.usable_metrics:
+                min_v, max_v = self.param_bounds[k]
+                params[k] = random.uniform(min_v, max_v)
+        else:
+            self.next_params = params
 
     def do_set_params(self):
         params = self.next_params
         i = 0
         self.init_metrics = copy.deepcopy(self.metrics)
 
-        self.max_improvement = 0
+#       self.max_improvement = 0
         for k, trg in params.items():
             if k in self.usable_metrics:
                 self.metric_trgs[k] = trg
-                self.max_improvement += abs(trg - self.init_metrics[k]) * self.weights[k]
+#               self.max_improvement += abs(trg - self.init_metrics[k]) * self.weights[k]
 
        #for k in self.usable_metrics:
        #    weight_name = '{}_weight'.format(k)

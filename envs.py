@@ -21,14 +21,14 @@ from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets
+from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets, Griddly
 
 
 
 class MicropolisMonitor(bench.Monitor):
     def __init__(self, env, filename, allow_early_resets=False, reset_keywords=(), info_keywords=()):
         self.env = env
-        self.width = self.unwrapped.width
+       #self.width = self.unwrapped.width
         self.dist_entropy = 0
         append_log = False # are we merging to an existing log file after pause in training?
         logfile = filename + '.monitor.csv'
@@ -258,14 +258,33 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             if 'rct' in env_id.lower():
                 from micro_rct.gym_envs.rct_env import RCT
 
-            print('render gui', render_gui)
-            env = gym.make(env_id, 
-                    render_gui=render_gui, rank=rank, max_step=max_step, map_width=map_width)
+            if 'GDY' in env_id:
+                # it's a griddly environment
+                from griddly import GymWrapperFactory, gd
+                wrapper = GymWrapperFactory()
+                # we assume it's a particular environment:
+                wrapper.build_gym_from_yaml(
+                        'Sokoban-Adv',
+                        'Single-Player/GVGAI/sokoban.yaml',
+                        player_observer_type=gd.ObserverType.VECTOR,
+                        level=2
+                    )
+                env = gym.make('GDY-Sokoban-Adv-v0')
+                # need to reset to initialize env.observation_space
+                env.reset()
+                env = Griddly(env)
+
+            else:
+                print('render gui', render_gui)
+                env = gym.make(env_id, 
+                        render_gui=render_gui, rank=rank, max_step=max_step, map_width=map_width)
 
             if record:
                 record_dir = log_dir
             else:
                 record_dir = None
+
+
 
 
             if 'gameoflife' in env_id.lower():
@@ -311,7 +330,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             if 'rct' in env_id.lower():
                 if param_rew:
                     assert num_env_params != 0
-                    env = ParamRew(env, num_env_params)
+                    rand_params = rank <= args.num_processes / 3
+                    env = ParamRew(env, num_env_params, rand_params=rand_params)
 
                 env.configure()
 

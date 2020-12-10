@@ -94,7 +94,7 @@ def get_parser():
     parser.add_argument('--clip-param', type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument('--log', type=str2bool, default=True)
-    parser.add_argument('--log-interval', type=int, default=10,
+    parser.add_argument('--log-interval', type=int, default=100,
                         help='log interval, one log per n updates (default: 10)')
     parser.add_argument('--save', type=str2bool, default=True)
     parser.add_argument('--save-interval', type=int, default=100,
@@ -202,16 +202,21 @@ def get_parser():
         default=0.1,
         metavar='LR',
         help='lambda : balance between A2C & icm')
-    parser.add_argument(
-        '--poet',
-        type=str2bool,
-        default=True,
-        help='set targets for environment, replaces fixed reward function')
+#   parser.add_argument(
+#       '--poet',
+#       type=str2bool,
+#       default=True,
+#       help='set targets for environment, replaces fixed reward function')
     parser.add_argument(
         '--num-env-params',
         type=int,
-        default=1,
+        default=0,
         help='how many of the environment metrics to include as targets',
         )
+    parser.add_argument(
+        '--checkpoint-interval',
+        type=int,
+        default=10000,
+        help='how often to save a checkpoint')
 
     return parser
