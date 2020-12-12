@@ -66,11 +66,11 @@ if not args.evaluate and not 'GoLMulti' in env_name:
     # assume we just want to observe/interact w/ a single env.
     args.num_proc = 1
 dummy_args = args
-param_rew = args.num_env_params > 0
+param_rew = len(args.env_params) > 0
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, args.load_dir, args.add_timestep, device=device,
                     allow_early_resets=False,
-                    param_rew=param_rew, num_env_params=args.num_env_params,
+                    param_rew=param_rew, env_params=args.env_params,
                     args=dummy_args)
 print(args.load_dir)
 
@@ -155,7 +155,7 @@ if args.evaluate:
     args.inter_shr = saved_args.inter_shr
     args.n_chan = saved_args.n_chan
     args.val_kern = saved_args.val_kern
-    args.num_env_params = saved_args.num_env_params
+    args.env_params = saved_args.env_params
    #args.past_frames = 0
    #args.param_rew = False
     print('steps: ', saved_args.max_step, '\n')

@@ -1964,8 +1964,8 @@ class MLPBase(NNBase):
             init_(nn.Linear(hidden_size, hidden_size)),
             nn.Tanh(),
            #init_(nn.Linear(hidden_size, out_w * out_h * num_actions)),
-            init_(nn.Linear(hidden_size, hidden_size)),
-            nn.Tanh()
+#           init_(nn.Linear(hidden_size, hidden_size)),
+#           nn.Tanh()
         )
 
         self.critic = nn.Sequential(

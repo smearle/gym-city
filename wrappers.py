@@ -41,7 +41,7 @@ class NoiseyTargets(gym.Wrapper):
             (ub, lb) = param_bounds[k]
             trgs[k] = ((trgs[k] + 1) / 2 * (ub - lb)) + lb
             i += 1
-        self.env.set_params(trgs)
+        self.env.set_trgs(trgs)
         out = self.env.step(a)
         self.n_step += 1
         return out
@@ -510,23 +510,22 @@ class ImRenderMulti(ImRender):
 
 
 class ParamRew(gym.Wrapper):
-    def __init__(self, env, num_env_params, rand_params=False):
+    def __init__(self, env, env_params, rand_params=False):
 
         # Whether to always select random parameters, to stabilize learning multiple objectives 
         # (i.e. prevent overfitting to some subset of objectives)
         self.rand_params = rand_params
         self.env = env
         super().__init__(self.env)
-        self.num_params = num_env_params
+        self.usable_metrics = env_params
+        self.num_params = len(env_params)
         self.auto_reset = True
-
 
     def configure(self, **kwargs):
         print(kwargs)
         self.unwrapped.configure(**kwargs)
         self.metrics = self.unwrapped.metrics
         # NB: self.metrics needs to be an OrderedDict
-        self.usable_metrics = list(self.metrics.keys())[:self.num_params]
         print(self.usable_metrics)
         print('unwrapped: {}'.format(self.unwrapped.metrics))
         self.last_metrics = copy.deepcopy(self.metrics)
@@ -561,7 +560,7 @@ class ParamRew(gym.Wrapper):
         low = np.vstack((metrics_low, low))
         high = np.vstack((metrics_high, high))
         self.observation_space = gym.spaces.Box(low=low, high=high)
-        self.next_params = None
+        self.next_trgs = None
         if self.render_gui and True:
             screen_width = 200
             screen_height = 100 * self.num_params
@@ -583,21 +582,22 @@ class ParamRew(gym.Wrapper):
         raise Exception
         return scalars
 
-    def set_params(self, params):
+    def set_trgs(self, trgs):
         if self.rand_params:
             for k in self.usable_metrics:
                 min_v, max_v = self.param_bounds[k]
-                params[k] = random.uniform(min_v, max_v)
-        else:
-            self.next_params = params
+                trgs[k] = random.uniform(min_v, max_v)
+            if self.rank == 0:
+                print('next trgs: {}'.format(trgs))
+        self.next_trgs = trgs
 
-    def do_set_params(self):
-        params = self.next_params
+    def do_set_trgs(self):
+        trgs = self.next_trgs
         i = 0
         self.init_metrics = copy.deepcopy(self.metrics)
 
 #       self.max_improvement = 0
-        for k, trg in params.items():
+        for k, trg in trgs.items():
             if k in self.usable_metrics:
                 self.metric_trgs[k] = trg
 #               self.max_improvement += abs(trg - self.init_metrics[k]) * self.weights[k]
@@ -619,8 +619,8 @@ class ParamRew(gym.Wrapper):
         self.display_metric_trgs()
 
     def reset(self):
-        if self.next_params:
-            self.do_set_params()
+        if self.next_trgs:
+            self.do_set_trgs()
         ob = super().reset()
         ob = self.observe_metric_trgs(ob)
         self.metrics = self.unwrapped.metrics

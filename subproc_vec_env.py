@@ -36,8 +36,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd == 'get_param_bounds':
             param_bounds = env.get_param_bounds()
             remote.send(param_bounds)
-        elif cmd == 'set_params':
-            env.set_params(data)
+        elif cmd == 'set_trgs':
+            env.set_trgs(data)
             remote.send(None)
         elif cmd == 'set_param_bounds':
             env.set_param_bounds(data)
@@ -130,9 +130,9 @@ class SubprocVecEnv(VecEnv):
             remote.send(('set_log_dir', log_dir))
             remote.recv()
 
-    def set_params(self, params):
+    def set_trgs(self, params):
         for remote in self.remotes:
-            remote.send(('set_params', params))
+            remote.send(('set_trgs', params))
             remote.recv()
 
         return
