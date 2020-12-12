@@ -216,7 +216,7 @@ def get_parser():
     parser.add_argument(
         '--checkpoint-interval',
         type=int,
-        default=10000,
+        default=50000,
         help='how often to save a checkpoint')
 
     return parser
