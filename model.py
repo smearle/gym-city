@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchsummary import summary
+#from torchsummary import summary
 
 from ConvLSTMCell import ConvLSTMCell
 from distributions import (Categorical, Categorical2D, CategoricalPaint,
@@ -1955,6 +1955,7 @@ class MLPBase(NNBase):
 
         self.flatten = nn.Flatten()
         self.actor = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
