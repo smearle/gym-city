@@ -1945,12 +1945,15 @@ class MLPBase(NNBase):
                  map_width=16, num_actions=1,
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64,
                  prebuild=False, val_kern=None):
+        super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
+        num_inputs = in_w * in_h * num_inputs
         if recurrent:
             num_inputs = hidden_size
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), np.sqrt(2))
 
+        self.flatten = nn.Flatten()
         self.actor = nn.Sequential(
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
@@ -1964,7 +1967,7 @@ class MLPBase(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        x = inputs
+        x = self.flatten(inputs)
 
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
