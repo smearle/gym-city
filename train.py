@@ -1,4 +1,5 @@
 import copy
+import math
 import csv
 import glob
 import os
@@ -286,7 +287,7 @@ class Trainer():
         try:
             envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                     args.gamma, args.log_dir, args.add_timestep, self.device, False, None,
-                    param_rew=args.param_rew, num_env_params=args.num_env_params, args=args)
+                    param_rew=args.param_rew, env_params=args.env_params, args=args)
         except gym.error.UnregisteredEnv as err:
             print(err, '\n available envs: \n{}'.format(gym.envs.registry.all()))
             raise err
@@ -569,7 +570,10 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
         self.ob_rms = ob_rms
         if self.n_train % args.checkpoint_interval == 0:
             save_path = os.path.join(save_path, 'checkpoint_{}'.format(self.n_frames))
-            os.mkdir(save_path)
+            try:
+                os.mkdir(save_path)
+            except FileExistsError:
+                pass
         torch.save(self.get_save_dict(), os.path.join(save_path, args.env_name + ".tar"))
 
        #save_model = [save_model,
@@ -601,8 +605,12 @@ dist entropy {:.6f}, val/act loss {:.6f}/{:.6f},".
             viz = self.viz
             win = self.win
             graph_name = self.graph_name
+            if not args.n_rand_envs:
+                n_plot_frames = self.n_frames
+            else:
+                n_plot_frames = math.ceil(self.n_frames * (args.n_rand_envs / args.num_processes)) + 10000
             win = plotter.visdom_plot(viz, win, args.log_dir, graph_name,
-                              args.algo, args.num_frames)
+                              args.algo, n_plot_frames, max_env_id=args.n_rand_envs)
         except IOError:
             pass
 

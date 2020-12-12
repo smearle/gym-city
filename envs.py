@@ -243,7 +243,7 @@ class ToPytorchOrder(gym.Wrapper):
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False,
         print_map=False, parallel_py2gui=False, noreward=False, max_step=None, param_rew=False,
-        num_env_params=0,
+        env_params=[],
         args=None):
     ''' return a function which starts the environment'''
     def _thunk():
@@ -321,17 +321,17 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                 env = MapDims(env)
                 if True or param_rew: 
                     print('pcgrl reward teacher')
-                    assert num_env_params != 0
-                    env = ParamRew(env, num_env_params)
+                    assert len(env_params) != 0
+                    env = ParamRew(env, env_params)
                     env.configure(map_width=args.map_width, max_step=args.max_step)
                 if False:
                     env = NoiseyTargets(env)
 
             if 'rct' in env_id.lower():
                 if param_rew:
-                    assert num_env_params != 0
-                    rand_params = rank <= args.num_processes / 3
-                    env = ParamRew(env, num_env_params, rand_params=rand_params)
+                    assert len(env_params) != 0
+                    rand_params = rank <= args.n_rand_envs
+                    env = ParamRew(env, env_params, rand_params=rand_params)
 
                 env.configure()
 
@@ -355,8 +355,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     ages = False
 
                 if param_rew:
-                    assert num_env_params != 0
-                    env = ParamRew(env, num_env_params)
+                    assert len(env_params) != 0
+                    env = ParamRew(env, env_params)
                 env.configure(
                         map_width=map_width,
                         max_step=max_step,
@@ -427,7 +427,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None, param_rew=False,
-                  num_env_params=0, args=None):
+                  env_params=[], args=None):
 
     print('make vec envs random map? {}'.format(args.random_terrain))
     if 'golmultienv' in env_name.lower():
@@ -436,7 +436,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
         allow_early_resets, map_width=args.map_width, render_gui=args.render,
         print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step, param_rew=param_rew,
-        num_env_params=num_env_params, args=args)
+        env_params=env_params, args=args)
             for i in range(num_processes)]
 
     if 'golmultienv' in env_name.lower():

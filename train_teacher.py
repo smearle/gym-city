@@ -37,7 +37,6 @@ class Teacher(Trainer):
     def __init__(self, args=None):
         if args is None:
             args = get_args()
-        NUM_ENV_PARAMS = args.num_env_params
         device = torch.device("cuda:0" if args.cuda else "cpu")
         self.device = device
         # have to do above before call to parent to initialize Evaluator correctly
@@ -46,11 +45,11 @@ class Teacher(Trainer):
         envs = self.make_vec_envs(args)
         super(Teacher, self).__init__(args=args, envs=envs)
         # dictionary of param names to target histories as set by alp_gmm
+        self.env_params = self.args.env_params
         self.param_hist = {}
         envs = self.envs
         args = self.args
         env_param_bounds = envs.get_param_bounds()
-        num_env_params = NUM_ENV_PARAMS
         # in case we want to change this dynamically in the future (e.g., we may
         # not know how much traffic the agent can possibly produce in Micropolis)
         envs.set_param_bounds(env_param_bounds) # start with default bounds
@@ -59,14 +58,12 @@ class Teacher(Trainer):
         env_param_hi_bounds = []
         i = 0
 
-        for k, v in env_param_bounds.items():
-            if i < num_env_params:
-                env_param_ranges += [abs(v[1] - v[0])]
-                env_param_lw_bounds += [v[0]]
-                env_param_hi_bounds += [v[1]]
-                i += 1
-            else:
-                break
+        for k in self.env_params:
+            v = env_param_bounds[k]
+            env_param_ranges += [abs(v[1] - v[0])]
+            env_param_lw_bounds += [v[0]]
+            env_param_hi_bounds += [v[1]]
+            i += 1
         alp_gmm = None
 
         if self.checkpoint:
@@ -83,7 +80,6 @@ class Teacher(Trainer):
         trial_reward = 0
 
         self.env_param_bounds = env_param_bounds
-        self.num_env_params = num_env_params
         self.env_param_ranges = env_param_ranges
         self.params_vec = params_vec
         self.params = params
@@ -98,7 +94,6 @@ class Teacher(Trainer):
         params_vec = self.params_vec
         args = self.args
         alp_gmm = self.alp_gmm
-        num_env_params = self.num_env_params
         env_param_bounds = self.env_param_bounds
 
         if trial_remaining <= 0:
@@ -111,13 +106,10 @@ class Teacher(Trainer):
             prm_i = 0
 
 #           print(params_vec)
-            for k, v in env_param_bounds.items():
-                if prm_i < num_env_params:
-                    params[k] = params_vec[prm_i]
-                    prm_i += 1
-                else:
-                    break
-            self.envs.set_params(params)
+            for k in self.env_params:
+                params[k] = params_vec[prm_i]
+                prm_i += 1
+            self.envs.set_trgs(params)
             print('setting params: {}'.format(params))
         trial_remaining -= args.num_steps
 

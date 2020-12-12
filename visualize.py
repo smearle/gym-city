@@ -1,7 +1,7 @@
 # Copied from https://github.com/emansim/baselines-mansimov/blob/master/baselines/a2c/visualize_atari.py
 # and https://github.com/emansim/baselines-mansimov/blob/master/baselines/a2c/load.py
 # Thanks to the author and OpenAI team!
-
+from pdb import set_trace as T
 import glob
 import os
 
@@ -182,7 +182,7 @@ def fix_point(x, y, interval):
     return fx, fy
 
 
-def load_data(indir, smooth, bin_size, col=None, header='r', dots=False):
+def load_data(indir, smooth, bin_size, col=None, header='r', dots=False, max_env_id=None):
     datas = []
     if col is not None:
         infiles = glob.glob(os.path.join(indir, 'col_{}_eval.csv'.format(col)))
@@ -192,6 +192,9 @@ def load_data(indir, smooth, bin_size, col=None, header='r', dots=False):
         print('no files found at {}'.format(indir))
 
     for inf in infiles:
+        env_id = inf.split('.')[-3].split('/')[-1]
+        if max_env_id and not int(env_id) < max_env_id:
+            continue
         with open(inf, 'r') as f:
             f.readline()
             f.readline()
@@ -250,7 +253,7 @@ class Plotter(object):
 
     def visdom_plot(self, viz, win, folder, game, name, num_steps, bin_size=100, smooth=1,
             n_graphs=None, x_lim=None, y_lim=None, man=False,
-            eval=False, header='r', dots=False
+            eval=False, header='r', dots=False, max_env_id=None
             ):
         import matplotlib.pyplot as plt
         plt.switch_backend('agg')
@@ -306,7 +309,7 @@ class Plotter(object):
             for f in fld:
                 print(f)
                 color = 0
-                tx, ty = load_data(f, smooth, bin_size, col=-1, header=header)
+                tx, ty = load_data(f, smooth, bin_size, col=-1, header=header, max_env_id=max_env_id)
                 if tx is None or ty is None:
                     #print('could not find x y data columns in csv')
                     pass
@@ -323,7 +326,7 @@ class Plotter(object):
             #print('indaplotter')
             color = 0
             for i in n_graphs:
-                tx, ty = load_data(folder, smooth, bin_size, col=i, header=header)
+                tx, ty = load_data(folder, smooth, bin_size, col=i, header=header, max_env_id=max_env_id)
                 if tx is None or ty is None:
                     #print('could not find x y data columns in csv')
                     pass
@@ -333,7 +336,7 @@ class Plotter(object):
                     plt.plot(tx, ty, label="col {}".format(i), color=color_defaults[color])
                     color += 1
         else:
-            tx, ty = load_data(folder, smooth, bin_size, header=header, dots=dots)
+            tx, ty = load_data(folder, smooth, bin_size, header=header, dots=dots, max_env_id=max_env_id)
             if tx is None or ty is None:
                 return win
             if evl:
