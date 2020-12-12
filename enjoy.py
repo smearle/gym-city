@@ -66,7 +66,7 @@ if not args.evaluate and not 'GoLMulti' in env_name:
     # assume we just want to observe/interact w/ a single env.
     args.num_proc = 1
 dummy_args = args
-param_rew = len(args.env_params) > 0
+param_rew = args.env_params is not None
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, args.load_dir, args.add_timestep, device=device,
                     allow_early_resets=False,

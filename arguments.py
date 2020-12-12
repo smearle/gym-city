@@ -216,7 +216,7 @@ def get_parser():
     parser.add_argument(
         '--env-params',
         nargs='+',
-        default=['num_rides'],
+        default=None,
         help="names of metrics to be factored into the agent's parameterizable reward function"
         )
     parser.add_argument(
