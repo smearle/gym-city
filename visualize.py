@@ -192,9 +192,10 @@ def load_data(indir, smooth, bin_size, col=None, header='r', dots=False, max_env
         print('no files found at {}'.format(indir))
 
     for inf in infiles:
-        env_id = inf.split('.')[-3].split('/')[-1]
-        if max_env_id and not int(env_id) < max_env_id:
-            continue
+        if max_env_id:
+            env_id = inf.split('.')[-3].split('/')[-1]
+            if not int(env_id) < max_env_id:
+                continue
         with open(inf, 'r') as f:
             f.readline()
             f.readline()

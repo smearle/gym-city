@@ -587,8 +587,6 @@ class ParamRew(gym.Wrapper):
             for k in self.usable_metrics:
                 min_v, max_v = self.param_bounds[k]
                 trgs[k] = random.uniform(min_v, max_v)
-            if self.rank == 0:
-                print('next trgs: {}'.format(trgs))
         self.next_trgs = trgs
 
     def do_set_trgs(self):

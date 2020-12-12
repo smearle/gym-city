@@ -76,9 +76,9 @@ class DDummyVecEnv(DummyVecEnv):
             env.set_param_bounds(bounds)
         return len(bounds)
 
-    def set_params(self, params):
+    def set_trgs(self, trgs):
         for env in self.envs:
-            env.set_params(params)
+            env.set_trgs(trgs)
 
     def get_param_trgs(self):
         return self.envs[0].get_param_trgs()
