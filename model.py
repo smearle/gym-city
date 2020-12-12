@@ -1940,49 +1940,31 @@ class MicropolisBase_mlp(NNBase):
 
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
 
-
 class MLPBase(NNBase):
-    def __init__(self, recurrent=False, hidden_size=512,
-                 map_width=16, num_inputs=1, num_actions=1,
+    def __init__(self, num_inputs, recurrent=False, hidden_size=64,
+                 map_width=16, num_actions=1,
                  in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64,
                  prebuild=False, val_kern=None):
-        super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
-        self.n_cols = 1
-        num_inputs = in_w * in_h * num_inputs
-
         if recurrent:
             num_inputs = hidden_size
-        print('num_inputs: {}, hidden_size: {}'.format(num_inputs, hidden_size))
 
-        init_ = lambda m: init(m,
-            init_normc_,
-            lambda x: nn.init.constant_(x, 0), np.sqrt(2))
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), np.sqrt(2))
 
         self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)),
-            nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)),
-            nn.Tanh(),
-           #init_(nn.Linear(hidden_size, out_w * out_h * num_actions)),
-#           init_(nn.Linear(hidden_size, hidden_size)),
-#           nn.Tanh()
-        )
+            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
         self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)),
-            nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)),
-            nn.Tanh()
-        )
+            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        inputs = inputs.float()
         x = inputs
-        x=x.view(x.size(0), -1)
 
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
@@ -1991,3 +1973,54 @@ class MLPBase(NNBase):
         hidden_actor = self.actor(x)
 
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+
+#class OldMLPBase(NNBase):
+#    def __init__(self, recurrent=False, hidden_size=64,
+#                 map_width=16, num_inputs=1, num_actions=1,
+#                 in_w=1, in_h=1, out_w=1, out_h=1, n_chan=64,
+#                 prebuild=False, val_kern=None):
+#        super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
+#        self.n_cols = 1
+#        num_inputs = in_w * in_h * num_inputs
+#
+#        if recurrent:
+#            num_inputs = hidden_size
+#        print('num_inputs: {}, hidden_size: {}'.format(num_inputs, hidden_size))
+#
+#        init_ = lambda m: init(m,
+#            init_normc_,
+#            lambda x: nn.init.constant_(x, 0), np.sqrt(2))
+#
+#        self.actor = nn.Sequential(
+#            init_(nn.Linear(num_inputs, hidden_size)),
+#            nn.Tanh(),
+#            init_(nn.Linear(hidden_size, hidden_size)),
+#            nn.Tanh(),
+#           #init_(nn.Linear(hidden_size, out_w * out_h * num_actions)),
+##           init_(nn.Linear(hidden_size, hidden_size)),
+##           nn.Tanh()
+#        )
+#
+#        self.critic = nn.Sequential(
+#            init_(nn.Linear(num_inputs, hidden_size)),
+#            nn.Tanh(),
+#            init_(nn.Linear(hidden_size, hidden_size)),
+#            nn.Tanh()
+#        )
+#
+#        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+#
+#        self.train()
+#
+#    def forward(self, inputs, rnn_hxs, masks):
+#        inputs = inputs.float()
+#        x = inputs
+#        x=x.view(x.size(0), -1)
+#
+#        if self.is_recurrent:
+#            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+#
+#        hidden_critic = self.critic(x)
+#        hidden_actor = self.actor(x)
+#
+#        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
