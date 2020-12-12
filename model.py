@@ -575,7 +575,7 @@ class FractalNet(NNBase):
            lambda x: nn.init.constant_(x, 0))
         self.critic_out = init_(nn.Conv2d(n_out_chan, 1, 3, 1, 1))
         if out_w == 1:
-            self.actor_out = init_(nn.Conv2d(n_out_chan, 512, 3, 1, 1))
+            self.actor_out = init_(nn.Conv2d(n_out_chan, 64, 1, 1, 1))
         else:
             self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
         actor_head = []
@@ -1956,7 +1956,9 @@ class MLPBase(NNBase):
         self.flatten = nn.Flatten()
         self.actor = nn.Sequential(
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
+            )
 
         self.critic = nn.Sequential(
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
