@@ -1956,7 +1956,7 @@ class MLPBase(NNBase):
 
         init_ = lambda m: init(m,
             init_normc_,
-            lambda x: nn.init.constant_(x, 0))
+            lambda x: nn.init.constant_(x, 0), np.sqrt(2))
 
         self.actor = nn.Sequential(
             init_(nn.Linear(num_inputs, hidden_size)),

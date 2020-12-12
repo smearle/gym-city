@@ -79,7 +79,7 @@ class ParamRewWindow(Gtk.Window):
     def scale_moved(self, event):
         k = event.get_name()
         self.env.metric_trgs[k] = event.get_value()
-        self.env.set_params(self.env.metric_trgs)
+        self.env.set_trgs(self.env.metric_trgs)
 
     def display_metric_trgs(self):
         for k, v in self.env.metric_trgs.items():
