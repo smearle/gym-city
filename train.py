@@ -18,7 +18,7 @@ import torch.optim as optim
 import algo
 import game_of_life
 import gym_city
-import gym_pcgrl
+#import gym_pcgrl
 from arguments import get_args
 from envs import make_vec_envs
 from evaluate import Evaluator
