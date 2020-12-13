@@ -1,6 +1,6 @@
 import numpy as np
 import gym
-from baselines.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 class DDummyVecEnv(DummyVecEnv):
     '''Deals with multiple environments sequentially. With extras.'''
