@@ -16,12 +16,13 @@ from baselines.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 #from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from dummy_vec_env import DDummyVecEnv as DummyVecEnv
-from gym_city.wrappers import ImRenderMicropolis
+#from gym_city.wrappers import ImRenderMicropolis
 #from gym_pcgrl.envs.play_pcgrl_env import PlayPcgrlEnv
 #from gym_pcgrl.wrappers import ActionMapImagePCGRLWrapper, MaxStep
 #from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from subproc_vec_env import SubprocVecEnv
-from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender, NoiseyTargets, Griddly
+from wrappers import ParamRewMulti, ParamRew, ExtinguisherMulti, Extinguisher, ImRenderMulti, ImRender #NoiseyTargets, 
+#Griddly
 
 
 
@@ -416,8 +417,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
         if args.im_render and not multi_env:
             print('wrapping in imrender, rank {}'.format(rank))
-            if 'micropolis' in args.env_name.lower():
-                env = ImRenderMicropolis(env, log_dir, rank)
+#           if 'micropolis' in args.env_name.lower():
+#               env = ImRenderMicropolis(env, log_dir, rank)
 
         assert env is not None
 

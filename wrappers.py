@@ -6,7 +6,7 @@ import cv2
 import gym
 import numpy as np
 import torch
-from opensimplex import OpenSimplex
+#from opensimplex import OpenSimplex
 import pygame
 
 class Griddly(gym.Wrapper):
@@ -18,37 +18,37 @@ class Griddly(gym.Wrapper):
         ret = super().step(a)
         return ret
 
-class NoiseyTargets(gym.Wrapper):
-    '''A bunch of simplex noise instances modulate target metrics.'''
-    def __init__(self, env):
-        super(NoiseyTargets, self).__init__(env)
-        self.param_bounds = self.env.param_bounds
-        self.num_params = self.env.num_params
-        self.noise = OpenSimplex()
-        # Do not reset n_step
-        self.n_step = 0
-    
-    def step(self, a):
-        param_bounds = self.param_bounds
-        trgs = {} 
-        i = 0
-        for k in self.env.usable_metrics:
-            trgs[k] = self.noise.noise2d(x=self.n_step/400, y=i*100)
-            i += 1
-
-        i = 0
-        for k in self.env.usable_metrics:
-            (ub, lb) = param_bounds[k]
-            trgs[k] = ((trgs[k] + 1) / 2 * (ub - lb)) + lb
-            i += 1
-        self.env.set_trgs(trgs)
-        out = self.env.step(a)
-        self.n_step += 1
-        return out
-
-    def reset(self):
-        self.noise = OpenSimplex()
-        return self.env.reset()
+#class NoiseyTargets(gym.Wrapper):
+#    '''A bunch of simplex noise instances modulate target metrics.'''
+#    def __init__(self, env):
+#        super(NoiseyTargets, self).__init__(env)
+#        self.param_bounds = self.env.param_bounds
+#        self.num_params = self.env.num_params
+#        self.noise = OpenSimplex()
+#        # Do not reset n_step
+#        self.n_step = 0
+#    
+#    def step(self, a):
+#        param_bounds = self.param_bounds
+#        trgs = {} 
+#        i = 0
+#        for k in self.env.usable_metrics:
+#            trgs[k] = self.noise.noise2d(x=self.n_step/400, y=i*100)
+#            i += 1
+#
+#        i = 0
+#        for k in self.env.usable_metrics:
+#            (ub, lb) = param_bounds[k]
+#            trgs[k] = ((trgs[k] + 1) / 2 * (ub - lb)) + lb
+#            i += 1
+#        self.env.set_trgs(trgs)
+#        out = self.env.step(a)
+#        self.n_step += 1
+#        return out
+#
+#    def reset(self):
+#        self.noise = OpenSimplex()
+#        return self.env.reset()
         
 
 class Extinguisher(gym.Wrapper):
