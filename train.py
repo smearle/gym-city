@@ -1,3 +1,4 @@
+from pdb import set_trace as T
 import copy
 import math
 import csv
@@ -282,6 +283,7 @@ class Trainer():
         if args is None:
             args = get_args()
         args.log_dir = args.save_dir + '/logs'
+        args.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), args.log_dir)
         if not hasattr(args, 'param_rew'):
             args.param_rew = False
         try:

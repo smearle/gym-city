@@ -577,7 +577,7 @@ class FractalNet(NNBase):
         if out_w == 1:
             self.actor_out = init_(nn.Conv2d(n_out_chan, hidden_size, 1, 1, 0))
         else:
-            self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 3, 1, 1))
+            self.actor_out = init_(nn.Conv2d(n_out_chan, num_actions, 1, 1, 0))
         actor_head = []
         # FIXME: hack for rct
         self.n_act_shrinks = int(math.log(self.map_width // out_w, 2))#+ 1
@@ -1956,7 +1956,6 @@ class MLPBase(NNBase):
         self.flatten = nn.Flatten()
         self.actor = nn.Sequential(
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
         self.critic = nn.Sequential(
