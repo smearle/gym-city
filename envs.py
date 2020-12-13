@@ -330,7 +330,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
             if 'rct' in env_id.lower():
                 if param_rew:
                     assert len(env_params) != 0
-                    rand_params = rank <= args.n_rand_envs
+                    rand_params = rank < args.n_rand_envs
                     env = ParamRew(env, env_params, rand_params=rand_params)
 
                 env.configure()
