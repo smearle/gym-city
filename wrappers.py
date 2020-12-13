@@ -526,7 +526,7 @@ class ParamRew(gym.Wrapper):
         self.unwrapped.configure(**kwargs)
         self.metrics = self.unwrapped.metrics
         # NB: self.metrics needs to be an OrderedDict
-        print(self.usable_metrics)
+        print('usable metrcs:', self.usable_metrics)
         print('unwrapped: {}'.format(self.unwrapped.metrics))
         self.last_metrics = copy.deepcopy(self.metrics)
         self.param_bounds = self.unwrapped.param_bounds

@@ -99,7 +99,7 @@ def get_parser():
     parser.add_argument('--save', type=str2bool, default=True)
     parser.add_argument('--save-interval', type=int, default=1000,
                         help='save interval, one save per n updates (default: 100)')
-    parser.add_argument('--eval-interval', type=int, default=None,
+    parser.add_argument('--eval-interval', type=int, default=1000,
                         help='eval interval, one eval per n updates (default: None)')
     parser.add_argument('--vis-interval', type=int, default=1000,
                         help='vis interval, one log per n updates (default: 100)')
@@ -222,7 +222,7 @@ def get_parser():
     parser.add_argument(
         '--checkpoint-interval',
         type=int,
-        default=50000,
+        default=10000,
         help='how often to save a checkpoint')
     parser.add_argument(
         '--n-rand-envs',
