@@ -225,7 +225,7 @@ class ToPytorchOrder(gym.Wrapper):
         return obs, reward, done, info
 
 def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_width=20, render_gui=False, print_map=False, parallel_py2gui=False, noreward=False, max_step=None,
-        args=None):
+        args=None, **kwargs):
     ''' return a function which starts the environment'''
     def _thunk():
         record = args.record
@@ -248,15 +248,15 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
                     render = render_gui
                 else: render = False
                 env.configure(map_width=map_width, render=render,
-                        prob_life = args.prob_life, record=record_dir,
+                        prob_life = args.prob_life, record_dir=record_dir,
                         max_step=max_step)
 
             if 'golmulti' in env_id.lower():
                 multi_env = True
                 env.configure(map_width=map_width, render=render_gui,
-                        prob_life=args.prob_life, record=record_dir,
+                        prob_life=args.prob_life, record_dir=record_dir,
                         max_step=max_step, cuda=args.cuda,
-                        num_proc=args.num_processes)
+                        num_proc=args.num_processes, **kwargs)
                 env = ParamRewMulti(env)
                 if extinction:
                     env = ExtinguisherMulti(env, args.extinction_type, args.extinction_prob)
@@ -365,7 +365,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, map_
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
                   device, allow_early_resets, num_frame_stack=None,
-                  args=None):
+                  args=None, **kwargs):
 
     print('make vec envs random map? {}'.format(args.random_terrain))
     if 'golmultienv' in env_name.lower():
@@ -373,7 +373,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
     envs = [make_env(env_name, seed, i, log_dir, add_timestep,
         allow_early_resets, map_width=args.map_width, render_gui=args.render,
         print_map=args.print_map, noreward=args.no_reward, max_step=args.max_step,
-        args=args)
+        args=args, **kwargs)
             for i in range(num_processes)]
 
     if 'golmultienv' in env_name.lower():

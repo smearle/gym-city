@@ -17,8 +17,14 @@ from utils import get_render_func, get_space_dims, get_vec_normalize
 parser = get_parser()
 parser.add_argument('--non-det', action='store_true', default=False,
                     help='whether to use a non-deterministic policy')
-parser.add_argument('--active-column', default=None, type=int, help='Run only one vertical column of a fractal model to see what it has learnt independently')
+parser.add_argument('--active-column', default=None, type=int, help='Run only one vertical column of a fractal model to '
+                                                                    'see what it has learnt independently')
 parser.add_argument('--evaluate', action='store_true', default=False, help= 'record trained network\'s performance')
+parser.add_argument('--no-agent', action='store_true', default=False, help= 'Agent does nothing.')
+parser.add_argument('--rand-agent', action='store_true', default=False, help= 'Agent takes random actions.')
+parser.add_argument('--compare-agents', action='store_true', help='Using the same random starting states, run episodes'
+                                                                  'with agent, random agent, and no agent, for the sake'
+                                                                  'of qualitative comparison.')
 
 args = parser.parse_args()
 args.render = True
@@ -64,7 +70,8 @@ dummy_args = args
 env = make_vec_envs(env_name, args.seed + 1000, 1,
                     None, args.load_dir, args.add_timestep, device=device,
                     allow_early_resets=False,
-                    args=dummy_args)
+                    args=dummy_args, rand_agent=args.rand_agent, no_agent=args.no_agent,
+                    compare_agents=args.compare_agents)
 print(args.load_dir)
 
 # Get a render function
@@ -163,11 +170,15 @@ player_act = None
 env_done = False
 
 last_rew = 0
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 while True:
-    with torch.no_grad():
-        value, action, _, recurrent_hidden_states = actor_critic.act(
-            obs, recurrent_hidden_states, masks, deterministic=args.det,
-            player_act=player_act)
+    if args.no_agent:
+        action = None
+    else:
+        with torch.no_grad():
+            value, action, _, recurrent_hidden_states = actor_critic.act(
+                obs.to(torch.device(device)), recurrent_hidden_states, masks, deterministic=args.det,
+                player_act=player_act)
 
     if env_done:
         last_rew = 0

@@ -1,3 +1,4 @@
+from pdb import set_trace as TT
 import numpy as np
 import torch
 from torch import nn
@@ -76,11 +77,18 @@ class World(nn.Module):
                     (self.num_proc, 1, self.map_width, self.map_height)).fill_(0)
         self.state = torch.where(self.state < self.prob_life, self.y1, self.y0).float()
 
-    def repopulate_cells(self):
-        self.state.float().uniform_(0, 1)
-        self.state = torch.where(self.state < self.prob_life, self.y1, self.y0).float()
+    def repopulate_cells(self, init_state=None):
+        if init_state is None:
+            # generate new state
+            self.state.float().uniform_(0, 1)
+            self.state = torch.where(self.state < self.prob_life, self.y1, self.y0).float()
+        else:
+            # Re-use a previous initial state
+            self.state = init_state
         self.builds.fill_(0)
-        self.failed.fill_(0)
+        self.failed.fill_(0)  # FIXME: what's this? Remove it
+
+        return self.state
 
     def build_cell(self, x, y, alive=True):
         if alive:

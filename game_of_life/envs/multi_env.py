@@ -1,21 +1,14 @@
-import argparse
-import itertools
+from pdb import set_trace as TT
 import os
-import shutil
 from collections import OrderedDict
 
 import cv2
-import gym
 import numpy as np
 import torch
 from gym import core, spaces
 from gym.utils import seeding
-from torch import ByteTensor, Tensor
-from torch.nn import Conv2d, Parameter
-from torch.nn.init import zeros_
 
-from .gol import utils
-from .im2gif import GifWriter
+from .im2gif import GifWriter, frames_to_gif
 from .world_pytorch import World
 
 
@@ -28,31 +21,39 @@ class GoLMultiEnv(core.Env):
         self.player_step = False
         self.player_builds = []
         self.action_bin = None
-        self.rend_idx = -1
+        self.render_idx = -1
         self.agent_steps = 1
         self.sim_steps = 1
 
     def configure(self, map_width, render=False, prob_life=20,
-             max_step=200, num_proc=1, record=None, cuda=False,
-             poet=False):
+             max_step=200, num_proc=1, record_dir=None, cuda=False,
+             poet=False, rand_agent=False, no_agent=False, compare_agents=False):
         self.num_proc = num_proc
         self.prebuild = False
         self.prebuild_steps = 50
         self.map_width = size = map_width
-        self.record = record
+        self.record = record_dir is not None
+        self.rand_agent = rand_agent
+        self.no_agent = no_agent
+        self.compare_agents = compare_agents
+        if self.record:
+            self.gif_dir = ('{}/gifs/'.format(record_dir))  # WTF
+            self.im_paths = []
+            self.n_gif_frame = 0
+        self.record_dir = record_dir
         self.cuda = cuda
 
         self.render_gui = render
 
-        if render and record:
+        if render and self.record:
             self.gif_writer = GifWriter()
             try:
-                os.mkdir('{}/gifs/im/'.format(record)) # in case we are continuing eval
+                os.mkdir(os.path.join(self.gif_dir, 'im')) # in case we are continuing eval
             except FileNotFoundError: pass
             except FileExistsError: pass
             try:
-                os.mkdir('{}/gifs/'.format(record)) # in case we're starting a new eval
-                os.mkdir('{}/gifs/im/'.format(record))
+                os.mkdir(self.gif_dir) # in case we're starting a new eval
+                os.mkdir(os.path.join(self.gif_dir, 'im'))
             except FileExistsError:
                 pass
         max_pop = self.map_width * self.map_width
@@ -102,13 +103,17 @@ class GoLMultiEnv(core.Env):
         self.action_space = spaces.Discrete(self.num_tools * size * size)
         self.view_agent = render
 
-        self.gif_ep_count = 0
+        self.n_gif_ep = 0
         self.num_step = 0
        #self.record_entropy = True
         self.world = World(self.map_width, self.map_width, prob_life=prob_life,
                            cuda=cuda, num_proc=num_proc, env=self)
         self.state = None
         self.max_step = max_step
+
+        if compare_agents:
+            self.compare_idx = 0
+            self.init_state = self.world.repopulate_cells().clone()
 
        #self.entropies = []
         if self.render_gui:
@@ -199,20 +204,29 @@ class GoLMultiEnv(core.Env):
         a: 1D tensor of integers, corresponding to action indexes (in
             flattened output space)
         '''
-        a = a.long()
-       #a.fill_(0)
-        actions = self.action_idx_to_tensor(a)
+        if self.no_agent:
+            pass
+        else:
+            if self.rand_agent:
+                a = torch.Tensor([self.action_space.sample() for _ in range(self.num_proc)]).unsqueeze(-1).long()
+                if self.cuda:
+                    a = a.cuda()
+                actions = self.action_idx_to_tensor(a)
+            else:
+                a = a.long()
+               #a.fill_(0)
+                actions = self.action_idx_to_tensor(a)
 
-        self.act_tensor(actions)
+            self.act_tensor(actions)
 
         if self.num_step % self.agent_steps == 0: # the agent build-turn is over
-            if self.render_gui:
+            if self.render_gui and not self.no_agent:
                 self.agent_builds.fill_(0)
 
             for j in range(self.sim_steps):
                 self.world._tick()
                 if self.render_gui:
-                    self.render(agent=True)
+                    self.render(agent=False, n_frame=2)
         self.get_curr_param_vals()
        #loss = abs(self.trg_param_vals - self.curr_param_vals)
        #loss = loss.squeeze(-1)
@@ -228,9 +242,16 @@ class GoLMultiEnv(core.Env):
         #reward: average fullness of board
         #reward = reward * 100 / (self.max_step * self.map_width * self.map_width * self.num_proc)
 
-        if self.render_gui:
-           #pass # leave this one to main loop
-            self.render() # deal with rendering now
+        if self.record and terminal[self.render_idx]:
+            self.render_gif()
+            if self.compare_agents:
+                #FIXME: resetting twice (so we have to do this here instead of inside reset)
+                if self.compare_idx == 2:
+                    self.compare_idx = 0
+                    self.n_gif_ep += 1
+                else:
+                    self.compare_idx += 1
+
         info = [{}]
         self.num_step += 1
         obs = self.get_obs()
@@ -270,8 +291,10 @@ class GoLMultiEnv(core.Env):
             self.rend_state = torch.clamp(self.rend_state, 0, 1)
            #assert (self.rend_state >= 0).all() # was something built w/o being added to new state?
             # for separate rendering
-            self.render(agent=True)
+            self.render(agent=True, n_frame=0)  # Render agent's action
         self.world.state = new_state
+        if self.render_gui:
+            self.render(agent=False, n_frame=1)  # Render resulting state
         self.update_ages()
 
     def update_ages(self):
@@ -301,32 +324,69 @@ class GoLMultiEnv(core.Env):
         return action
 
     def reset(self):
+        print('reset')
         self.init_ages()
         self.terminal = torch.zeros((self.num_proc, 1), dtype=bool)
         self.num_step = 0
-        self.world.repopulate_cells()
+        if self.compare_agents:
+            # Compare agents on shared initial state
+            if self.compare_idx == 0 or self.compare_idx == 3:
+                # no agent
+                self.rand_agent = False
+                self.no_agent = True
+            elif self.compare_idx == 1:
+                # random agent
+                self.rand_agent = True
+                self.no_agent = False
+            elif self.compare_idx == 2:
+                # standard agent
+                self.rand_agent = False
+                self.no_agent = False
+            if self.compare_idx == 3:
+                # No agent
+                self.init_state = self.world.repopulate_cells().clone()
+                self.compare_idx = 0
+            else:
+                self.world.repopulate_cells(init_state=self.init_state.clone())
+        else:
+            self.world.repopulate_cells()
+            if self.record:
+                self.n_gif_ep += 1
         self.get_curr_param_vals()
        #self.world.prepopulate_neighbours()
         if hasattr(self, 'agent_builds'):
             self.agent_builds.fill_(0)
 
-        if self.render_gui:
-            self.render()
+        if self.record:
+            self.gif_ep_name = 'ep_{}'.format(self.n_gif_ep)
+            if self.rand_agent:
+                self.gif_ep_name += '_randAgent'
+            if self.no_agent:
+                self.gif_ep_name += '_noAgent'
+            self.gif_ep_dir = os.path.join(self.gif_dir, self.gif_ep_name)
+            if not os.path.isdir(self.gif_ep_dir):
+                os.mkdir(self.gif_ep_dir)
+            self.im_paths = []
+            self.n_gif_frame = 0
         obs = self.get_obs()
+        if self.render_gui:
+            self.render(n_frame=0)
 
         return obs
 
 
-    def render(self, mode=None, agent=True):
+    def render(self, mode=None, agent=True, n_frame=0):
         if not agent or self.num_step == 0:
-            rend_state = self.world.state[self.rend_idx].cpu()
+            # No agent builds to render
+            rend_state = self.world.state[self.render_idx].cpu().long()
             rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_arr = rend_state
 
-        if agent and not self.num_step == 0:
-            rend_state = self.rend_state[self.rend_idx].cpu()
-            rend_dels = self.agent_dels[self.rend_idx].cpu()
-            rend_builds = self.agent_builds[self.rend_idx].cpu()
+        elif agent and not self.num_step == 0:
+            # Render agent build action
+            rend_state = self.rend_state[self.render_idx].cpu()
+            rend_dels = self.agent_dels[self.render_idx].cpu()
+            rend_builds = self.agent_builds[self.render_idx].cpu()
             rend_state = np.vstack((rend_state * 1, rend_state * 1, rend_state * 1))
             rend_dels = np.vstack((rend_dels * 0, rend_dels * 0, rend_dels * 1))
             rend_builds = np.vstack((rend_builds * 0, rend_builds * 1, rend_builds * 0))
@@ -334,19 +394,28 @@ class GoLMultiEnv(core.Env):
         rend_arr = rend_arr.transpose(2, 1, 0)
         rend_arr = rend_arr.astype(np.uint8)
         rend_arr = rend_arr * 255
-        cv2.imshow("Game of Life", rend_arr)
+        if self.render_gui:
+            cv2.imshow("Game of Life", rend_arr)
 
-        if self.record and not self.gif_writer.done:
-            gif_dir = ('{}/gifs/'.format(self.record))
-            im_dir = os.path.join(gif_dir, 'im')
-            im_path = os.path.join(im_dir, 'e{:02d}_s{:04d}.png'.format(self.gif_ep_count, self.num_step))
-            cv2.imwrite(im_path, rend_arr)
-
-            if self.gif_ep_count == 0 and self.num_step == self.max_step:
-                self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
-                self.gif_ep_count = 0
+        if self.record:
+            if not self.gif_writer.done:
+                im_dir = self.gif_ep_dir
+                im_path = os.path.join(im_dir, 'frame-{}.png'.format(self.n_gif_frame))
+                self.im_paths.append(im_path)
+                cv2.imwrite(im_path, rend_arr)
+                self.n_gif_frame += 1
         cv2.waitKey(1)
 
+
+    def render_gif(self):
+        gif_path = os.path.join(self.gif_dir, '{}.gif'.format(self.gif_ep_name))
+        vid_path = os.path.join(self.gif_dir, '{}.mp4'.format(self.gif_ep_name))
+        frames_to_gif(gif_path, self.im_paths)
+        # self.gif_writer.create_gif(im_dir, gif_dir, 0, 0, 0)
+        render_vid_cmd = 'ffmpeg -i {} -movflags faststart -vf ' \
+                         '"scale=trunc(iw/2)*2:trunc(ih/2)*2" {}'.format(gif_path, vid_path)
+        print(render_vid_cmd)
+        os.system(render_vid_cmd)
 
     def player_build(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:

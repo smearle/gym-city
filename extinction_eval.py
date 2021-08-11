@@ -765,10 +765,10 @@ if __name__ == "__main__":
        #'a2c_FractalNet',
        #'MicropolisEnv-v0_w16_300s_noExtinction.test',
        #'GoLMultiEnv-v0_w16_200s_teachPop_noTick_noExtinct',
-        'MicropolisEnv-v0_w16_300s_noExtinction',
+       #'MicropolisEnv-v0_w16_300s_noExtinction',
        #'GoLMultiEnv-v0_w16_200s_teachPop_GoL_noExtinct',
        #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm_DUMMY_2.test',
-       #'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
+        'MicropolisEnv-v0_w16_200s_noXt2_alpgmm.test',
        #'GoLMultiEnv-v0_w16_200s_jinkyFix',
         ))
     EXPERIMENTER = ExtinctionExperimenter(LOG_DIR)

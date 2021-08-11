@@ -34,3 +34,17 @@ class GifWriter(object):
             os.system(cmd)
             self.n_gifs += 1
 
+import imageio
+
+def frames_to_gif(gif_path, filenames):
+    # Repeat the last frame a bunch, so that we "pause" on the final generated level
+    filenames = filenames + [filenames[-1]] * 20
+    with imageio.get_writer(gif_path, mode='I') as writer:
+        for filename in filenames:
+            try:
+                image = imageio.imread(filename)
+            except ValueError:
+                print('Failed to read image {}, aborting.'.format(filename))
+                return
+            writer.append_data(image)
+    print(gif_path)

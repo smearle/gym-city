@@ -107,6 +107,7 @@ class MicropolisEnv(core.Env):
         '''Do most of the actual initialization.
         '''
         size = kwargs.get('map_width')
+        self.rand_agent = kwargs.get('rand_agent')
         self.pre_gui(size, **kwargs)
         #TODO: this better
         if hasattr(self, 'micro'):
@@ -291,7 +292,7 @@ class MicropolisEnv(core.Env):
             else:
                 self.micro.clearMap()
        #if self.random_terrain:
-        if True:
+        if False:
             self.micro.newMap()
         else:
             print('EMPTY START')
@@ -477,17 +478,20 @@ class MicropolisEnv(core.Env):
 
 
     def step(self, a, static_build=False):
-       #self.micro.engine.setPasses(np.random.randint(1, 101))
-        if self.player_step:
-           #if self.player_step == a:
-           #    static_build=False
-           #static_build = True
-            if self.static_player_builds:
-                static_build=True
-            a = self.player_step
-            self.player_step = False
-       #else:
-       #    a = 0
+        #self.micro.engine.setPasses(np.random.randint(1, 101))
+        if self.rand_agent:
+            a = self.action_space.sample()
+        else:
+            if self.player_step:
+               #if self.player_step == a:
+               #    static_build=False
+               #static_build = True
+                if self.static_player_builds:
+                    static_build=True
+                a = self.player_step
+                self.player_step = False
+           #else:
+           #    a = 0
         a = self.intsToActions[a]
         self.micro.takeAction(a, static_build)
         return self.postact()

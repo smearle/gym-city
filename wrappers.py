@@ -420,10 +420,11 @@ class ImRenderMulti(ImRender):
         return obs, rew, done, [info]
 
     def reset(self):
-        return super().reset()[0]
+        return self.env.reset()
 
     def im_render(self):
         state = self.world.state.clone()
+        print(state.shape)
         sizes = []
         for i in range(self.num_proc):
             image = state[i].cpu()
@@ -441,6 +442,7 @@ class ImRenderMulti(ImRender):
            #    cv2.waitKey(1)
 
             self.n_saved += 1
+        print(state.shape)
         return sizes
        #zone_map = self.unwrapped.micro.map.zoneMap
        #zones = self.unwrapped.micro.map.zones
