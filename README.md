@@ -1,3 +1,11 @@
+# Video Games as a Testbed for Open-Ended Phenomena
+
+TODO
+
+Run `python extinction_eval.py` to run the experiments described in the paper at: https://ieee-cog.org/2021/assets/papers/paper_149.pdf
+
+# Using Fractal Neural Networks to Play SimCity 1 and Conway's Game of Life at Variable Scales
+
 The work in this repo was presented and demoed at the 2019 Experimental A.I. in Games (EXAG) workshop, an AIIDE workshop. You can read the paper here: http://www.exag.org/papers/EXAG_2019_paper_21.pdf
 
 Feel free to join the conversation surrounding this work via my [Twitter](https://twitter.com/Smearle_RH), and on [r/MachineLearning](https://www.reddit.com/r/MachineLearning/comments/d346e9/r_using_fractal_neural_networks_to_play_simcity_1/).
