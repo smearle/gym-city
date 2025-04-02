@@ -63,7 +63,7 @@
 
 
 PYTHON = python3
-SWIG = swig3.0
+SWIG = swig
 
 PYTHONBUILDDIR = $(shell python3 -c 'from distutils import sysconfig, util ; \
 	print("lib.%s-%s" \
@@ -132,7 +132,7 @@ objs/$(PYTHONBUILDDIR)/_micropolisengine.so: build_swig setup.py $(SOURCES) $(HE
 build_swig: objs/micropolisengine_wrap.cpp
 
 objs/micropolisengine_wrap.cpp: swig/micropolisengine.i swig/micropolisengine-swig-python.i $(HEADERS)
-	$(SWIG) -python -py3 -c++ -Isrc -Wall \
+	$(SWIG) -python -c++ -Isrc -Wall \
 	        -outdir objs \
 		-o objs/micropolisengine_wrap.cpp \
 		swig/micropolisengine.i

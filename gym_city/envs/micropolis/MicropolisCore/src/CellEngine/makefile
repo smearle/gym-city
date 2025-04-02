@@ -63,7 +63,7 @@
 
 
 PYTHON = python3
-SWIG = swig3.0
+SWIG = swig
 
 PYTHONBUILDDIR = $(shell python3 -c 'from distutils import sysconfig, util ; \
 	print("lib.%s-%s" \
@@ -105,7 +105,7 @@ objs/$(PYTHONBUILDDIR)/_cellengine.so: build_swig setup.py $(SOURCES) $(HEADERS)
 build_swig: objs/cellengine_wrap.cpp
 
 objs/cellengine_wrap.cpp: swig/cellengine.i swig/cellengine-swig-python.i $(HEADERS)
-	$(SWIG) -python -py3 -c++ -Isrc -Wall \
+	$(SWIG) -python -c++ -Isrc -Wall \
 	        -outdir objs \
 	        -o objs/cellengine_wrap.cpp \
 	        swig/cellengine.i

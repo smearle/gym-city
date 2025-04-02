@@ -8,6 +8,7 @@ go = True
 while go:
     m.reset()
     for i in range(500):
+        print(i)
         try:
             m.randomStep()
         except KeyError:

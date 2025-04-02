@@ -93,6 +93,22 @@ extern Pycairo_CAPI_t *Pycairo_CAPI;
 
 %}
 
+static void import_cairo()
+{
+    PyObject *cairo = PyImport_ImportModule("cairo");
+    if (cairo != NULL) {
+        PyObject *py_cobject = PyObject_GetAttrString(cairo, "CAPI");
+        if (py_cobject != NULL && PyCObject_Check(py_cobject)) {
+            Pycairo_CAPI = (Pycairo_CAPI_t*) PyCObject_AsVoidPtr(py_cobject);
+        }
+        Py_XDECREF(py_cobject);
+        Py_DECREF(cairo);
+    }
+    if (Pycairo_CAPI == NULL) {
+        PyErr_SetString(PyExc_ImportError, "Could not import cairo API");
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // Initialization code for generated file SWIG_init.
@@ -104,7 +120,8 @@ extern Pycairo_CAPI_t *Pycairo_CAPI;
 
     // Import the pycairo module's functions and types into this module. 
     // This enables us to convert between cairo_t and Python cairo.Context objects.
-    Pycairo_CAPI;
+    // Pycairo_IMPORT;
+    import_cairo();
 
 %}
 

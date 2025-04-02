@@ -67,6 +67,17 @@
 
 from distutils.core import *
 
+import subprocess
+
+cairo_cflags = subprocess.check_output(['pkg-config', '--cflags', 'cairo']).decode().strip().split()
+pycairo_cflags = subprocess.check_output(['pkg-config', '--cflags', 'py3cairo']).decode().strip().split()
+cflags = cairo_cflags + pycairo_cflags
+
+cairo_libs = subprocess.check_output(['pkg-config', '--libs', 'cairo']).decode().strip().split()
+pycairo_libs = subprocess.check_output(['pkg-config', '--libs', 'py3cairo']).decode().strip().split()
+libs = cairo_libs + pycairo_libs
+
+
 setup(
     name='TileEngineInterface',
     version='1.0',
@@ -89,6 +100,8 @@ setup(
                 '/opt/local/include/cairo',
                 '/opt/local/include/pycairo',
             ],
+            extra_compile_args = cflags,
+            extra_link_args = libs,
             library_dirs = [
                 '/opt/gtk/lib',
                 '/opt/local/lib',

@@ -77,7 +77,7 @@
 
 
 // Interface to PyCairo functions.
-// Pycairo_CAPI_t *Pycairo_CAPI;
+Pycairo_CAPI_t *Pycairo_CAPI;
 
 ////////////////////////////////////////////////////////////////////////
 // TileEngine class

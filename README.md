@@ -55,6 +55,21 @@ A SimCity map spawns with one power plant, and several residential zones, all ra
 
 # Installation
 
+## Docker
+
+To build the docker image, run:
+```
+docker build -t gym-city .
+```
+To run the docker image in interactive mode, run:
+```
+docker run -it --entrypoint /bin/bash gym-city-image
+```
+To run the docker image, run:
+```
+docker run -it --rm -p 8097:8097 gym-city
+```
+
 ## Ubuntu
 
 Make sure python >= 3.6 is installed.
