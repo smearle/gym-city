@@ -31,4 +31,5 @@ runs*
 *.out
 
 .idea
-**egg-info
+*egg-info
+.venv

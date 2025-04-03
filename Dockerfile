@@ -2,16 +2,46 @@ FROM nvidia/cudagl:10.0-base-ubuntu18.04
 USER root
 RUN apt update && \
     apt upgrade -y && \
-    apt install -y python3-pip
+    apt install -y python3-pip \
+    libgtk-3-dev \
+    gir1.2-gtk-3.0 \
+	libgirepository1.0-dev \
+    python3-gi \
+    libgdk-pixbuf2.0-0 \
+    libcairo2-dev \
+    swig3.0 \
+    python3-cairo-dev \
+    libxdamage1 \
+    libxfixes3
+
+RUN apt install --reinstall -y \
+    libxdamage1 \
+    libxfixes3
+
+RUN pip3 install \
+    pycairo \
+    gym
+
+# There seems to be a system-wide install already. But without this additional installation, we get a segfault.
+RUN pip3 install --upgrade --force-reinstall \
+    pygobject
 
 # Copy the current directory contents into the container at /usr/src/app
 WORKDIR /usr/src/app
 COPY . ./
-RUN mkdir gym_city/envs/micropolis/MicropolisCore/src/TileEngine/objs; exit 0
-RUN mkdir gym_city/envs/micropolis/MicropolisCore/src/CellEngine/objs; exit 0
-RUN mkdir gym_city/envs/micropolis/MicropolisCore/src/MicropolisEngine/objs; exit 0
-RUN make ; exit 0
-RUN make install; exit 0
+RUN make clean
+RUN make
+RUN make install
+
+CMD python3 tilemap_test.py
+
+# RUN pip3 install \
+#   matplotlib \
+# 	imutils \
+# 	graphviz \
+# 	visdom \
+#   tensorflow \
+#   torchsummary
 
 #FROM anibali/pytorch:cuda-10.0
 #FROM ubuntu:latest
@@ -35,14 +65,6 @@ RUN make install; exit 0
 #         libcanberra-gtk3-module \
 #         libsm6 
 
-# RUN pip3 install pycairo \
-# 		PyGObject \
-#         matplotlib \
-# 		imutils \
-# 		graphviz \
-# 		visdom \
-#         tensorflow \
-#         torchsummary
 
 # RUN pip3 install torch torchvision
 

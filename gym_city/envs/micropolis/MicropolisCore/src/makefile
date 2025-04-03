@@ -61,7 +61,7 @@
 
 ########################################################################
 
-PYTHON ?= python
+PYTHON ?= python3
 PYTHONBUILDDIR=$(shell $(PYTHON) -c 'from distutils import sysconfig, util ; \
     print("lib.%s-%s" \
         % (util.get_platform(), sysconfig.get_config_var("VERSION")))')

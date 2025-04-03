@@ -1,6 +1,9 @@
 install:
 	cd gym_city/envs/micropolis/MicropolisCore; make; make install
 
+clean:
+	cd gym_city/envs/micropolis/MicropolisCore; make clean
+
 ######### Micropolis #########
 
 MP_res_FC:

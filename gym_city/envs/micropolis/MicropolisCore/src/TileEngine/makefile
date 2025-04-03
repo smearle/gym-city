@@ -63,7 +63,7 @@
 ########################################################################
 
 
-PYTHON ?= python
+PYTHON ?= python3
 SWIG = swig3.0
 
 PYTHONBUILDDIR=$(shell $(PYTHON) -c 'from distutils import sysconfig, util ; \

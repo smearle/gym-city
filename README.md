@@ -62,7 +62,9 @@ docker build -t gym-city-image .
 docker run -it --entrypoint /bin/bash gym-city-image
 ```
 
-Now you're in a shell in the docker container, and can run, e.g.
+Make sure you have the Dev Containers extension installed in vscode. Open the command palette (cmd+shift+p) and select "Dev Containers: Attach to Running Container" to attach to the container you just launched.
+
+From a terminal inside this new vscode window, run, e.g.:
 ```
 python3 tilemap_test.py
 ```
