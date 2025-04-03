@@ -61,9 +61,15 @@
 
 ########################################################################
 
-PYTHONBUILDDIR=$(shell python3 -c 'from distutils import sysconfig, util ; \
-	print("lib.%s-%s" \
-		% (util.get_platform(), sysconfig.get_config_var("VERSION")))')
+PYTHON ?= python
+PYTHONBUILDDIR=$(shell $(PYTHON) -c 'from distutils import sysconfig, util ; \
+    print("lib.%s-%s" \
+        % (util.get_platform(), sysconfig.get_config_var("VERSION")))')
+
+
+# PYTHONBUILDDIR=$(shell python3 -c 'from distutils import sysconfig, util ; \
+# 	print("lib.%s-%s" \
+# 		% (util.get_platform(), sysconfig.get_config_var("VERSION")))')
 
 .PHONY: all build_tileEngine build_cellEngine doxygen
 

@@ -63,12 +63,17 @@
 ########################################################################
 
 
-PYTHON = python3
+PYTHON ?= python
 SWIG = swig3.0
 
-PYTHONBUILDDIR = $(shell python3 -c 'from distutils import sysconfig, util ; \
-	print("lib.%s-%s" \
-		% (util.get_platform(), sysconfig.get_config_var("VERSION")))')
+PYTHONBUILDDIR=$(shell $(PYTHON) -c 'from distutils import sysconfig, util ; \
+    print("lib.%s-%s" \
+        % (util.get_platform(), sysconfig.get_config_var("VERSION")))')
+
+
+# PYTHONBUILDDIR = $(shell python3 -c 'from distutils import sysconfig, util ; \
+# 	print("lib.%s-%s" \
+# 		% (util.get_platform(), sysconfig.get_config_var("VERSION")))')
 
 SOURCES = src/tileengine.cpp
 
@@ -87,9 +92,11 @@ TILEENGINE: build_python
 # ----------------------------------------------------------------------
 # Python extension module build
 
-build_python: objs/$(PYTHONBUILDDIR)/_tileengine.cpython-36m-x86_64-linux-gnu.so
+# build_python: objs/$(PYTHONBUILDDIR)/_tileengine.cpython-36m-x86_64-linux-gnu.so
+build_python: objs/$(PYTHONBUILDDIR)/_tileengine.so
 
-objs/$(PYTHONBUILDDIR)/_tileengine.cpython-36m-x86_64-linux-gnu.so: build_swig setup.py $(SOURCES) $(HEADERS)
+# objs/$(PYTHONBUILDDIR)/_tileengine.cpython-36m-x86_64-linux-gnu.so: build_swig setup.py $(SOURCES) $(HEADERS)
+objs/$(PYTHONBUILDDIR)/_tileengine.so: build_swig setup.py $(SOURCES) $(HEADERS)
 	$(PYTHON) setup.py build --build-base=objs
 
 # ----------------------------------------------------------------------
