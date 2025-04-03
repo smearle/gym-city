@@ -55,6 +55,18 @@ A SimCity map spawns with one power plant, and several residential zones, all ra
 
 # Installation
 
+## Docker
+
+```
+docker build -t gym-city-image .
+docker run -it --entrypoint /bin/bash gym-city-image
+```
+
+Now you're in a shell in the docker container, and can run, e.g.
+```
+python3 tilemap_test.py
+```
+
 ## Ubuntu
 
 Make sure python >= 3.6 is installed.
