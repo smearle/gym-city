@@ -16,7 +16,6 @@ else:
     from tilemap import TileMap
     from corecontrol import MicropolisControl
 import time
-import torch
 
 class MicropolisEnv(core.Env):
 
