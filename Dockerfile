@@ -11,9 +11,11 @@ RUN apt update && \
     libcairo2-dev \
     swig3.0 \
     python3-cairo-dev \
+    git \
     libxdamage1 \
     libxfixes3
 
+# This is weirdly necessary to fix broken `.so` files... (?)
 RUN apt install --reinstall -y \
     libxdamage1 \
     libxfixes3
@@ -30,10 +32,17 @@ RUN pip3 install --upgrade --force-reinstall \
 WORKDIR /usr/src/app
 COPY . ./
 RUN make clean
+RUN mkdir -p gym_city/envs/micropolis/MicropolisCore/src/TileEngine/objs
+RUN mkdir -p gym_city/envs/micropolis/MicropolisCore/src/CellEngine/objs
+RUN mkdir -p gym_city/envs/micropolis/MicropolisCore/src/MicropolisEngine/objs
 RUN make
 RUN make install
 
+# This throws an error---I think because there is no way to render, neither from here nor an interactive shell.
+# Instead, launch an interactive shell, then connect to the running container via the VSCode Dev Container extension,
+# *then* run this command. This way, the GUI is able to render.
 CMD python3 tilemap_test.py
+
 
 # RUN pip3 install \
 #   matplotlib \
