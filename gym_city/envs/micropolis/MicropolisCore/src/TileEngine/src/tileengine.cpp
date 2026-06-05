@@ -65,6 +65,11 @@
 ////////////////////////////////////////////////////////////////////////
 // Includes
 
+// The SWIG-generated wrapper owns the single definition of Pycairo_CAPI
+// (via py3cairo.h). Use an extern reference here to avoid a duplicate
+// symbol at link time (modern clang defaults to -fno-common).
+#define PYCAIRO_NO_IMPORT
+
 #include <iostream>
 #include "stdafx.h"
 

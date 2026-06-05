@@ -219,21 +219,27 @@ class MicropolisAgentPanel(gtk.Frame):
 
 
     def scaleResChanged(self, scale):
+        if self.engine.env is None: return
         self.engine.env.set_res_weight(scale.get_value())
 
     def scaleComChanged(self, scale):
+        if self.engine.env is None: return
         self.engine.env.set_com_weight(scale.get_value())
 
     def scaleIndChanged(self, scale):
+        if self.engine.env is None: return
         self.engine.env.set_ind_weight(scale.get_value())
 
     def scaleTrafficChanged(self, scale):
+        if self.engine.env is None: return
         self.engine.env.set_traffic_weight(scale.get_value())
 
     def scalePlantsChanged(self, scale):
+        if self.engine.env is None: return
         self.engine.env.set_plants_weight(scale.get_value())
 
     def scaleRatingChanged(self, scale):
+        if self.engine.env is None: return
         self.engine.env.set_rating_weight(scale.get_value())
 
     def displayTrgs(self, trgs):
@@ -267,12 +273,15 @@ class MicropolisAgentPanel(gtk.Frame):
         self.scaleRating.set_range(*metric_ranges['mayor_rating'])
 
     def reset_game(self):
+        if self.engine.env is None: return
         self.engine.env.reset()
 
     def set_static(self):
+        if self.engine.env is None: return
         self.engine.env.static_player_builds = self.checkButtonStaticBuilds.get_active()
 
     def enable_auto_reset(self):
+        if self.engine.env is None: return
         self.engine.env.auto_reset = self.checkButtonAutoReset.get_active()
 
 

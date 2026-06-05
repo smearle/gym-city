@@ -67,6 +67,21 @@
 
 from distutils.core import *
 
+import subprocess
+import cairo  # pycairo, for its C headers
+
+def _pkgconfig(*args):
+    try:
+        out = subprocess.check_output(['pkg-config'] + list(args))
+        return out.decode().split()
+    except Exception:
+        return []
+
+# Homebrew (Apple Silicon) include/lib dirs, resolved at build time.
+_brew_cairo_inc = [f[2:] for f in _pkgconfig('--cflags-only-I', 'cairo')]
+_brew_lib = [f[2:] for f in _pkgconfig('--libs-only-L', 'cairo')] + ['/opt/homebrew/lib']
+_pycairo_inc = [cairo.get_include()]
+
 setup(
     name='TileEngineInterface',
     version='1.0',
@@ -81,18 +96,9 @@ setup(
             ],
             include_dirs = [
                 'src',
-                '/usr/local/include',
-                '/usr/local/include/cairo',
-                '/usr/local/include/pycairo',
-                '/usr/include/cairo',
-                '/usr/include/pycairo',
-                '/opt/local/include/cairo',
-                '/opt/local/include/pycairo',
-            ],
-            library_dirs = [
-                '/opt/gtk/lib',
-                '/opt/local/lib',
-            ],
+                '/opt/homebrew/include',
+            ] + _brew_cairo_inc + _pycairo_inc,
+            library_dirs = _brew_lib,
             libraries = [
                 'cairo',
             ]),

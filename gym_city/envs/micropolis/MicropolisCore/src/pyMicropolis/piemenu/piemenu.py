@@ -35,6 +35,7 @@ http://www.PieMenu.com
 
 from gi.repository import Gtk as gtk
 from gi.repository import Gdk as gdk
+from gi.repository import GLib
 import gi
 gi.require_version('PangoCairo', '1.0')
 from gi.repository import PangoCairo
@@ -1534,7 +1535,12 @@ class PieMenu(gtk.Window):
         self.winX = x
         self.winY = y
 
-        self.move(x, y)
+        # Defer the move: setWindowShape() runs from inside the "draw"
+        # signal, and moving/resizing the toplevel synchronously there
+        # corrupts the quartz backend's in-flight draw frame (cairo 1.18
+        # then aborts in gdk_window_end_draw_frame). winX/winY are updated
+        # immediately, so this is scheduled only when geometry changes.
+        GLib.idle_add(self.move, x, y)
 
 
     def changeSize(self, width, height):
@@ -1547,7 +1553,8 @@ class PieMenu(gtk.Window):
         self.winWidth = width
         self.winHeight = height
 
-        self.resize(width, height)
+        # Deferred for the same reason as changePosition() above.
+        GLib.idle_add(self.resize, width, height)
 
 
     def popUp(self, pinX, pinY, pinned=False):
@@ -1620,18 +1627,24 @@ class PieMenu(gtk.Window):
         # TODO: restore focus?
 
 
-    def handleExpose(self, widget, event):
+    def handleExpose(self, widget, cr):
 
-        self.draw(widget, event)
+        self.draw(widget, cr)
 
         return False
 
 
-    def draw(self, widget, event):
+    def draw(self, widget, context):
 
-        context = widget.get_window().cairo_create()
+        # GTK3 passes a cairo context to the "draw" signal handler. Use it
+        # directly. The old code called the deprecated
+        # widget.get_window().cairo_create(), which on the quartz backend
+        # over-releases the window surface when the extra context is GC'd
+        # (cairo 1.18 aborts: "cairo_surface_destroy ... HAS_REFERENCE").
         pcontext = widget.create_pango_context()
         playout = pango.Layout(pcontext)
+
+        self.setWindowShape()
 
         self.setWindowShape()
 

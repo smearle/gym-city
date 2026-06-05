@@ -107,7 +107,11 @@ setup(
         ],
         include_dirs=[
             'src',
+            '/opt/homebrew/include',
             '/usr/local/include',
+        ],
+        library_dirs=[
+            '/opt/homebrew/lib',
         ]),
     ]
 )

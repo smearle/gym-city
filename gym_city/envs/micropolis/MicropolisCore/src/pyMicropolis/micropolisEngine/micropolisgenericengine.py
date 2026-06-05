@@ -91,9 +91,15 @@ from io import StringIO
 
 
 __version__ = "0.9"
-import gym_city
-impath = os.path.abspath(os.path.join(gym_city.__path__[0],
-    'envs/micropolis/MicropolisCore/src/images'))
+try:
+    import gym_city
+    impath = os.path.abspath(os.path.join(gym_city.__path__[0],
+        'envs/micropolis/MicropolisCore/src/images'))
+except ImportError:
+    # Standalone GUI use: images live alongside this package's src dir,
+    # no need to drag in the full gym_city / gym RL stack.
+    impath = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), '..', '..', 'images'))
 
 ########################################################################
 # MicropolisGenericEngine Class
@@ -132,7 +138,9 @@ class MicropolisGenericEngine(micropolisengine.Micropolis):
         micropolisengine.Micropolis.__init__(self, *args, **kwargs)
 
         self.env = env
-        self.builderBot = self.env.micro
+        # In standalone GUI use there is no RL env; only the gym wrapper
+        # supplies one with a `.micro` builder bot.
+        self.builderBot = self.env.micro if self.env is not None else None
         self.rank = rank
         self.resourceDir = 'res'
         self.running = running
