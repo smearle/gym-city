@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 setup(name='gym_city',
       version='0.0.0',
       install_requires=['gym', 
-          'numpy', 
+          'numpy<1.24', 
           'pillow', 
           'baselines', 
           'imutils', 
